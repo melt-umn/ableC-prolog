@@ -2,7 +2,7 @@ grammar edu:umn:cs:melt:exts:ableC:prolog:abstractsyntax;
 
 synthesized attribute asContinuation::Expr;
 
-nonterminal Predicates with pps, env, errors, defs, asContinuation, transform<Expr>, transformIn<Expr>, substituted<Predicates>;
+nonterminal Predicates with pps, env, errors, defs, asContinuation, transform<Expr>, transformIn<Expr>, substitutions, substituted<Predicates>;
 
 abstract production consPredicate
 top::Predicates ::= h::Predicate t::Predicates
@@ -10,6 +10,7 @@ top::Predicates ::= h::Predicate t::Predicates
   propagate substituted;
   top.pps = h.pp :: t.pps;
   top.errors := h.errors ++ t.errors;
+  top.defs := h.defs ++ t.defs;
   
   t.env = addEnv(h.defs, h.env);
   
@@ -24,17 +25,34 @@ top::Predicates ::=
   propagate substituted;
   top.pps = [];
   top.errors := [];
+  top.defs := [];
   top.asContinuation = ableC_Expr { _continuation };
   top.transform = ableC_Expr { _continuation() };
 }
 
-nonterminal Predicate with location, env, pp, errors, defs, transform<Expr>, transformIn<Expr>, substituted<Predicate>;
+function foldPredicate
+Predicates ::= les::[Predicate]
+{
+  return foldr(consPredicate, nilPredicate(), les);
+}
+
+nonterminal Predicate with location, env, pp, errors, defs, transform<Expr>, transformIn<Expr>, substitutions, substituted<Predicate>;
 
 abstract production predicate
-top::Predicate ::= n::Name les::LogicExprs
+top::Predicate ::= n::Name ts::TypeNames les::LogicExprs
 {
   propagate substituted;
-  top.pp = pp"${n.pp}(${ppImplode(pp", ", les.pps)})";
-  top.errors := les.errors; -- TODO: Lookup check
-  top.transform = ableC_Expr { $Name{n}($Exprs{les.transform}, $Expr{top.transformIn}) };
+  top.pp = pp"${n.pp}${if ts.count == 0 then pp"" else pp"<${ppImplode(pp", ", ts.pps)}>"}(${ppImplode(pp", ", les.pps)})";
+  top.errors := les.errors;
+  top.defs := ts.defs ++ les.defs;
+  top.transform = ableC_Expr { inst $Name{n}<$TypeNames{ts}>($Exprs{les.transform}, $Expr{top.transformIn}) };
+  
+  ts.returnType = nothing();
+  les.expectedTypes = n.predicateItem.instTypereps(ts.typereps);
+  
+  top.errors <- n.predicateLookupCheck;
+  top.errors <-
+    flatMap(
+      \ t::Type -> decorate t with { otherType = t; }.unifyErrors(n.location, top.env),
+      ts.typereps);
 }

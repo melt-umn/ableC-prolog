@@ -39,9 +39,9 @@ concrete productions top::LogicStmt_c
 | id::Identifier_c LParen_t ')' ';'
   { top.ast = declLogicStmt(predicateDecl(id.ast, nilName(), nilParameters(), location=top.location), location=top.location); }
 | id::Identifier_c LParen_t le::LogicExprs_c ')' '.'
-  { }
+  { top.ast = ruleLogicStmt(id.ast, foldLogicExpr(le.ast), nilPredicate(), location=top.location); }
 | id::Identifier_c LParen_t le::LogicExprs_c ')' ':-' ps::Predicates_c '.'
-  { }
+  { top.ast = ruleLogicStmt(id.ast, foldLogicExpr(le.ast), foldPredicate(ps.ast), location=top.location); }
 
 nonterminal LogicExprs_c with location, ast<[LogicExpr]>;
 
@@ -56,8 +56,10 @@ concrete productions top::LogicExprs_c
 nonterminal LogicExpr_c with location, ast<LogicExpr>;
 
 concrete productions top::LogicExpr_c
+| id::Identifier_c
+  { top.ast = varLogicExpr(id.ast, location=top.location); }
 | id::Identifier_c LParen_t le::LogicExprs_c ')'
-  { }
+  { top.ast = constructorLogicExpr(id.ast, foldLogicExpr(le.ast), location=top.location); }
 
 nonterminal Predicates_c with location, ast<[Predicate]>;
 
@@ -70,5 +72,7 @@ concrete productions top::Predicates_c
 nonterminal Predicate_c with location, ast<Predicate>;
 
 concrete productions top::Predicate_c
+| id::Identifier_c '<' tns::TypeNames_c '>' LParen_t le::LogicExprs_c ')'
+  { top.ast = predicate(id.ast, tns.ast, foldLogicExpr(le.ast), location=top.location); }
 | id::Identifier_c LParen_t le::LogicExprs_c ')'
-  { }
+  { top.ast = predicate(id.ast, nilTypeName(), foldLogicExpr(le.ast), location=top.location); }

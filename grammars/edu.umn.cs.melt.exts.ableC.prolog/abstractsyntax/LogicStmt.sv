@@ -4,7 +4,7 @@ synthesized attribute transform<a>::a;
 synthesized attribute ruleTransform::[Pair<String Stmt>];
 inherited attribute ruleTransformIn::[Pair<String Stmt>];
 
-nonterminal LogicStmts with  pps, errors, defs, env, ruleTransform, substituted<LogicStmts>;
+nonterminal LogicStmts with pps, errors, defs, env, transform<[Decl]>, ruleTransform, substitutions, substituted<LogicStmts>;
 
 abstract production consLogicStmt
 top::LogicStmts ::= h::LogicStmt t::LogicStmts
@@ -12,6 +12,8 @@ top::LogicStmts ::= h::LogicStmt t::LogicStmts
   propagate substituted;
   top.pps = h.pp :: t.pps;
   top.errors := h.errors ++ t.errors;
+  top.defs := h.defs ++ t.defs;
+  top.transform = h.transform ++ t.transform;
   top.ruleTransform = h.ruleTransform ++ t.ruleTransform;
   h.ruleTransformIn = t.ruleTransform;
 }
@@ -22,11 +24,13 @@ top::LogicStmts ::=
   propagate substituted;
   top.pps = [];
   top.errors := [];
+  top.defs := [];
+  top.transform = [];
   top.ruleTransform = [];
 }
 
 
-nonterminal LogicStmt with location, pp, errors, defs, env, ruleTransform, ruleTransformIn, substituted<LogicStmt>;
+nonterminal LogicStmt with location, pp, errors, defs, env, transform<[Decl]>, ruleTransform, ruleTransformIn, substitutions, substituted<LogicStmt>;
 
 abstract production ruleLogicStmt
 top::LogicStmt ::= n::Name les::LogicExprs ps::Predicates
@@ -34,6 +38,14 @@ top::LogicStmt ::= n::Name les::LogicExprs ps::Predicates
   propagate substituted;
   top.pp = pp"${n.pp}(${ppImplode(pp", ", les.pps)})${if null(ps.pps) then pp"." else pp" :- ${ppImplode(pp", ", ps.pps)}"}";
   top.errors := les.errors ++ ps.errors; -- TODO: Lookup check in local scope
+  top.defs := les.defs ++ ps.defs;
+  
+  les.paramNamesIn = n.predicateItem.paramNames;
+  les.expectedTypes = n.predicateItem.typereps;
+  
+  top.errors <- n.predicateLocalLookupCheck;
+  
+  top.transform = [];
   top.ruleTransform =
     [pair(
        n.name,
@@ -79,5 +91,7 @@ top::LogicStmt ::= d::PredicateDecl
   top.pp = d.pp;
   top.errors := d.errors;
   top.defs := d.defs;
+  top.transform = [d.transform];
+  top.ruleTransform = [];
   d.ruleTransformIn = top.ruleTransformIn;
 }

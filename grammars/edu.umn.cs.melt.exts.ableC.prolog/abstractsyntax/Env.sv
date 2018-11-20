@@ -1,8 +1,47 @@
 grammar edu:umn:cs:melt:exts:ableC:prolog:abstractsyntax;
 
+abstract production typeParamValueItem
+top::ValueItem ::= t::Type loc::Location
+{
+  top.pp = pp"type param";
+  top.typerep = t;
+  top.sourceLocation = loc;
+  top.isItemType = true;
+}
+
+abstract production typeVarType
+top::ExtType ::= n::String
+{
+  propagate substituted;
+  top.pp = text(n);
+  top.host = error("typeVarType shouldn't occur in host tree!");
+  top.mangledName = n;
+  top.isEqualTo =
+    \ other::ExtType ->
+      case other of
+      | typeVarType(n2) -> n == n2
+      | _ -> false
+      end;
+  
+  top.unifyErrors =
+    \ l::Location env::Decorated Env ->
+      case top.otherType of
+      | extType(_, typeVarType(n2)) ->
+        if n == n2
+        then []
+        else [err(l, s"Unification type variables must match (got ${n}, ${n2})")]
+      | extType(_, varType(extType(_, typeVarType(n2)))) ->
+        if n == n2
+        then []
+        else [err(l, s"Unification value and variable type variables must match (got ${n}, ${n2})")]
+      | t -> [err(l, s"Unification is not defined for type variable ${n} and ${showType(t)}")]
+      end;
+}
+
 abstract production varValueItem
 top::ValueItem ::= t::Type loc::Location
 {
+  top.pp = pp"var";
   top.typerep = extType(nilQualifier(), varType(t));
   top.sourceLocation = loc;
   top.isItemValue = true;
@@ -25,6 +64,7 @@ top::PredicateItem ::=
   top.paramNames = [];
   top.typereps = [];
   top.instTypereps = \ [Type] -> [];
+  top.sourceLocation = loc("nowhere", -1, -1, -1, -1, -1, -1);
 }
 
 synthesized attribute predicates::Scopes<PredicateItem> occurs on Env;
