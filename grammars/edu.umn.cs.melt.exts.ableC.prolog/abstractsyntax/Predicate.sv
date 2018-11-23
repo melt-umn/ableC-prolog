@@ -17,6 +17,7 @@ top::Predicates ::= h::Predicate t::Predicates
   top.asContinuation = ableC_Expr { lambda allocate(alloca) () -> ($Expr{top.transform}) };
   top.transform = h.transform;
   h.transformIn = t.asContinuation;
+  t.transformIn = top.transformIn;
 }
 
 abstract production nilPredicate
@@ -26,8 +27,8 @@ top::Predicates ::=
   top.pps = [];
   top.errors := [];
   top.defs := [];
-  top.asContinuation = ableC_Expr { _continuation };
-  top.transform = ableC_Expr { _continuation() };
+  top.asContinuation = top.transformIn;
+  top.transform = ableC_Expr { $Expr{top.transformIn}() };
 }
 
 function foldPredicate
@@ -45,12 +46,19 @@ top::Predicate ::= n::Name ts::TypeNames les::LogicExprs
   top.pp = pp"${n.pp}${if ts.count == 0 then pp"" else pp"<${ppImplode(pp", ", ts.pps)}>"}(${ppImplode(pp", ", les.pps)})";
   top.errors := les.errors;
   top.defs := ts.defs ++ les.defs;
-  top.transform = ableC_Expr { inst $Name{n}<$TypeNames{ts}>($Exprs{les.transform}, $Expr{top.transformIn}) };
+  top.transform =
+    ableC_Expr {
+      inst $name{n.name}<$TypeNames{ts}>($Exprs{les.transform}, $Expr{top.transformIn})
+    };
   
   ts.returnType = nothing();
   les.expectedTypes = n.predicateItem.instTypereps(ts.typereps);
   
   top.errors <- n.predicateLookupCheck;
+  top.errors <-
+    if null(n.predicateLookupCheck) && les.count != length(les.expectedTypes)
+    then [err(top.location, s"Wrong number of arguments to predicate ${n.name} (expected ${toString(length(les.expectedTypes))}, got ${toString(les.count)})")]
+    else [];
   top.errors <-
     flatMap(
       \ t::Type -> decorate t with { otherType = t; }.unifyErrors(n.location, top.env),

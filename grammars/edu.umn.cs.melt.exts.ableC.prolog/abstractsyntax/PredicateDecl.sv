@@ -2,7 +2,8 @@ grammar edu:umn:cs:melt:exts:ableC:prolog:abstractsyntax;
 
 synthesized attribute instTypereps::([Type] ::= [Type]);
 
-nonterminal PredicateDecl with location, env, pp, errors, defs, paramNames, typereps, instTypereps, transform<Decl>, ruleTransformIn, substitutions, substituted<PredicateDecl>;
+nonterminal PredicateDecl with location, env, pp, errors, defs, errorDefs, paramNames, typereps, instTypereps, transform<Decls>, ruleTransformIn, substitutions, substituted<PredicateDecl>;
+flowtype PredicateDecl = decorate {env, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, typereps {decorate}, instTypereps {decorate}, transform {decorate}, substituted {substitutions};
 
 abstract production predicateDecl
 top::PredicateDecl ::= n::Name typeParams::Names params::Parameters
@@ -10,16 +11,22 @@ top::PredicateDecl ::= n::Name typeParams::Names params::Parameters
   propagate substituted;
   top.pp = pp"${n.pp}<${ppImplode(text(", "), typeParams.pps)}>(${ppImplode(pp", ", params.pps)});";
   top.errors := params.errors;
-  top.defs := predicateDef(n.name, predicateItem(top)) :: params.defs;
+  top.defs := params.defs;
+  top.errorDefs := top.defs;
   top.paramNames = params.paramNames;
   top.typereps = params.typereps;
   top.instTypereps =
     \ ts::[Type] ->
-      decorate params with {
+       decorate params with {
         env = addEnv(typeParamInstDefs(ts, typeParams), openScopeEnv(top.env));
         returnType = nothing();
         position = 0;
       }.typereps;
+  
+  local predicateDefs::[Def] = [predicateDef(n.name, predicateItem(top))];
+  top.defs <- predicateDefs;
+  
+  top.errorDefs <- [templateDef(n.name, errorTemplateItem())];
   
   params.env = addEnv(typeParams.typeParamDefs, openScopeEnv(top.env));
   params.returnType = nothing();
@@ -30,10 +37,10 @@ top::PredicateDecl ::= n::Name typeParams::Names params::Parameters
   top.errors <- params.unifyErrors(top.location, top.env);
   
   top.transform =
-    ableC_Decl {
+    ableC_Decls {
       proto_typedef unification_trail;
       template<$Names{typeParams}>
-      _Bool $Name{n}($Parameters{params}, closure<() -> _Bool> _continuation) {
+      _Bool $Name{n}($Parameters{params.transform}, closure<() -> _Bool> _continuation) {
         unification_trail _trail = new_trail();
         
         $Stmt{foldStmt(lookupAllBy(stringEq, n.name, top.ruleTransformIn))}
@@ -41,6 +48,7 @@ top::PredicateDecl ::= n::Name typeParams::Names params::Parameters
         delete _trail;
         return 0;
       }
+      $Decl{defsDecl(predicateDefs)}
     };
 }
 

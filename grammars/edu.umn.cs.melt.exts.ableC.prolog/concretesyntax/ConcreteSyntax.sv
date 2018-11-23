@@ -28,10 +28,10 @@ concrete productions top::LogicStmts_c
 nonterminal LogicStmt_c with location, ast<LogicStmt>;
 
 concrete productions top::LogicStmt_c
-| id::Identifier_c typeParams::TypeParameters_c LParen_t params::ParameterTypeList_c ')' ';'
+| id::Identifier_c '<' typeParams::TypeParameters_c '>' LParen_t params::ParameterTypeList_c ')' ';'
   { top.ast = declLogicStmt(predicateDecl(id.ast, typeParams.ast, foldParameterDecl(params.ast), location=top.location), location=top.location); }
   action { context = lh:closeScope(context); } -- Opened by TemplateParams_c
-| id::Identifier_c typeParams::TypeParameters_c LParen_t ')' ';'
+| id::Identifier_c '<' typeParams::TypeParameters_c '>' LParen_t ')' ';'
   { top.ast = declLogicStmt(predicateDecl(id.ast, typeParams.ast, nilParameters(), location=top.location), location=top.location); }
   action { context = lh:closeScope(context); } -- Opened by TemplateParams_c
 | id::Identifier_c LParen_t params::ParameterTypeList_c ')' ';'
@@ -50,8 +50,6 @@ concrete productions top::LogicExprs_c
   { top.ast = h.ast :: t.ast; }
 | h::LogicExpr_c
   { top.ast = [h.ast]; }
-|
-  { top.ast = []; }
 
 nonterminal LogicExpr_c with location, ast<LogicExpr>;
 
@@ -60,6 +58,12 @@ concrete productions top::LogicExpr_c
   { top.ast = varLogicExpr(id.ast, location=top.location); }
 | id::Identifier_c LParen_t le::LogicExprs_c ')'
   { top.ast = constructorLogicExpr(id.ast, foldLogicExpr(le.ast), location=top.location); }
+| id::Identifier_c LParen_t ')'
+  { top.ast = constructorLogicExpr(id.ast, nilLogicExpr(), location=top.location); }
+| c::Constant_c
+  { top.ast = constLogicExpr(c.ast, location=top.location); }
+| s::StringConstant_c
+  { top.ast = constLogicExpr(stringLiteral(s.ast, location=s.location), location=top.location); }
 
 nonterminal Predicates_c with location, ast<[Predicate]>;
 

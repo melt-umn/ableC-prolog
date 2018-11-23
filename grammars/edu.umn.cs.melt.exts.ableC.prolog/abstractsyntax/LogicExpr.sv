@@ -123,10 +123,18 @@ top::LogicExpr ::= n::Name les::LogicExprs
     | t -> t
     end;
   
-  local adtName::Maybe<String> = adtType.adtName;
+  local adtName::Maybe<String> =
+    case adtType of
+    | extType(_, adtExtType(adtName, _, _)) -> just(adtName)
+    | _ -> nothing()
+    end;
+  local adtDeclName::String =
+    case adtType of
+    | extType(_, adtExtType(_, adtDeclName, _)) -> adtDeclName
+    end;
   
   local adtLookup::[RefIdItem] =
-    case top.expectedType.maybeRefId of
+    case adtType.maybeRefId of
     | just(rid) -> lookupRefId(rid, top.env)
     | nothing() -> []
     end;
@@ -166,32 +174,28 @@ top::LogicExpr ::= n::Name les::LogicExprs
     | nothing() -> []
     end;
   
-  top.transform = makeVarExpr(top.expectedType, ableC_Expr { $Name{n}($Exprs{les.transform}) });
+  top.transform =
+    makeVarExpr(
+      top.expectedType,
+      ableC_Expr { $name{"_construct_" ++ adtDeclName ++ "_" ++ n.name}($Exprs{les.transform}) });
 }
 
 function makeVarExpr
 Expr ::= t::Type e::Expr
 {
+  local tmpName::String = s"_tmp_var_${toString(genInt())}";
   return
     case t of
     | extType(_, varType(sub)) ->
       ableC_Expr {
-        ({$directTypeExpr{t} _tmp_var =
+        ({$directTypeExpr{t} $name{tmpName} =
             $Expr{
               freeVarExpr(
                 typeName(directTypeExpr(sub), baseTypeExpr()),
               ableC_Expr { alloca },
               location=builtin)};
-          $Expr{
-            unifyExpr(
-              e,
-              freeVarExpr(
-                typeName(directTypeExpr(sub), baseTypeExpr()),
-                ableC_Expr { alloca },
-                location=builtin),
-              nothingExpr(),
-              location=builtin)};
-          _tmp_var;})
+          $Expr{unifyExpr(e, ableC_Expr { $name{tmpName} }, nothingExpr(), location=builtin)};
+          $name{tmpName};})
       }
     | _ -> e
     end;
