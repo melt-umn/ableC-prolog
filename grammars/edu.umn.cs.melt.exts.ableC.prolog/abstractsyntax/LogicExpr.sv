@@ -2,10 +2,17 @@ grammar edu:umn:cs:melt:exts:ableC:prolog:abstractsyntax;
 
 inherited attribute expectedTypes::[Type];
 
+-- If true, transform.typerep must be unifiable with expectedType
+-- If false, transform.typerep must exactly match expectedType
+autocopy attribute allowUnificationTypes::Boolean;
+
+autocopy attribute allocator::Expr;
+
 inherited attribute paramNamesIn::[String];
 synthesized attribute paramUnifyTransform::Expr;
 
-nonterminal LogicExprs with pps, env, count, expectedTypes, errors, defs, transform<Exprs>, paramNamesIn, paramUnifyTransform, substitutions, substituted<LogicExprs>;
+nonterminal LogicExprs with pps, env, count, expectedTypes, allowUnificationTypes, allocator, errors, defs, transform<Exprs>, paramNamesIn, paramUnifyTransform, substitutions, substituted<LogicExprs>;
+flowtype LogicExprs = decorate {env, expectedTypes, allowUnificationTypes, allocator}, pps {}, count {}, errors {decorate}, defs {decorate}, transform {decorate}, paramUnifyTransform {decorate, paramNamesIn}, substituted {substitutions};
 
 abstract production consLogicExpr
 top::LogicExprs ::= h::LogicExpr t::LogicExprs
@@ -59,7 +66,8 @@ LogicExprs ::= les::[LogicExpr]
 
 inherited attribute expectedType::Type;
 
-nonterminal LogicExpr with location, pp, env, expectedType, errors, defs, transform<Expr>, substitutions, substituted<LogicExpr>;
+nonterminal LogicExpr with location, pp, env, expectedType, allowUnificationTypes, allocator, errors, defs, transform<Expr>, substitutions, substituted<LogicExpr>;
+flowtype LogicExpr = decorate {env, expectedType, allowUnificationTypes, allocator}, pp {}, errors {decorate}, defs {decorate}, transform {decorate}, substituted {substitutions};
 
 abstract production nameLogicExpr
 top::LogicExpr ::= n::Name
@@ -81,18 +89,60 @@ top::LogicExpr ::= n::Name
   top.errors := [];
   top.defs :=
     if null(n.valueLocalLookup)
-    then [valueDef(n.name, varValueItem(subType, n.location))]
+    then [valueDef(n.name, varValueItem(baseType, n.location))]
     else [];
   top.transform = declRefExpr(n, location=builtin);
   
-  local subType::Type = varSubType(top.expectedType);
-  top.errors <-
+  local baseType::Type =
     case top.expectedType of
-    | extType(_, varType(_)) -> []
-    | errorType() -> []
-    | t -> [err(n.location, s"Variable expected to unify with a variable type (got ${showType(top.expectedType)})")]
+    | extType(_, varType(sub)) -> sub
+    | errorType() -> errorType()
+    | t -> t
     end;
-  top.errors <- n.valueRedeclarationCheck(extType(nilQualifier(), varType(subType)));
+  local expectedType::Type = top.expectedType;
+  expectedType.otherType = extType(nilQualifier(), varType(baseType));
+  top.errors <-
+    if top.allowUnificationTypes
+    then expectedType.unifyErrors(n.location, top.env)
+    else
+      case top.expectedType of
+      | extType(_, varType(_)) -> []
+      | errorType() -> []
+      | t -> [err(n.location, s"Variable expected to unify with a variable type (got ${showType(top.expectedType)})")]
+      end;
+  top.errors <- n.valueRedeclarationCheck(extType(nilQualifier(), varType(baseType)));
+}
+
+abstract production wildcardLogicExpr
+top::LogicExpr ::=
+{
+  propagate substituted;
+  top.pp = pp"_";
+  top.errors := [];
+  top.defs := [];
+  top.transform =
+    freeVarExpr(
+      typeName(directTypeExpr(baseType), baseTypeExpr()),
+      top.allocator,
+      location=builtin);
+  
+  local baseType::Type =
+    case top.expectedType of
+    | extType(_, varType(sub)) -> sub
+    | errorType() -> errorType()
+    | t -> t
+    end;
+  local expectedType::Type = top.expectedType;
+  expectedType.otherType = extType(nilQualifier(), varType(baseType));
+  top.errors <-
+    if top.allowUnificationTypes
+    then expectedType.unifyErrors(top.location, top.env)
+    else
+      case top.expectedType of
+      | extType(_, varType(_)) -> []
+      | errorType() -> []
+      | t -> [err(top.location, s"Wildcard expected to unify with a variable type (got ${showType(top.expectedType)})")]
+      end;
 }
 
 abstract production constLogicExpr
@@ -102,7 +152,10 @@ top::LogicExpr ::= e::Expr
   top.pp = e.pp;
   top.errors := e.errors;
   top.defs := e.defs;
-  top.transform = makeVarExpr(top.expectedType, e);
+  top.transform =
+    if top.allowUnificationTypes
+    then e
+    else makeVarExpr(top.allocator, top.expectedType, e);
   
   e.returnType = nothing();
   
@@ -123,15 +176,7 @@ top::LogicExpr ::= n::Name les::LogicExprs
     | t -> t
     end;
   
-  local adtName::Maybe<String> =
-    case adtType of
-    | extType(_, adtExtType(adtName, _, _)) -> just(adtName)
-    | _ -> nothing()
-    end;
-  local adtDeclName::String =
-    case adtType of
-    | extType(_, adtExtType(_, adtDeclName, _)) -> adtDeclName
-    end;
+  local adtName::Maybe<String> = adtType.adtName;
   
   local adtLookup::[RefIdItem] =
     case adtType.maybeRefId of
@@ -145,7 +190,8 @@ top::LogicExpr ::= n::Name les::LogicExprs
     | [] -> []
     end;
   
-  local constructorParamLookup::Maybe<Decorated Parameters> = lookupBy(stringEq, n.name, constructors);
+  local constructorParamLookup::Maybe<Decorated Parameters> =
+    lookupBy(stringEq, n.name, constructors);
   
   top.errors := les.errors;
   top.errors <-
@@ -173,15 +219,28 @@ top::LogicExpr ::= n::Name les::LogicExprs
     | just(params) -> params.typereps
     | nothing() -> []
     end;
+  les.allowUnificationTypes = false;
   
   top.transform =
     makeVarExpr(
+      top.allocator,
       top.expectedType,
-      ableC_Expr { $name{"_construct_" ++ adtDeclName ++ "_" ++ n.name}($Exprs{les.transform}) });
+      -- TODO: Interfering hack to call the constructor for template datatypes
+      case adtType of
+      | templatedType(_, _, args, _) ->
+        ableC_Expr {
+          inst $name{n.name}<$TypeNames{
+            foldr(
+              consTypeName, nilTypeName(),
+              map(\ t::Type -> typeName(directTypeExpr(t), baseTypeExpr()), args))
+          }>($Exprs{les.transform})
+        }
+      | _ -> ableC_Expr { $name{n.name}($Exprs{les.transform}) }
+      end);
 }
 
 function makeVarExpr
-Expr ::= t::Type e::Expr
+Expr ::= allocator::Expr t::Type e::Expr
 {
   local tmpName::String = s"_tmp_var_${toString(genInt())}";
   return
@@ -192,8 +251,8 @@ Expr ::= t::Type e::Expr
             $Expr{
               freeVarExpr(
                 typeName(directTypeExpr(sub), baseTypeExpr()),
-              ableC_Expr { alloca },
-              location=builtin)};
+                allocator,
+                location=builtin)};
           $Expr{unifyExpr(e, ableC_Expr { $name{tmpName} }, nothingExpr(), location=builtin)};
           $name{tmpName};})
       }

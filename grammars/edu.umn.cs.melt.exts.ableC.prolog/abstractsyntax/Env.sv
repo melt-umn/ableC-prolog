@@ -18,13 +18,14 @@ top::ValueItem ::= t::Type loc::Location
   top.isItemValue = true;
 }
 
-closed nonterminal PredicateItem with paramNames, typereps, instTypereps, sourceLocation;
+closed nonterminal PredicateItem with paramNames, typereps, typeParams, instTypereps, sourceLocation;
 
 abstract production predicateItem
 top::PredicateItem ::= d::Decorated PredicateDecl
 {
   top.paramNames = d.paramNames;
   top.typereps = d.typereps;
+  top.typeParams = d.typeParams;
   top.instTypereps = d.instTypereps;
   top.sourceLocation = d.location;
 }
@@ -34,6 +35,7 @@ top::PredicateItem ::=
 {
   top.paramNames = [];
   top.typereps = [];
+  top.typeParams = decorate nilName() with { env = emptyEnv(); };
   top.instTypereps = \ [Type] -> [];
   top.sourceLocation = loc("nowhere", -1, -1, -1, -1, -1, -1);
 }

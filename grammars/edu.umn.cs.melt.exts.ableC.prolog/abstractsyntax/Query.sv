@@ -17,7 +17,9 @@ top::Expr ::= ps::Predicates body::Stmt
       proto_typedef unification_trail;
       ({unification_trail _trail = new_trail();
         $Stmt{makeVarDecls(ps.defs)}
-        $Expr{ps.transform};})
+        _Bool _result = $Expr{ps.transform};
+        delete _trail;
+        _result;})
     };
   
   forwards to mkErrorCheck(localErrors, fwrd);

@@ -1,9 +1,10 @@
 grammar edu:umn:cs:melt:exts:ableC:prolog:abstractsyntax;
 
+synthesized attribute typeParams::Decorated Names;
 synthesized attribute instTypereps::([Type] ::= [Type]);
 
-nonterminal PredicateDecl with location, env, pp, errors, defs, errorDefs, paramNames, typereps, instTypereps, transform<Decls>, ruleTransformIn, substitutions, substituted<PredicateDecl>;
-flowtype PredicateDecl = decorate {env, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, typereps {decorate}, instTypereps {decorate}, transform {decorate}, substituted {substitutions};
+nonterminal PredicateDecl with location, env, pp, errors, defs, errorDefs, paramNames, typereps, typeParams, instTypereps, transform<Decls>, ruleTransformIn, substitutions, substituted<PredicateDecl>;
+flowtype PredicateDecl = decorate {env, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, typereps {decorate}, typeParams {decorate}, instTypereps {decorate}, transform {decorate}, substituted {substitutions};
 
 abstract production predicateDecl
 top::PredicateDecl ::= n::Name typeParams::Names params::Parameters
@@ -15,32 +16,37 @@ top::PredicateDecl ::= n::Name typeParams::Names params::Parameters
   top.errorDefs := top.defs;
   top.paramNames = params.paramNames;
   top.typereps = params.typereps;
+  top.typeParams = typeParams;
   top.instTypereps =
     \ ts::[Type] ->
-       decorate params with {
-        env = addEnv(typeParamInstDefs(ts, typeParams), openScopeEnv(top.env));
-        returnType = nothing();
-        position = 0;
-      }.typereps;
+      map(
+        \ t::Type -> t.canonicalType,
+        decorate params with {
+          -- Add type args to global scope so that they are visible within the template instantiation
+          env = addEnv([globalDefsDef(typeParamInstDefs(ts, typeParams))], openScopeEnv(top.env));
+          returnType = nothing();
+          position = 0;
+        }.typereps);
   
   local predicateDefs::[Def] = [predicateDef(n.name, predicateItem(top))];
   top.defs <- predicateDefs;
   
   top.errorDefs <- [templateDef(n.name, errorTemplateItem())];
   
-  params.env = addEnv(typeParams.typeParamDefs, openScopeEnv(top.env));
+  -- Add type params to global scope so that they are visible within the template instantiation
+  params.env = addEnv([globalDefsDef(typeParams.typeParamDefs)], openScopeEnv(top.env));
   params.returnType = nothing();
   params.position = 0;
   
   top.errors <- n.predicateRedeclarationCheck;
   top.errors <- typeParams.typeParameterErrors;
-  top.errors <- params.unifyErrors(top.location, top.env);
+  top.errors <- params.unifyErrors(top.location, addEnv(params.defs, params.env));
   
   top.transform =
     ableC_Decls {
       proto_typedef unification_trail;
       template<$Names{typeParams}>
-      _Bool $Name{n}($Parameters{params.transform}, closure<() -> _Bool> _continuation) {
+      _Bool $name{s"_predicate_${n.name}"}($Parameters{params.transform}, closure<() -> _Bool> _continuation) {
         unification_trail _trail = new_trail();
         
         $Stmt{foldStmt(lookupAllBy(stringEq, n.name, top.ruleTransformIn))}
@@ -91,7 +97,7 @@ aspect production name
 top::Name ::= n::String
 {
   top.typeParamDefs =
-    [valueDef(n, typeParamValueItem(extType(nilQualifier(), typeVarType(n)), top.location))];
+    [valueDef(n, typeParamValueItem(extType(nilQualifier(), typeParamType(n)), top.location))];
   top.typeParamInstDefs = [valueDef(n, typeParamValueItem(top.instParamType, top.location))];
 }
 

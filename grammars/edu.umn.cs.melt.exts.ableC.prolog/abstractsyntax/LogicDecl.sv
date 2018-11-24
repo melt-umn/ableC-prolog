@@ -4,7 +4,7 @@ abstract production logicDecl
 top::Decl ::= lss::LogicStmts
 {
   propagate substituted;
-  --top.pp = pp"logic ${braces(nestlines(2, terminate(line(), lss.pps)))}";
+  top.pp = pp"logic ${braces(nestlines(2, terminate(line(), lss.pps)))}";
   
   lss.env = openScopeEnv(top.env);
   
@@ -60,8 +60,11 @@ top::LogicStmt ::= n::Name les::LogicExprs ps::Predicates
   top.defs := [];
   top.errorDefs := [];
   
+  les.env = addEnv([globalDefsDef(n.predicateItem.typeParams.typeParamDefs)], openScopeEnv(top.env));
   les.paramNamesIn = n.predicateItem.paramNames;
   les.expectedTypes = n.predicateItem.typereps;
+  les.allowUnificationTypes = true;
+  les.allocator = ableC_Expr { alloca };
   ps.env = addEnv(les.defs, les.env);
   
   top.errors <- n.predicateLocalLookupCheck;
@@ -91,7 +94,7 @@ top::LogicStmt ::= n::Name les::LogicExprs ps::Predicates
            undo_trail(_trail);
          }
        })];
-   ps.transformIn = ableC_Expr { _continuation };
+   ps.continuationTransformIn = ableC_Expr { _continuation };
 }
 
 abstract production declLogicStmt
