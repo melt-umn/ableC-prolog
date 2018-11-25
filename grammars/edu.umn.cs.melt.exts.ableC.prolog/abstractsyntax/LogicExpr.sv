@@ -55,7 +55,7 @@ top::LogicExprs ::=
   top.errors := [];
   top.defs := [];
   top.transform = nilExpr();
-  top.paramUnifyTransform = ableC_Expr { 1 };
+  top.paramUnifyTransform = ableC_Expr { (_Bool)1 };
 }
 
 function foldLogicExpr
@@ -89,9 +89,9 @@ top::LogicExpr ::= n::Name
   top.errors := [];
   top.defs :=
     if null(n.valueLocalLookup)
-    then [valueDef(n.name, varValueItem(baseType, n.location))]
+    then [valueDef(n.name, varValueItem(extType(nilQualifier(), varType(baseType)), n.location))]
     else [];
-  top.transform = declRefExpr(n, location=builtin);
+  top.transform = ableC_Expr { $name{n.name} };
   
   local baseType::Type =
     case top.expectedType of
@@ -153,9 +153,7 @@ top::LogicExpr ::= e::Expr
   top.errors := e.errors;
   top.defs := e.defs;
   top.transform =
-    if top.allowUnificationTypes
-    then e
-    else makeVarExpr(top.allocator, top.expectedType, e);
+    makeVarExpr(top.allocator, top.allowUnificationTypes, top.expectedType, e);
   
   e.returnType = nothing();
   
@@ -224,6 +222,7 @@ top::LogicExpr ::= n::Name les::LogicExprs
   top.transform =
     makeVarExpr(
       top.allocator,
+      top.allowUnificationTypes,
       top.expectedType,
       -- TODO: Interfering hack to call the constructor for template datatypes
       case adtType of
@@ -239,13 +238,14 @@ top::LogicExpr ::= n::Name les::LogicExprs
       end);
 }
 
+-- Ensure that an expression is a unification variable of some sort
 function makeVarExpr
-Expr ::= allocator::Expr t::Type e::Expr
+Expr ::= allocator::Expr allowUnificationTypes::Boolean t::Type e::Expr
 {
   local tmpName::String = s"_tmp_var_${toString(genInt())}";
   return
-    case t of
-    | extType(_, varType(sub)) ->
+    case allowUnificationTypes, t of
+    | false, extType(_, varType(sub)) ->
       ableC_Expr {
         ({$directTypeExpr{t} $name{tmpName} =
             $Expr{
@@ -256,6 +256,6 @@ Expr ::= allocator::Expr t::Type e::Expr
           $Expr{unifyExpr(e, ableC_Expr { $name{tmpName} }, nothingExpr(), location=builtin)};
           $name{tmpName};})
       }
-    | _ -> e
+    | _, _ -> e
     end;
 }

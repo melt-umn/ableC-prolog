@@ -1,5 +1,7 @@
 grammar edu:umn:cs:melt:exts:ableC:prolog:abstractsyntax;
 
+import silver:util:raw:treemap as tm;
+
 abstract production typeParamValueItem
 top::ValueItem ::= t::Type loc::Location
 {
@@ -13,9 +15,24 @@ abstract production varValueItem
 top::ValueItem ::= t::Type loc::Location
 {
   top.pp = pp"var";
-  top.typerep = extType(nilQualifier(), varType(t));
+  top.typerep = t;
   top.sourceLocation = loc;
   top.isItemValue = true;
+}
+
+-- Generate defs for "unwrapped" values corresponding to variables referenced
+-- in "is" predicate expression.
+function makeUnwrappedVarDefs
+[Def] ::= env::Decorated Env
+{
+  return
+    flatMap(
+      \ p::Pair<String ValueItem> ->
+        case p of
+        | pair(n, varValueItem(t, l)) -> [valueDef(n, varValueItem(varSubType(t), l))]
+        | _ -> []
+        end,
+      tm:toList(head(env.values)));
 }
 
 closed nonterminal PredicateItem with paramNames, typereps, typeParams, instTypereps, sourceLocation;

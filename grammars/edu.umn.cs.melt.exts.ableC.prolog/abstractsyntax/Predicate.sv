@@ -17,7 +17,7 @@ top::Predicates ::= h::Predicate t::Predicates
   t.env = addEnv(h.defs, h.env);
   
   top.continuationTransform =
-    ableC_Expr { lambda allocate(alloca) () -> ($Expr{top.transform}) };
+    ableC_Expr { lambda allocate(alloca) () -> ((_Bool)$Expr{top.transform}) };
   top.transform = h.transform;
   h.continuationTransformIn = t.continuationTransform;
   h.transformIn = t.transform;
@@ -88,13 +88,46 @@ top::Predicate ::= le::LogicExpr e::Expr
   top.defs := le.defs ++ e.defs;
   top.transform =
     ableC_Expr {
-      $Expr{unifyExpr(le.transform, e, justExpr(ableC_Expr { _trail }), location=builtin)} &&
+      $Expr{
+        unifyExpr(
+          le.transform,
+          ableC_Expr {
+            ({$Stmt{makeUnwrappedVarDecls(e.freeVariables, top.env)}
+              $Expr{decExpr(e, location=builtin)};})
+          },
+          justExpr(ableC_Expr { _trail }),
+          location=builtin)} &&
       $Expr{top.transformIn}
     };
   
   le.expectedType = e.typerep;
   le.allowUnificationTypes = true;
   le.allocator = ableC_Expr { alloca };
-  e.returnType = nothing();
   -- Don't add le.defs to e's env here, since decorating le requires e's typerep
+  e.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
+  e.returnType = nothing();
+}
+
+-- Generate "unwrapped" values corresponding to any variables referenced in the expression.
+function makeUnwrappedVarDecls
+Stmt ::= freeVariables::[Name] env::Decorated Env
+{
+  return
+    foldStmt(
+      flatMap(
+        \ n::Name ->
+          case lookupValueInLocalScope(n.name, env) of
+          | i :: _ ->
+            case i.typerep of
+            | extType(_, varType(sub)) ->
+              [ableC_Stmt {
+                 $directTypeExpr{i.typerep} $name{"_" ++ n.name} = $Name{n};
+                 $directTypeExpr{sub} $name{n.name} =
+                   inst value<$directTypeExpr{sub}>($name{"_" ++ n.name});
+               }]
+            | _ -> []
+            end
+          | _ -> []
+          end,
+        freeVariables));
 }

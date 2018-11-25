@@ -31,7 +31,8 @@ top::PredicateDecl ::= n::Name typeParams::Names params::Parameters
   local predicateDefs::[Def] = [predicateDef(n.name, predicateItem(top))];
   top.defs <- predicateDefs;
   
-  top.errorDefs <- [templateDef(n.name, errorTemplateItem())];
+  local transName::String = s"_predicate_${n.name}";
+  top.errorDefs <- [templateDef(transName, errorTemplateItem())];
   
   -- Add type params to global scope so that they are visible within the template instantiation
   params.env = addEnv([globalDefsDef(typeParams.typeParamDefs)], openScopeEnv(top.env));
@@ -46,7 +47,7 @@ top::PredicateDecl ::= n::Name typeParams::Names params::Parameters
     ableC_Decls {
       proto_typedef unification_trail;
       template<$Names{typeParams}>
-      _Bool $name{s"_predicate_${n.name}"}($Parameters{params.transform}, closure<() -> _Bool> _continuation) {
+      _Bool $name{transName}($Parameters{params.transform}, closure<() -> _Bool> _continuation) {
         unification_trail _trail = new_trail();
         
         $Stmt{foldStmt(lookupAllBy(stringEq, n.name, top.ruleTransformIn))}

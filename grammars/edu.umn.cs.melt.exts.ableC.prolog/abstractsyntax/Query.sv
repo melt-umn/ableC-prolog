@@ -25,6 +25,7 @@ top::Expr ::= ps::Predicates body::Stmt
   forwards to mkErrorCheck(localErrors, fwrd);
 }
 
+-- Generate declarations for all defined variables
 function makeVarDecls
 Stmt ::= defs::[Def]
 {
@@ -34,12 +35,12 @@ Stmt ::= defs::[Def]
         map(
           \ item::Pair<String ValueItem> ->
             case item.snd of
-            | varValueItem(sub, _) ->
+            | varValueItem(t, _) ->
               just(
                 mkDecl(
                   item.fst, item.snd.typerep,
                   freeVarExpr(
-                    typeName(directTypeExpr(sub), baseTypeExpr()),
+                    typeName(directTypeExpr(varSubType(t)), baseTypeExpr()),
                     ableC_Expr { alloca },
                     location=builtin),
                   builtin))
