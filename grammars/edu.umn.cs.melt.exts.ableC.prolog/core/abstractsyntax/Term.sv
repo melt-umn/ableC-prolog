@@ -1,4 +1,4 @@
-grammar edu:umn:cs:melt:exts:ableC:prolog:abstractsyntax;
+grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 
 abstract production termExpr
 top::Expr ::= ty::TypeName allocator::Expr le::LogicExpr

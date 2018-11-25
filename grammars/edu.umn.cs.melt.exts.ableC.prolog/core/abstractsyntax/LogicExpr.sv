@@ -1,4 +1,4 @@
-grammar edu:umn:cs:melt:exts:ableC:prolog:abstractsyntax;
+grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 
 inherited attribute expectedTypes::[Type];
 

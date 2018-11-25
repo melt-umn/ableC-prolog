@@ -1,4 +1,4 @@
-grammar edu:umn:cs:melt:exts:ableC:prolog:concretesyntax;
+grammar edu:umn:cs:melt:exts:ableC:prolog:core:concretesyntax;
 
 marking terminal Query_t 'query' lexer classes {Ckeyword};
 

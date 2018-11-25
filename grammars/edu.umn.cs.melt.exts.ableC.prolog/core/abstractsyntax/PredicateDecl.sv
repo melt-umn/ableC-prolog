@@ -1,4 +1,4 @@
-grammar edu:umn:cs:melt:exts:ableC:prolog:abstractsyntax;
+grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 
 synthesized attribute typeParams::Decorated Names;
 synthesized attribute instTypereps::([Type] ::= [Type]);

@@ -1,4 +1,4 @@
-grammar edu:umn:cs:melt:exts:ableC:prolog:concretesyntax;
+grammar edu:umn:cs:melt:exts:ableC:prolog:core:concretesyntax;
 
 marking terminal Term_t 'term' lexer classes {Ckeyword};
 

@@ -1,4 +1,4 @@
-grammar edu:umn:cs:melt:exts:ableC:prolog:concretesyntax;
+grammar edu:umn:cs:melt:exts:ableC:prolog:core:concretesyntax;
 
 imports edu:umn:cs:melt:ableC:concretesyntax;
 imports edu:umn:cs:melt:ableC:concretesyntax:lexerHack as lh;
@@ -6,7 +6,7 @@ imports silver:langutil;
 
 imports edu:umn:cs:melt:ableC:abstractsyntax:host;
 imports edu:umn:cs:melt:ableC:abstractsyntax:construction;
-imports edu:umn:cs:melt:exts:ableC:prolog:abstractsyntax;
+imports edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 
 exports edu:umn:cs:melt:exts:ableC:unification:concretesyntax;
 
