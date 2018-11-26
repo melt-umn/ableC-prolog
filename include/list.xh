@@ -1,0 +1,102 @@
+#include <unification.xh>
+#include <stdlib.h>
+
+#ifndef _LIST_XH
+#define _LIST_XH
+
+template<a>
+datatype _list_d {
+  _Cons(a head, list<a> ?tail);
+  _Nil();
+};
+
+template<a>
+list<a> ?cons(void *(*alloc)(size_t), a head, list<a> ?tail) {
+  list<a> ?result = freevar<list<a>>(*alloc);
+  unify(result, (list<a>)inst _Cons<a>(head, tail));
+  return result;
+}
+
+template<a>
+list<a> ?nil(void *(*alloc)(size_t)) {
+  list<a> ?result = freevar<list<a>>(*alloc);
+  unify(result, (list<a>)inst _Nil<a>());
+  return result;
+}
+
+// Only deletes the list itself, and not its contents
+template<a>
+void delete_list(void (*dealloc)(void *), list<a> ?l) {
+  match (l) {
+    ?&[h | t] -> { inst delete_list<a>(dealloc, t); }
+  }
+  inst delete_var<list<a>>(dealloc, l);
+}
+
+template<a>
+_Bool null(list<a> ?l) {
+  return inst value<list<a>>(l)->tag == _list_d__Nil;
+}
+
+template<a>
+a head(list<a> ?l) {
+  match (inst value<list<a>>(l)) {
+    [h | t] -> { return h; }
+    [] -> {
+      fprintf(stderr, "Error: Cannot access head of empty list\n");
+      exit(1);
+    }
+  }
+}
+
+template<a>
+list<a> ?tail(list<a> ?l) {
+  match (inst value<list<a>>(l)) {
+    [h | t] -> { return t; }
+    [] -> {
+      fprintf(stderr, "Error: Cannot access tail of empty list\n");
+      exit(1);
+    }
+  }
+}
+
+template<a>
+list<a> ?append_list(void *(*alloc)(size_t), list<a> ?l1, list<a> ?l2) {
+  return match (inst value<list<a>>(l1))
+    ([h | t] -> newlist<a>(alloc)[h | inst append_list<a>(alloc, t, l2)];
+     [] -> l2;);
+}
+
+template<a>
+string show_list(list<a> l) {
+  return "[" + inst _show_list_contents<a>(l) + "]";
+}
+
+template<a>
+string _show_list_contents(list<a> l) {
+  return match (l)
+    ([h | ?&(t@[_ | _])] -> show(h) + ", " + inst _show_list_contents<a>(t);
+     [h] -> show(h);
+     [h | v@freevar] -> show(h) + " | " + show(v);
+     [] -> str(""););
+}
+
+template<a>
+_Bool unify_list(list<a> l1, list<a> l2, unification_trail trail) {
+  return match (l1, l2)
+    ([h1 | t1], [h2 | t2] -> unify(h1, h2, trail) && unify(t1, t2, trail);
+     [], [] -> 1;
+     _, _ -> 0;);
+}
+
+prolog {
+  append<a>(list<a?> ?, list<a?> ?, list<a?> ?);
+  append([], A, A).
+  append([H | A], B, [H | C]) :- append<a>(A, B, C).
+  
+  length<a>(list<a?> ?, size_t ?);
+  length([], 0lu).
+  length([_ | T], N1) :- length<a>(T, N2), N1 is (N2 + 1lu).
+}
+
+#endif

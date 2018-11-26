@@ -27,7 +27,7 @@ concrete productions top::Declaration_c
 | 'prolog' '{' ls::LogicStmts_c '}'
   { top.ast = logicDecl(ls.ast); }
 
-nonterminal LogicStmts_c with location, ast<LogicStmts>;
+closed nonterminal LogicStmts_c with location, ast<LogicStmts>;
 
 concrete productions top::LogicStmts_c
 | h::LogicStmt_c t::LogicStmts_c
@@ -35,7 +35,7 @@ concrete productions top::LogicStmts_c
 |
   { top.ast = nilLogicStmt(); }
 
-nonterminal LogicStmt_c with location, ast<LogicStmt>;
+closed nonterminal LogicStmt_c with location, ast<LogicStmt>;
 
 concrete productions top::LogicStmt_c
 | id::Identifier_c '<' typeParams::TypeParameters_c '>' LParen_t params::ParameterTypeList_c ')' ';'
@@ -53,7 +53,7 @@ concrete productions top::LogicStmt_c
 | id::Identifier_c LParen_t le::LogicExprs_c ')' ':-' ps::Predicates_c '.'
   { top.ast = ruleLogicStmt(id.ast, foldLogicExpr(le.ast), foldPredicate(ps.ast), location=top.location); }
 
-nonterminal LogicExprs_c with location, ast<[LogicExpr]>;
+closed nonterminal LogicExprs_c with location, ast<[LogicExpr]>;
 
 concrete productions top::LogicExprs_c
 | h::LogicExpr_c ',' t::LogicExprs_c
@@ -61,7 +61,7 @@ concrete productions top::LogicExprs_c
 | h::LogicExpr_c
   { top.ast = [h.ast]; }
 
-nonterminal LogicExpr_c with location, ast<LogicExpr>;
+closed nonterminal LogicExpr_c with location, ast<LogicExpr>;
 
 concrete productions top::LogicExpr_c
 | id::Identifier_c
@@ -77,7 +77,7 @@ concrete productions top::LogicExpr_c
 | id::Identifier_c LParen_t ')'
   { top.ast = constructorLogicExpr(id.ast, nilLogicExpr(), location=top.location); }
 
-nonterminal Predicates_c with location, ast<[Predicate]>;
+closed nonterminal Predicates_c with location, ast<[Predicate]>;
 
 concrete productions top::Predicates_c
 | h::Predicate_c ',' t::Predicates_c
@@ -85,7 +85,7 @@ concrete productions top::Predicates_c
 | h::Predicate_c
   { top.ast = [h.ast]; }
 
-nonterminal Predicate_c with location, ast<Predicate>;
+closed nonterminal Predicate_c with location, ast<Predicate>;
 
 concrete productions top::Predicate_c
 | id::Identifier_c '<' tns::TypeNames_c '>' LParen_t les::LogicExprs_c ')'

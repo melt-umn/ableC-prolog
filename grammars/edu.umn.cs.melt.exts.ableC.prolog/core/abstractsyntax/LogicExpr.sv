@@ -66,7 +66,7 @@ LogicExprs ::= les::[LogicExpr]
 
 inherited attribute expectedType::Type;
 
-nonterminal LogicExpr with location, pp, env, expectedType, allowUnificationTypes, allocator, errors, defs, transform<Expr>, substitutions, substituted<LogicExpr>;
+closed nonterminal LogicExpr with location, pp, env, expectedType, allowUnificationTypes, allocator, errors, defs, transform<Expr>, substitutions, substituted<LogicExpr>;
 flowtype LogicExpr = decorate {env, expectedType, allowUnificationTypes, allocator}, pp {}, errors {decorate}, defs {decorate}, transform {decorate}, substituted {substitutions};
 
 abstract production nameLogicExpr
@@ -129,7 +129,6 @@ top::LogicExpr ::=
   local baseType::Type =
     case top.expectedType of
     | extType(_, varType(sub)) -> sub
-    | errorType() -> errorType()
     | t -> t
     end;
   local expectedType::Type = top.expectedType;
@@ -196,7 +195,7 @@ top::LogicExpr ::= n::Name les::LogicExprs
     case adtType, adtName, adtLookup, constructorParamLookup of
     | errorType(), _, _, _ -> []
     -- Check that expected type is an ADT of some sort
-    | t, nothing(), _, _ -> [err(top.location, s"Constructor pattern expected to match a datatype (got ${showType(t)}).")]
+    | t, nothing(), _, _ -> [err(top.location, s"Constructor expected to unify with a datatype (got ${showType(t)}).")]
     -- Check that this ADT has a definition
     | _, just(id), [], _ -> [err(top.location, s"datatype ${id} does not have a definition.")]
     -- Check that this is a constructor for the expected ADT type.

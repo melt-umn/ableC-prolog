@@ -7,4 +7,5 @@ grammar edu:umn:cs:melt:exts:ableC:prolog;
  - abstract syntax and concrete syntax of an extension by importing this grammar.
  -}
 exports edu:umn:cs:melt:exts:ableC:prolog:core;
+exports edu:umn:cs:melt:exts:ableC:prolog:list;
 
