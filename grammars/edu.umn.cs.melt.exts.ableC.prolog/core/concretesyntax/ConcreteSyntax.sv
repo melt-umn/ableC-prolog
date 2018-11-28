@@ -98,3 +98,5 @@ concrete productions top::Goal_c
   { top.ast = predicateGoal(id.ast, nilTypeName(), nilLogicExpr(), location=top.location); }
 | le::LogicExpr_c 'is' e::PrimaryExpr_c
   { top.ast = isGoal(le.ast, e.ast, location=top.location); }
+| Not_t
+  { top.ast = cutGoal(location=top.location); }

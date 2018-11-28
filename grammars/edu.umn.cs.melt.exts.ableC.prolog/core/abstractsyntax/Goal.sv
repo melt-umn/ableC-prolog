@@ -109,6 +109,22 @@ top::Goal ::= le::LogicExpr e::Expr
   e.returnType = nothing();
 }
 
+abstract production cutGoal
+top::Goal ::=
+{
+  propagate substituted;
+  top.pp = pp"!";
+  top.errors := [];
+  top.defs := [];
+  top.transform =
+    ableC_Expr {
+      // If a failure occurs, longjmp out of all continuations back to the current
+      // predicate function, which fails immediately.  This is OK because all data
+      // is stack-allocated.
+      $Expr{top.transformIn} || (longjmp(_cut_buffer, 1), 1)
+    };
+}
+
 -- Generate "unwrapped" values corresponding to any variables referenced in the expression.
 function makeUnwrappedVarDecls
 Stmt ::= freeVariables::[Name] env::Decorated Env

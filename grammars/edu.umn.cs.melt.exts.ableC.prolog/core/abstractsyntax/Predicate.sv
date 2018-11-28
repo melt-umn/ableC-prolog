@@ -45,10 +45,18 @@ top::PredicateDecl ::= n::Name typeParams::Names params::Parameters
   
   top.transform =
     ableC_Decls {
-      proto_typedef unification_trail, size_t;
+      proto_typedef unification_trail, size_t, jmp_buf;
       template<$Names{typeParams}>
       _Bool $name{transName}($Parameters{params.transform}, unification_trail _trail, closure<() -> _Bool> _continuation) {
+        // The initial length of the trail is the index of the first item that
+        // should be undone in case of failure
         size_t _trail_index = _trail.length;
+        
+        // If a failure after cut occurs, control is returned to this point with longjmp
+        jmp_buf _cut_buffer;
+        if (setjmp(_cut_buffer)) {
+          return 0;
+        }
         
         $Stmt{
           foldStmt(
