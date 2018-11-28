@@ -52,11 +52,11 @@ nonterminal LogicStmt with location, pp, errors, defs, errorDefs, env, transform
 flowtype LogicStmt = decorate {env, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, errorDefs {decorate}, transform {decorate}, ruleTransform {decorate}, substituted {substitutions};
 
 abstract production ruleLogicStmt
-top::LogicStmt ::= n::Name les::LogicExprs ps::Predicates
+top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
 {
   propagate substituted;
-  top.pp = pp"${n.pp}(${ppImplode(pp", ", les.pps)})${if null(ps.pps) then pp"." else pp" :- ${ppImplode(pp", ", ps.pps)}"}";
-  top.errors := les.errors ++ ps.errors;
+  top.pp = pp"${n.pp}(${ppImplode(pp", ", les.pps)})${if null(gs.pps) then pp"." else pp" :- ${ppImplode(pp", ", gs.pps)}"}";
+  top.errors := les.errors ++ gs.errors;
   top.defs := [];
   top.errorDefs := [];
   
@@ -65,7 +65,7 @@ top::LogicStmt ::= n::Name les::LogicExprs ps::Predicates
   les.expectedTypes = n.predicateItem.typereps;
   les.allowUnificationTypes = true;
   les.allocator = ableC_Expr { alloca };
-  ps.env = addEnv(les.defs, les.env);
+  gs.env = addEnv(les.defs, les.env);
   
   top.errors <- n.predicateLocalLookupCheck;
   top.errors <-
@@ -81,10 +81,10 @@ top::LogicStmt ::= n::Name les::LogicExprs ps::Predicates
          // New scope containing the allocated variables
          {
            // Declare and initialize variables
-           $Stmt{makeVarDecls(les.defs ++ ps.defs)}
+           $Stmt{makeVarDecls(les.defs ++ gs.defs)}
            // Unify each argument expression on the LHS with each parameter value
            // If successful, evaluate the RHS
-           if ($Expr{les.paramUnifyTransform} && $Expr{ps.transform}) {
+           if ($Expr{les.paramUnifyTransform} && $Expr{gs.transform}) {
              // Search has succeeded, so we are done immediately
              undo_trail(_trail);
              delete _trail;
@@ -94,7 +94,7 @@ top::LogicStmt ::= n::Name les::LogicExprs ps::Predicates
            undo_trail(_trail);
          }
        })];
-   ps.continuationTransformIn = ableC_Expr { _continuation };
+   gs.continuationTransformIn = ableC_Expr { _continuation };
 }
 
 abstract production declLogicStmt

@@ -1,133 +1,135 @@
 grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 
-synthesized attribute continuationTransform::Expr;
-inherited attribute continuationTransformIn::Expr;
+synthesized attribute typeParams::Decorated Names;
+synthesized attribute instTypereps::([Type] ::= [Type]);
 
-nonterminal Predicates with pps, env, errors, defs, transform<Expr>, continuationTransform, continuationTransformIn, substitutions, substituted<Predicates>;
-flowtype Predicates = decorate {env, continuationTransformIn}, pps {}, errors {env}, defs {env}, transform {decorate}, continuationTransform {decorate}, substituted {substitutions};
+nonterminal PredicateDecl with location, env, pp, errors, defs, errorDefs, paramNames, typereps, typeParams, instTypereps, transform<Decls>, ruleTransformIn, substitutions, substituted<PredicateDecl>;
+flowtype PredicateDecl = decorate {env, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, typereps {decorate}, typeParams {decorate}, instTypereps {decorate}, transform {decorate}, substituted {substitutions};
 
-abstract production consPredicate
-top::Predicates ::= h::Predicate t::Predicates
+abstract production predicateDecl
+top::PredicateDecl ::= n::Name typeParams::Names params::Parameters
 {
   propagate substituted;
-  top.pps = h.pp :: t.pps;
-  top.errors := h.errors ++ t.errors;
-  top.defs := h.defs ++ t.defs;
+  top.pp = pp"${n.pp}<${ppImplode(text(", "), typeParams.pps)}>(${ppImplode(pp", ", params.pps)});";
+  top.errors := params.errors;
+  top.defs := params.defs;
+  top.errorDefs := top.defs;
+  top.paramNames = params.paramNames;
+  top.typereps = params.typereps;
+  top.typeParams = typeParams;
+  top.instTypereps =
+    \ ts::[Type] ->
+      map(
+        \ t::Type -> t.canonicalType,
+        decorate params with {
+          -- Add type args to global scope so that they are visible within the template instantiation
+          env = addEnv([globalDefsDef(typeParamInstDefs(ts, typeParams))], openScopeEnv(top.env));
+          returnType = nothing();
+          position = 0;
+        }.typereps);
   
-  t.env = addEnv(h.defs, h.env);
+  local predicateDefs::[Def] = [predicateDef(n.name, predicateItem(top))];
+  top.defs <- predicateDefs;
   
-  top.continuationTransform =
-    ableC_Expr { lambda allocate(alloca) () -> ((_Bool)$Expr{top.transform}) };
-  top.transform = h.transform;
-  h.continuationTransformIn = t.continuationTransform;
-  h.transformIn = t.transform;
-  t.continuationTransformIn = top.continuationTransformIn;
-}
-
-abstract production nilPredicate
-top::Predicates ::=
-{
-  propagate substituted;
-  top.pps = [];
-  top.errors := [];
-  top.defs := [];
-  top.continuationTransform = top.continuationTransformIn;
-  top.transform = ableC_Expr { $Expr{top.continuationTransformIn}() };
-}
-
-function foldPredicate
-Predicates ::= les::[Predicate]
-{
-  return foldr(consPredicate, nilPredicate(), les);
-}
-
-nonterminal Predicate with location, env, pp, errors, defs, transform<Expr>, transformIn<Expr>, continuationTransformIn, substitutions, substituted<Predicate>;
-flowtype Predicate = decorate {env, transformIn, continuationTransformIn}, pp {}, errors {env}, defs {env}, transform {decorate}, substituted {substitutions};
-
-abstract production predicate
-top::Predicate ::= n::Name ts::TypeNames les::LogicExprs
-{
-  propagate substituted;
-  top.pp = pp"${n.pp}${if ts.count == 0 then pp"" else pp"<${ppImplode(pp", ", ts.pps)}>"}(${ppImplode(pp", ", les.pps)})";
-  top.errors := ts.errors ++ les.errors;
-  top.defs := ts.defs ++ les.defs;
+  local transName::String = s"_predicate_${n.name}";
+  top.errorDefs <- [templateDef(transName, errorTemplateItem())];
+  
+  -- Add type params to global scope so that they are visible within the template instantiation
+  params.env = addEnv([globalDefsDef(typeParams.typeParamDefs)], openScopeEnv(top.env));
+  params.returnType = nothing();
+  params.position = 0;
+  
+  top.errors <- n.predicateRedeclarationCheck;
+  top.errors <- typeParams.typeParameterErrors;
+  top.errors <- params.unifyErrors(top.location, addEnv(params.defs, params.env));
+  
   top.transform =
-    ableC_Expr {
-      inst $name{s"_predicate_${n.name}"}<$TypeNames{ts}>($Exprs{les.transform}, $Expr{top.continuationTransformIn})
+    ableC_Decls {
+      proto_typedef unification_trail;
+      template<$Names{typeParams}>
+      _Bool $name{transName}($Parameters{params.transform}, closure<() -> _Bool> _continuation) {
+        unification_trail _trail = new_trail();
+        
+        $Stmt{foldStmt(lookupAllBy(stringEq, n.name, top.ruleTransformIn))}
+        
+        delete _trail;
+        return 0;
+      }
+      $Decl{defsDecl(predicateDefs)}
     };
-  
-  ts.returnType = nothing();
-  les.expectedTypes = n.predicateItem.instTypereps(ts.typereps);
-  les.allowUnificationTypes = false;
-  les.allocator = ableC_Expr { alloca };
-  
-  top.errors <- n.predicateLookupCheck;
-  top.errors <-
-    if null(n.predicateLookupCheck) && ts.count != n.predicateItem.typeParams.count
-    then [err(
-            n.location,
-            s"Wrong number of type arguments for ${n.name}, " ++
-            s"expected ${toString(n.predicateItem.typeParams.count)} but got ${toString(ts.count)}")]
-    else [];
-  top.errors <-
-    if null(n.predicateLookupCheck) && les.count != length(les.expectedTypes)
-    then [err(top.location, s"Wrong number of arguments to predicate ${n.name} (expected ${toString(length(les.expectedTypes))}, got ${toString(les.count)})")]
-    else [];
-  top.errors <-
-    flatMap(
-      \ t::Type -> decorate t with { otherType = t; }.unifyErrors(n.location, top.env),
-      ts.typereps);
 }
 
-abstract production isPredicate
-top::Predicate ::= le::LogicExpr e::Expr
+synthesized attribute typeParamDefs::[Def] occurs on Names, Name;
+synthesized attribute typeParamInstDefs::[Def] occurs on Names, Name;
+inherited attribute instParamTypes::[Type] occurs on Names;
+
+aspect production consName
+top::Names ::= h::Name t::Names
 {
-  propagate substituted;
-  top.pp = pp"(${le.pp}) is (${e.pp})";
-  top.errors := le.errors ++ e.errors;
-  top.defs := le.defs ++ e.defs;
-  top.transform =
-    ableC_Expr {
-      $Expr{
-        unifyExpr(
-          le.transform,
-          ableC_Expr {
-            ({$Stmt{makeUnwrappedVarDecls(e.freeVariables, top.env)}
-              $Expr{decExpr(e, location=builtin)};})
-          },
-          justExpr(ableC_Expr { _trail }),
-          location=builtin)} &&
-      $Expr{top.transformIn}
-    };
+  top.typeParamDefs = h.typeParamDefs ++ t.typeParamDefs;
+  top.typeParamInstDefs = h.typeParamInstDefs ++ t.typeParamInstDefs;
   
-  le.expectedType = e.typerep;
-  le.allowUnificationTypes = true;
-  le.allocator = ableC_Expr { alloca };
-  -- Don't add le.defs to e's env here, since decorating le requires e's typerep
-  e.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
-  e.returnType = nothing();
+  local splitTypes :: Pair<Type [Type]> =
+    case top.instParamTypes of
+    | t::ts -> pair(t, ts)
+    | [] -> pair(errorType(), [])
+    end;
+  h.instParamType = splitTypes.fst;
+  t.instParamTypes = splitTypes.snd;
 }
 
--- Generate "unwrapped" values corresponding to any variables referenced in the expression.
-function makeUnwrappedVarDecls
-Stmt ::= freeVariables::[Name] env::Decorated Env
+aspect production nilName
+top::Names ::=
 {
-  return
-    foldStmt(
-      flatMap(
-        \ n::Name ->
-          case lookupValueInLocalScope(n.name, env) of
-          | i :: _ ->
-            case i.typerep of
-            | extType(_, varType(sub)) ->
-              [ableC_Stmt {
-                 $directTypeExpr{i.typerep} $name{"_" ++ n.name} = $Name{n};
-                 $directTypeExpr{sub} $name{n.name} =
-                   inst value<$directTypeExpr{sub}>($name{"_" ++ n.name});
-               }]
-            | _ -> []
-            end
-          | _ -> []
-          end,
-        freeVariables));
+  top.typeParamDefs = [];
+  top.typeParamInstDefs = [];
+}
+
+function typeParamInstDefs
+[Def] ::= ts::[Type] ns::Names
+{
+  ns.instParamTypes = ts;
+  return ns.typeParamInstDefs;
+}
+
+inherited attribute instParamType::Type occurs on Name;
+
+aspect production name
+top::Name ::= n::String
+{
+  top.typeParamDefs =
+    [valueDef(n, typeParamValueItem(extType(nilQualifier(), typeParamType(n)), top.location))];
+  top.typeParamInstDefs = [valueDef(n, typeParamValueItem(top.instParamType, top.location))];
+}
+
+synthesized attribute paramNames::[String] occurs on Parameters;
+attribute transform<Parameters> occurs on Parameters;
+
+aspect production consParameters
+top::Parameters ::= h::ParameterDecl t::Parameters
+{
+  propagate transform;
+  top.paramNames = h.paramName :: t.paramNames;
+}
+
+aspect production nilParameters
+top::Parameters ::= 
+{
+  propagate transform;
+  top.paramNames = [];
+}
+
+synthesized attribute paramName::String occurs on ParameterDecl;
+attribute transform<ParameterDecl> occurs on ParameterDecl;
+
+aspect production parameterDecl
+top::ParameterDecl ::= storage::StorageClasses  bty::BaseTypeExpr  mty::TypeModifierExpr  n::MaybeName  attrs::Attributes
+{
+  production paramName::Name =
+    case n of
+    | justName(n) -> n
+    | nothingName() -> name("p" ++ toString(top.position), location=builtin)
+    end;
+  top.paramName = paramName.name;
+  top.transform = parameterDecl(storage, bty, mty, justName(paramName), attrs);
 }

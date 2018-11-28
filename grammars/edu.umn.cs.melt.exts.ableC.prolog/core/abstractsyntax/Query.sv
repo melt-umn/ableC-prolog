@@ -1,23 +1,23 @@
 grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 
 abstract production queryExpr
-top::Expr ::= ps::Predicates body::Stmt
+top::Expr ::= gs::Goals body::Stmt
 {
   propagate substituted;
-  top.pp = pp"query ${ppImplode(pp", ", ps.pps)} ${braces(nestlines(2, body.pp))}";
+  top.pp = pp"query ${ppImplode(pp", ", gs.pps)} ${braces(nestlines(2, body.pp))}";
   
-  local localErrors::[Message] = ps.errors ++ body.errors;
-  ps.env = openScopeEnv(top.env);
-  body.env = openScopeEnv(addEnv(ps.defs, ps.env));
+  local localErrors::[Message] = gs.errors ++ body.errors;
+  gs.env = openScopeEnv(top.env);
+  body.env = openScopeEnv(addEnv(gs.defs, gs.env));
   body.returnType = just(builtinType(nilQualifier(), boolType()));
   
-  ps.continuationTransformIn = ableC_Expr { lambda allocate(alloca) () -> (_Bool) { $Stmt{body} } };
+  gs.continuationTransformIn = ableC_Expr { lambda allocate(alloca) () -> (_Bool) { $Stmt{body} } };
   local fwrd::Expr =
     ableC_Expr {
       proto_typedef unification_trail;
       ({unification_trail _trail = new_trail();
-        $Stmt{makeVarDecls(ps.defs)}
-        _Bool _result = $Expr{ps.transform};
+        $Stmt{makeVarDecls(gs.defs)}
+        _Bool _result = $Expr{gs.transform};
         delete _trail;
         _result;})
     };

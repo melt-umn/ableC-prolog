@@ -49,9 +49,9 @@ concrete productions top::LogicStmt_c
 | id::Identifier_c LParen_t ')' ';'
   { top.ast = declLogicStmt(predicateDecl(id.ast, nilName(), nilParameters(), location=top.location), location=top.location); }
 | id::Identifier_c LParen_t le::LogicExprs_c ')' '.'
-  { top.ast = ruleLogicStmt(id.ast, foldLogicExpr(le.ast), nilPredicate(), location=top.location); }
-| id::Identifier_c LParen_t le::LogicExprs_c ')' ':-' ps::Predicates_c '.'
-  { top.ast = ruleLogicStmt(id.ast, foldLogicExpr(le.ast), foldPredicate(ps.ast), location=top.location); }
+  { top.ast = ruleLogicStmt(id.ast, foldLogicExpr(le.ast), nilGoal(), location=top.location); }
+| id::Identifier_c LParen_t le::LogicExprs_c ')' ':-' ps::Goals_c '.'
+  { top.ast = ruleLogicStmt(id.ast, foldLogicExpr(le.ast), foldGoal(ps.ast), location=top.location); }
 
 closed nonterminal LogicExprs_c with location, ast<[LogicExpr]>;
 
@@ -77,24 +77,24 @@ concrete productions top::LogicExpr_c
 | id::Identifier_c LParen_t ')'
   { top.ast = constructorLogicExpr(id.ast, nilLogicExpr(), location=top.location); }
 
-closed nonterminal Predicates_c with location, ast<[Predicate]>;
+closed nonterminal Goals_c with location, ast<[Goal]>;
 
-concrete productions top::Predicates_c
-| h::Predicate_c ',' t::Predicates_c
+concrete productions top::Goals_c
+| h::Goal_c ',' t::Goals_c
   { top.ast = h.ast :: t.ast; }
-| h::Predicate_c
+| h::Goal_c
   { top.ast = [h.ast]; }
 
-closed nonterminal Predicate_c with location, ast<Predicate>;
+closed nonterminal Goal_c with location, ast<Goal>;
 
-concrete productions top::Predicate_c
+concrete productions top::Goal_c
 | id::Identifier_c '<' tns::TypeNames_c '>' LParen_t les::LogicExprs_c ')'
-  { top.ast = predicate(id.ast, tns.ast, foldLogicExpr(les.ast), location=top.location); }
+  { top.ast = predicateGoal(id.ast, tns.ast, foldLogicExpr(les.ast), location=top.location); }
 | id::Identifier_c '<' tns::TypeNames_c '>' LParen_t ')'
-  { top.ast = predicate(id.ast, tns.ast, nilLogicExpr(), location=top.location); }
+  { top.ast = predicateGoal(id.ast, tns.ast, nilLogicExpr(), location=top.location); }
 | id::Identifier_c LParen_t les::LogicExprs_c ')'
-  { top.ast = predicate(id.ast, nilTypeName(), foldLogicExpr(les.ast), location=top.location); }
+  { top.ast = predicateGoal(id.ast, nilTypeName(), foldLogicExpr(les.ast), location=top.location); }
 | id::Identifier_c LParen_t ')'
-  { top.ast = predicate(id.ast, nilTypeName(), nilLogicExpr(), location=top.location); }
+  { top.ast = predicateGoal(id.ast, nilTypeName(), nilLogicExpr(), location=top.location); }
 | le::LogicExpr_c 'is' e::PrimaryExpr_c
-  { top.ast = isPredicate(le.ast, e.ast, location=top.location); }
+  { top.ast = isGoal(le.ast, e.ast, location=top.location); }
