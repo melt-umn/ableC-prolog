@@ -18,6 +18,7 @@ top::Expr ::= gs::Goals body::Stmt
       ({unification_trail _trail = new_trail();
         $Stmt{makeVarDecls(gs.defs)}
         _Bool _result = $Expr{gs.transform};
+        undo_trail(_trail, 0);
         delete _trail;
         _result;})
     };

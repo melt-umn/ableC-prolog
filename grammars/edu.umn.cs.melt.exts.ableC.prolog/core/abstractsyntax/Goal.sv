@@ -53,7 +53,8 @@ top::Goal ::= n::Name ts::TypeNames les::LogicExprs
   top.defs := ts.defs ++ les.defs;
   top.transform =
     ableC_Expr {
-      inst $name{s"_predicate_${n.name}"}<$TypeNames{ts}>($Exprs{les.transform}, $Expr{top.continuationTransformIn})
+      inst $name{s"_predicate_${n.name}"}<$TypeNames{ts}>(
+        $Exprs{les.transform}, _trail, $Expr{top.continuationTransformIn})
     };
   
   ts.returnType = nothing();

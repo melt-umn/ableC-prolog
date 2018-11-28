@@ -86,12 +86,8 @@ top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
            // If successful, evaluate the RHS
            if ($Expr{les.paramUnifyTransform} && $Expr{gs.transform}) {
              // Search has succeeded, so we are done immediately
-             undo_trail(_trail);
-             delete _trail;
              return 1;
            }
-           // This branch of the search failed, undo the effects of the above unifications
-           undo_trail(_trail);
          }
        })];
    gs.continuationTransformIn = ableC_Expr { _continuation };

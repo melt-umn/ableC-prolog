@@ -45,14 +45,18 @@ top::PredicateDecl ::= n::Name typeParams::Names params::Parameters
   
   top.transform =
     ableC_Decls {
-      proto_typedef unification_trail;
+      proto_typedef unification_trail, size_t;
       template<$Names{typeParams}>
-      _Bool $name{transName}($Parameters{params.transform}, closure<() -> _Bool> _continuation) {
-        unification_trail _trail = new_trail();
+      _Bool $name{transName}($Parameters{params.transform}, unification_trail _trail, closure<() -> _Bool> _continuation) {
+        size_t _trail_index = _trail.length;
         
-        $Stmt{foldStmt(lookupAllBy(stringEq, n.name, top.ruleTransformIn))}
+        $Stmt{
+          foldStmt(
+            intersperse(
+              -- Undo unification effects from the previous (failed) branch
+              ableC_Stmt { undo_trail(_trail, _trail_index); },
+              lookupAllBy(stringEq, n.name, top.ruleTransformIn)))}
         
-        delete _trail;
         return 0;
       }
       $Decl{defsDecl(predicateDefs)}
