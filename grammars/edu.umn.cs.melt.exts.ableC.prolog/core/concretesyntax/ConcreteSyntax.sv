@@ -23,6 +23,8 @@ disambiguate Identifier_t, TypeName_t, Wildcard_t {
   pluck Wildcard_t;
 }
 
+terminal PrologComment_t /% .*/ lexer classes {Ccomment};
+
 concrete productions top::Declaration_c
 | 'prolog' '{' ls::LogicStmts_c '}'
   { top.ast = logicDecl(ls.ast); }
@@ -31,8 +33,10 @@ closed nonterminal LogicStmts_c with location, ast<LogicStmts>;
 
 concrete productions top::LogicStmts_c
 | h::LogicStmt_c t::LogicStmts_c
+  layout {LineComment, BlockComment, Spaces_t, NewLine_t, PrologComment_t}
   { top.ast = consLogicStmt(h.ast, t.ast); }
 |
+  layout {LineComment, BlockComment, Spaces_t, NewLine_t, PrologComment_t}
   { top.ast = nilLogicStmt(); }
 
 closed nonterminal LogicStmt_c with location, ast<LogicStmt>;
