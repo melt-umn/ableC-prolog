@@ -6,7 +6,9 @@ prolog {
   b(int ?);
   c(int ?);
   
+  a(0, 0).
   a(X, Y) :- b(X), !, c(Y).
+  a(4, 5).
     
   b(1).
   b(2).

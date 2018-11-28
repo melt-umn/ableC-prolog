@@ -152,12 +152,29 @@ top::LogicExpr ::= e::Expr
   top.errors := e.errors;
   top.defs := e.defs;
   top.transform =
-    makeVarExpr(top.allocator, top.allowUnificationTypes, top.expectedType, e);
+    makeVarExpr(
+      top.allocator, top.allowUnificationTypes, top.expectedType,
+      case baseType, e.typerep of
+      | extType(_, stringType()), pointerType(_, builtinType(_, signedType(charType()))) ->
+        strExpr(e, location=builtin)
+      | _, _ -> e
+      end);
   
   e.returnType = nothing();
   
+  local baseType::Type =
+    case top.expectedType of
+    | extType(_, varType(sub)) -> sub
+    | errorType() -> errorType()
+    | t -> t
+    end;
   local expectedType::Type = top.expectedType;
-  expectedType.otherType = e.typerep;
+  expectedType.otherType =
+    case baseType, e.typerep of
+    | extType(_, stringType()), pointerType(_, builtinType(_, signedType(charType()))) ->
+      extType(nilQualifier(), stringType())
+    | _, _ -> e.typerep
+    end;
   top.errors <- expectedType.unifyErrors(top.location, top.env);
 }
 
