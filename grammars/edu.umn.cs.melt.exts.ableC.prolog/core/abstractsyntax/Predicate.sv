@@ -137,11 +137,11 @@ attribute transform<ParameterDecl> occurs on ParameterDecl;
 aspect production parameterDecl
 top::ParameterDecl ::= storage::StorageClasses  bty::BaseTypeExpr  mty::TypeModifierExpr  n::MaybeName  attrs::Attributes
 {
-  production paramName::Name =
+  top.paramName =
     case n of
-    | justName(n) -> n
-    | nothingName() -> name("p" ++ toString(top.position), location=builtin)
+    | justName(n) -> "_" ++ n.name
+    | nothingName() -> "_p" ++ toString(top.position)
     end;
-  top.paramName = paramName.name;
-  top.transform = parameterDecl(storage, bty, mty, justName(paramName), attrs);
+  top.transform =
+    parameterDecl(storage, bty, mty, justName(name(top.paramName, location=builtin)), attrs);
 }

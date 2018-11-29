@@ -74,6 +74,8 @@ concrete productions top::LogicExpr_c
   { top.ast = wildcardLogicExpr(location=top.location); }
 | c::Constant_c
   { top.ast = constLogicExpr(c.ast, location=top.location); }
+| '-' c::Constant_c
+  { top.ast = constLogicExpr(negativeExpr(c.ast, location=top.location), location=top.location); }
 | s::StringConstant_c
   { top.ast = constLogicExpr(stringLiteral(s.ast, location=s.location), location=top.location); }
 | id::Identifier_c LParen_t le::LogicExprs_c ')'
