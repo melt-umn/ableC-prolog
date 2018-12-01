@@ -66,8 +66,8 @@ LogicExprs ::= les::[LogicExpr]
 
 inherited attribute expectedType::Type;
 
-closed nonterminal LogicExpr with location, pp, env, expectedType, allowUnificationTypes, allocator, errors, defs, transform<Expr>, substitutions, substituted<LogicExpr>;
-flowtype LogicExpr = decorate {env, expectedType, allowUnificationTypes, allocator}, pp {}, errors {decorate}, defs {decorate}, transform {decorate}, substituted {substitutions};
+closed nonterminal LogicExpr with location, pp, env, expectedType, allowUnificationTypes, allocator, errors, defs, maybeTyperep, transform<Expr>, substitutions, substituted<LogicExpr>;
+flowtype LogicExpr = decorate {env, expectedType, allowUnificationTypes, allocator}, pp {}, errors {decorate}, defs {decorate}, maybeTyperep {env, allowUnificationTypes}, transform {decorate}, substituted {substitutions};
 
 abstract production nameLogicExpr
 top::LogicExpr ::= n::Name
@@ -91,6 +91,10 @@ top::LogicExpr ::= n::Name
     if null(n.valueLocalLookup)
     then [valueDef(n.name, varValueItem(extType(nilQualifier(), varType(baseType)), n.location))]
     else [];
+  top.maybeTyperep =
+    if !null(n.valueLocalLookup)
+    then just(n.valueItem.typerep)
+    else nothing();
   top.transform = ableC_Expr { $name{n.name} };
   
   local baseType::Type =
@@ -120,6 +124,7 @@ top::LogicExpr ::=
   top.pp = pp"_";
   top.errors := [];
   top.defs := [];
+  top.maybeTyperep = nothing();
   top.transform =
     freeVarExpr(
       typeName(directTypeExpr(baseType), baseTypeExpr()),
@@ -151,13 +156,14 @@ top::LogicExpr ::= e::Expr
   top.pp = e.pp;
   top.errors := e.errors;
   top.defs := e.defs;
+  top.maybeTyperep = just(e.typerep);
   top.transform =
     makeVarExpr(
       top.allocator, top.allowUnificationTypes, top.expectedType,
       case baseType, e.typerep of
       | extType(_, stringType()), pointerType(_, builtinType(_, signedType(charType()))) ->
         strExpr(e, location=builtin)
-      | _, _ -> e
+      | _, _ -> ableC_Expr { ($directTypeExpr{baseType})$Expr{e} }
       end);
   
   e.returnType = nothing();
@@ -173,7 +179,10 @@ top::LogicExpr ::= e::Expr
     case baseType, e.typerep of
     | extType(_, stringType()), pointerType(_, builtinType(_, signedType(charType()))) ->
       extType(nilQualifier(), stringType())
-    | _, _ -> e.typerep
+    | _, _ ->
+      if compatibleTypes(baseType, e.typerep, true, false)
+      then baseType -- Value is cast to expected type
+      else e.typerep
     end;
   top.errors <- expectedType.unifyErrors(top.location, top.env);
 }
@@ -225,6 +234,13 @@ top::LogicExpr ::= n::Name les::LogicExprs
     end;
   
   top.defs := les.defs;
+  
+  -- Infer type for non-templated ADTs by looking up the constructor return type
+  top.maybeTyperep =
+    case n.valueItem.typerep of
+    | functionType(res, _, _) -> just(res)
+    | _ -> nothing()
+    end;
   
   -- Since we know that top.expectedType has already been checked as unifiable, we know the
   -- expected type for all the constructor parameters have already been checked as well.

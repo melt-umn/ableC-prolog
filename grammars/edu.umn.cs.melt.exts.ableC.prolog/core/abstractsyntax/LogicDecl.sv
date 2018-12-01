@@ -1,17 +1,25 @@
 grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 
 abstract production logicDecl
-top::Decl ::= lss::LogicStmts
+top::Decl ::= lss::LogicStmts loc::Location
 {
   propagate substituted;
   top.pp = pp"logic ${braces(nestlines(2, terminate(line(), lss.pps)))}";
   
+  -- Logic decls are *type checked* in a new scope to distinguish currently specifiable predicates,
+  -- but defs are inserted at the global scope via defsDecl.
   lss.env = openScopeEnv(top.env);
+  
+  local localErrors::[Message] =
+    lss.errors ++
+    if !top.isTopLevel
+    then [err(loc, "Logic declarations must be global")]
+    else [];
   
   forwards to
     decls(
-      if !null(lss.errors)
-      then foldDecl([warnDecl(lss.errors), defsDecl(lss.errorDefs)])
+      if !null(localErrors)
+      then foldDecl([warnDecl(localErrors), defsDecl(lss.errorDefs)])
       else lss.transform);
 }
 

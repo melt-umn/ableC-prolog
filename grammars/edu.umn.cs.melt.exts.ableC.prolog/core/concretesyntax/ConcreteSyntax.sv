@@ -13,6 +13,8 @@ exports edu:umn:cs:melt:exts:ableC:unification:concretesyntax;
 marking terminal Prolog_t 'prolog' lexer classes {Ckeyword};
 terminal If_t ':-';
 terminal Is_t 'is';
+terminal NotGoal_t '\+';
+terminal NotEquals_t '\=';
 terminal Wildcard_t '_';
 
 disambiguate Identifier_t, Wildcard_t {
@@ -27,7 +29,7 @@ terminal PrologComment_t /% .*/ lexer classes {Ccomment};
 
 concrete productions top::Declaration_c
 | 'prolog' '{' ls::LogicStmts_c '}'
-  { top.ast = logicDecl(ls.ast); }
+  { top.ast = logicDecl(ls.ast, top.location); }
 
 closed nonterminal LogicStmts_c with location, ast<LogicStmts>;
 
@@ -104,5 +106,11 @@ concrete productions top::Goal_c
   { top.ast = predicateGoal(id.ast, nilTypeName(), nilLogicExpr(), location=top.location); }
 | le::LogicExpr_c 'is' e::PrimaryExpr_c
   { top.ast = isGoal(le.ast, e.ast, location=top.location); }
+| le1::LogicExpr_c '=' le2::LogicExpr_c
+  { top.ast = equalsGoal(le1.ast, le2.ast, location=top.location); }
+| le1::LogicExpr_c '\=' le2::LogicExpr_c
+  { top.ast = notEqualsGoal(le1.ast, le2.ast, location=top.location); }
+| '\+' g::Goal_c
+  { top.ast = notGoal(g.ast, location=top.location); }
 | Not_t
   { top.ast = cutGoal(location=top.location); }

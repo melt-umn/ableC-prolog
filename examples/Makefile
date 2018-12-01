@@ -63,7 +63,11 @@ $(ABLEC_JAR): $(GRAMMAR_SOURCES)
 	touch $(wildcard $(ARTIFACT)/*.sv)
 	silver-ableC -o $@ $(SVFLAGS) $(ARTIFACT)
 
+# Make translation depend on a corresponding prolog file, if it exists
 %.c: %.xc %.pl $(XC_INCLUDE_SOURCES) $(ABLEC_JAR)
+	java $(JAVAFLAGS) -jar $(ABLEC_JAR) $< $(XCFLAGS)
+
+%.c: %.xc $(XC_INCLUDE_SOURCES) $(ABLEC_JAR)
 	java $(JAVAFLAGS) -jar $(ABLEC_JAR) $< $(XCFLAGS)
 
 %.out: %.o $(SRC_SOURCES) | libs

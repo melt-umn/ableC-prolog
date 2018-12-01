@@ -1,10 +1,10 @@
 grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 
-synthesized attribute typeParams::Decorated Names;
-synthesized attribute instTypereps::([Type] ::= [Type]);
+synthesized attribute typeParams::Names;
+synthesized attribute params::Parameters;
 
-nonterminal PredicateDecl with location, env, pp, errors, defs, errorDefs, paramNames, typereps, typeParams, instTypereps, transform<Decls>, ruleTransformIn, substitutions, substituted<PredicateDecl>;
-flowtype PredicateDecl = decorate {env, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, typereps {decorate}, typeParams {decorate}, instTypereps {decorate}, transform {decorate}, substituted {substitutions};
+nonterminal PredicateDecl with location, env, pp, errors, defs, errorDefs, paramNames, typereps, typeParams, params, transform<Decls>, ruleTransformIn, substitutions, substituted<PredicateDecl>;
+flowtype PredicateDecl = decorate {env, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, typereps {decorate}, typeParams {decorate}, params {decorate}, transform {decorate}, substituted {substitutions};
 
 abstract production predicateDecl
 top::PredicateDecl ::= n::Name typeParams::Names params::Parameters
@@ -17,16 +17,7 @@ top::PredicateDecl ::= n::Name typeParams::Names params::Parameters
   top.paramNames = params.paramNames;
   top.typereps = params.typereps;
   top.typeParams = typeParams;
-  top.instTypereps =
-    \ ts::[Type] ->
-      map(
-        \ t::Type -> t.canonicalType,
-        decorate params with {
-          -- Add type args to global scope so that they are visible within the template instantiation
-          env = addEnv([globalDefsDef(typeParamInstDefs(ts, typeParams))], openScopeEnv(top.env));
-          returnType = nothing();
-          position = 0;
-        }.typereps);
+  top.params = params;
   
   local predicateDefs::[Def] = [predicateDef(n.name, predicateItem(top))];
   top.defs <- predicateDefs;
@@ -95,13 +86,6 @@ top::Names ::=
 {
   top.typeParamDefs = [];
   top.typeParamInstDefs = [];
-}
-
-function typeParamInstDefs
-[Def] ::= ts::[Type] ns::Names
-{
-  ns.instParamTypes = ts;
-  return ns.typeParamInstDefs;
 }
 
 inherited attribute instParamType::Type occurs on Name;

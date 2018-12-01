@@ -28,8 +28,9 @@ string wrapShowExpr(Expr ?e) {
 string showExpr(Expr ?e) {
   return match (e)
     (?&value(?&val) -> show(val);
+     ?&e() -> str("e");
      ?&variable(?&id) -> id;
-     ?&negative(e1) -> "-" + showExpr(e1);
+     ?&negative(e1) -> "-" + wrapShowExpr(e1);
      ?&add(e1, e2) -> wrapShowExpr(e1) + " + " + wrapShowExpr(e2);
      ?&subtract(e1, e2) -> wrapShowExpr(e1) + " - " + wrapShowExpr(e2);
      ?&multiply(e1, e2) -> wrapShowExpr(e1) + " * " + wrapShowExpr(e2);
@@ -44,8 +45,8 @@ int mod(int a, int b) {
   return a % b;
 }
 
-// TODO: Workaround for lack of inequality test operator
-#define dif(A, B) 0 is ((int)(A == B))
+// TODO: Workaround for lack of dif predicate
+#define dif(A, B) A \= B
 
 prolog {
   power(int ?, int ?, int ?);

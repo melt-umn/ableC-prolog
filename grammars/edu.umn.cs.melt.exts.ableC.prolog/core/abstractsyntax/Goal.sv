@@ -57,8 +57,22 @@ top::Goal ::= n::Name ts::TypeNames les::LogicExprs
         $Exprs{les.transform}, _trail, $Expr{top.continuationTransformIn})
     };
   
+  local typeParams::Names = n.predicateItem.typeParams;
+  typeParams.instParamTypes = ts.typereps;
+  
+  local params::Parameters = n.predicateItem.params;
+  params.env =
+    addEnv(
+      -- Add type args to global scope so that they are visible within template instantiations
+      [globalDefsDef(typeParams.typeParamInstDefs)],
+      -- NOT the env at the declaration site, but this is equivalent (and more efficient.)
+      openScopeEnv(globalEnv(addEnv(ts.defs, ts.env))));
+  params.returnType = nothing();
+  params.position = 0;
+  
   ts.returnType = nothing();
-  les.expectedTypes = n.predicateItem.instTypereps(ts.typereps);
+  les.env = addEnv(ts.defs ++ params.defs, ts.env);
+  les.expectedTypes = map(\ t::Type -> t.canonicalType, params.typereps);
   les.allowUnificationTypes = false;
   les.allocator = ableC_Expr { alloca };
   
@@ -107,6 +121,64 @@ top::Goal ::= le::LogicExpr e::Expr
   -- Don't add le.defs to e's env here, since decorating le requires e's typerep
   e.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
   e.returnType = nothing();
+}
+
+abstract production equalsGoal
+top::Goal ::= le1::LogicExpr le2::LogicExpr
+{
+  propagate substituted;
+  top.pp = pp"(${le1.pp}) = (${le2.pp})";
+  top.errors := le1.errors ++ le2.errors;
+  top.defs := le1.defs ++ le2.defs;
+  top.transform =
+    ableC_Expr {
+      $Expr{
+        unifyExpr(
+          le1.transform,
+          le2.transform,
+          justExpr(ableC_Expr { _trail }),
+          location=builtin)} &&
+      $Expr{top.transformIn}
+    };
+  
+  top.errors <-
+    if !le1.maybeTyperep.isJust
+    then [err(le1.location, "Could not infer a type for lhs of goal")]
+    else [];
+  
+  local expectedType::Type = fromMaybe(errorType(), le1.maybeTyperep);
+  le1.expectedType = expectedType;
+  le1.allowUnificationTypes = true;
+  le1.allocator = ableC_Expr { alloca };
+  le2.expectedType = expectedType;
+  le2.allowUnificationTypes = true;
+  le2.allocator = ableC_Expr { alloca };
+  le2.env = addEnv(le1.defs, le1.env);
+}
+
+abstract production notEqualsGoal
+top::Goal ::= le1::LogicExpr le2::LogicExpr
+{
+  propagate substituted;
+  top.pp = pp"(${le1.pp}) /= (${le2.pp})";
+  
+  forwards to notGoal(equalsGoal(le1, le2, location=top.location), location=top.location);
+}
+
+abstract production notGoal
+top::Goal ::= g::Goal
+{
+  propagate substituted;
+  top.pp = pp"\+ (${g.pp})";
+  top.errors := g.errors;
+  top.defs := g.defs;
+  
+  g.transformIn = ableC_Expr { (_Bool)1 };
+  g.continuationTransformIn = ableC_Expr { lambda allocate(alloca) () -> ((_Bool)1) };
+  top.transform =
+    ableC_Expr {
+      !$Expr{g.transform} && $Expr{top.transformIn}
+    };
 }
 
 abstract production cutGoal

@@ -107,6 +107,11 @@ top::LogicExpr ::= l::ListLogicExprs
   top.pp = pp"[${ppImplode(pp", ", l.pps)}]";
   top.errors := l.errors;
   top.defs := l.defs;
+  top.maybeTyperep =
+    case l.maybeTyperep of
+    | just(t) -> just(extType(nilQualifier(), listType(t)))
+    | nothing() -> nothing()
+    end;
   top.transform = l.transform;
   
   local baseType::Type =
@@ -122,7 +127,8 @@ top::LogicExpr ::= l::ListLogicExprs
   top.errors <- expectedType.unifyErrors(top.location, top.env);
 }
 
-nonterminal ListLogicExprs with pps, env, paramType, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:expectedType, allowUnificationTypes, allocator, errors, defs, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:transform<Expr>, substituted<ListLogicExprs>, substitutions;
+nonterminal ListLogicExprs with pps, env, paramType, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:expectedType, allowUnificationTypes, allocator, errors, defs, maybeTyperep, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:transform<Expr>, substituted<ListLogicExprs>, substitutions;
+flowtype ListLogicExprs = decorate {env, paramType, expectedType, allowUnificationTypes, allocator}, pps {}, errors {decorate}, defs {decorate}, maybeTyperep {env, allowUnificationTypes}, transform {decorate}, substituted {substitutions};
 
 abstract production consListLogicExpr
 top::ListLogicExprs ::= h::LogicExpr t::ListLogicExprs
@@ -131,6 +137,7 @@ top::ListLogicExprs ::= h::LogicExpr t::ListLogicExprs
   top.pps = h.pp :: t.pps;
   top.errors := h.errors ++ t.errors;
   top.defs := h.defs ++ t.defs;
+  top.maybeTyperep = h.maybeTyperep; -- Only look at first elemet to avoid a dependency cycle
   top.transform =
     makeVarExpr(
       top.allocator,
@@ -160,6 +167,7 @@ top::ListLogicExprs ::= e::LogicExpr
   top.pps = [pp"| ${e.pp}"]; -- TODO: Fix this
   top.errors := e.errors;
   top.defs := e.defs;
+  top.maybeTyperep = e.maybeTyperep;
   top.transform = e.transform;
   
   e.expectedType = top.expectedType;
@@ -173,6 +181,7 @@ top::ListLogicExprs ::=
   top.pps = [];
   top.errors := [];
   top.defs := [];
+  top.maybeTyperep = nothing();
   top.transform =
     makeVarExpr(
       top.allocator,

@@ -95,8 +95,12 @@ prolog {
   append([H | A], B, [H | C]) :- append<a>(A, B, C).
   
   length<a>(list<a?> ?, size_t ?);
-  length([], 0lu).
-  length([_ | T], N1) :- length<a>(T, N2), N1 is (N2 + 1lu).
+  length([], 0).
+  length([_ | T], N1) :- length<a>(T, N2), N1 is (N2 + 1u).
+
+  member<a>(a ?item, list<a ?> ?l);
+  member(A, [A | _]).
+  member(A, [_ | T]) :- member<a>(A, T).
 }
 
 #endif
