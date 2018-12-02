@@ -39,7 +39,7 @@ top::ExtType ::= sub::Type
         templateMangledName("_list_d", [sub]),
         templateMangledRefId("_list_d", [sub]))).host;
   top.baseTypeExpr =
-    listTypeExpr(top.givenQualifiers, typeName(directTypeExpr(sub), baseTypeExpr()), builtin);
+    listTypeExpr(top.givenQualifiers, typeName(sub.baseTypeExpr, sub.typeModifierExpr), builtin);
   top.mangledName = s"list_${sub.mangledName}_";
   top.isEqualTo =
     \ other::ExtType ->
