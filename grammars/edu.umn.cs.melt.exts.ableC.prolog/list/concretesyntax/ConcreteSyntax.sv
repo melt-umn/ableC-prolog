@@ -13,14 +13,14 @@ imports edu:umn:cs:melt:exts:ableC:prolog:list:abstractsyntax;
 marking terminal List_t 'list' lexer classes {Ckeyword};
 
 concrete productions top::TypeSpecifier_c
-| 'list' '<' sub::TypeName_c '>'
+| 'list' LessThan_t sub::TypeName_c '>'
     { top.realTypeSpecifiers = [listTypeExpr(top.givenQualifiers, sub.ast, top.location)];
       top.preTypeSpecifiers = []; }
 
 marking terminal NewList_t 'newlist' lexer classes {Ckeyword};
 
 concrete productions top::PrimaryExpr_c
-| 'newlist' '<' sub::TypeName_c '>' LParen_t allocate::Expr_c ')' LBracket_t init::ListInitializerList_c ']'
+| 'newlist' LessThan_t sub::TypeName_c '>' LParen_t allocate::Expr_c ')' LBracket_t init::ListInitializerList_c ']'
   { top.ast = constructList(sub.ast, allocate.ast, init.ast, location=top.location); }
 
 nonterminal ListInitializerList_c with location, ast<ListInitializers>;

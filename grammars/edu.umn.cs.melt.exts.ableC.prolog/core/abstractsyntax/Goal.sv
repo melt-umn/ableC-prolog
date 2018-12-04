@@ -70,6 +70,8 @@ top::Goal ::= n::Name ts::TypeNames les::LogicExprs
   params.returnType = nothing();
   params.position = 0;
   
+  top.defs <- foldr(consDefs, nilDefs(), params.defs).canonicalDefs;
+  
   ts.returnType = nothing();
   les.env = addEnv(ts.defs ++ params.defs, ts.env);
   les.expectedTypes = map(\ t::Type -> t.canonicalType, params.typereps);
@@ -165,6 +167,162 @@ top::Goal ::= le1::LogicExpr le2::LogicExpr
   forwards to notGoal(equalsGoal(le1, le2, location=top.location), location=top.location);
 }
 
+abstract production eqGoal
+top::Goal ::= e1::Expr e2::Expr
+{
+  propagate substituted;
+  top.pp = pp"(${e1.pp}) =:= (${e2.pp})";
+  top.errors := e1.errors ++ e2.errors;
+  top.defs := e1.defs ++ e2.defs;
+  top.transform =
+    ableC_Expr {
+      ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
+        $Expr{decExpr(e1, location=builtin)} == $Expr{decExpr(e2, location=builtin)};}) &&
+        $Expr{top.transformIn}
+    };
+  
+  -- TODO: Types should both be equality types
+  top.errors <-
+    if compatibleTypes(e1.typerep, e2.typerep, true, true)
+    then []
+    else [err(top.location, s"Types to =:= goal must match (got ${showType(e1.typerep)}, ${showType(e2.typerep)})")];
+  
+  e1.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
+  e1.returnType = nothing();
+  e2.env = addEnv(e1.defs, e1.env);
+  e2.returnType = nothing();
+}
+
+abstract production neqGoal
+top::Goal ::= e1::Expr e2::Expr
+{
+  propagate substituted;
+  top.pp = pp"(${e1.pp}) =/= (${e2.pp})";
+  top.errors := e1.errors ++ e2.errors;
+  top.defs := e1.defs ++ e2.defs;
+  top.transform =
+    ableC_Expr {
+      ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
+        $Expr{decExpr(e1, location=builtin)} != $Expr{decExpr(e2, location=builtin)};}) &&
+        $Expr{top.transformIn}
+    };
+  
+  -- TODO: Types should both be equality types
+  top.errors <-
+    if compatibleTypes(e1.typerep, e2.typerep, true, true)
+    then []
+    else [err(top.location, s"Types to =/= goal must match (got ${showType(e1.typerep)}, ${showType(e2.typerep)})")];
+  
+  e1.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
+  e1.returnType = nothing();
+  e2.env = addEnv(e1.defs, e1.env);
+  e2.returnType = nothing();
+}
+
+abstract production ltGoal
+top::Goal ::= e1::Expr e2::Expr
+{
+  propagate substituted;
+  top.pp = pp"(${e1.pp}) < (${e2.pp})";
+  top.errors := e1.errors ++ e2.errors;
+  top.defs := e1.defs ++ e2.defs;
+  top.transform =
+    ableC_Expr {
+      ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
+        $Expr{decExpr(e1, location=builtin)} < $Expr{decExpr(e2, location=builtin)};}) &&
+        $Expr{top.transformIn}
+    };
+  
+  -- TODO: Types should both be comparison types
+  top.errors <-
+    if compatibleTypes(e1.typerep, e2.typerep, true, true)
+    then []
+    else [err(top.location, s"Types to < goal must match (got ${showType(e1.typerep)}, ${showType(e2.typerep)})")];
+  
+  e1.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
+  e1.returnType = nothing();
+  e2.env = addEnv(e1.defs, e1.env);
+  e2.returnType = nothing();
+}
+
+abstract production eltGoal
+top::Goal ::= e1::Expr e2::Expr
+{
+  propagate substituted;
+  top.pp = pp"(${e1.pp}) =< (${e2.pp})";
+  top.errors := e1.errors ++ e2.errors;
+  top.defs := e1.defs ++ e2.defs;
+  top.transform =
+    ableC_Expr {
+      ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
+        $Expr{decExpr(e1, location=builtin)} <= $Expr{decExpr(e2, location=builtin)};}) &&
+        $Expr{top.transformIn}
+    };
+  
+  -- TODO: Types should both be comparison types
+  top.errors <-
+    if compatibleTypes(e1.typerep, e2.typerep, true, true)
+    then []
+    else [err(top.location, s"Types to =< goal must match (got ${showType(e1.typerep)}, ${showType(e2.typerep)})")];
+  
+  e1.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
+  e1.returnType = nothing();
+  e2.env = addEnv(e1.defs, e1.env);
+  e2.returnType = nothing();
+}
+
+abstract production gtGoal
+top::Goal ::= e1::Expr e2::Expr
+{
+  propagate substituted;
+  top.pp = pp"(${e1.pp}) > (${e2.pp})";
+  top.errors := e1.errors ++ e2.errors;
+  top.defs := e1.defs ++ e2.defs;
+  top.transform =
+    ableC_Expr {
+      ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
+        $Expr{decExpr(e1, location=builtin)} > $Expr{decExpr(e2, location=builtin)};}) &&
+        $Expr{top.transformIn}
+    };
+  
+  -- TODO: Types should both be comparison types
+  top.errors <-
+    if compatibleTypes(e1.typerep, e2.typerep, true, true)
+    then []
+    else [err(top.location, s"Types to > goal must match (got ${showType(e1.typerep)}, ${showType(e2.typerep)})")];
+  
+  e1.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
+  e1.returnType = nothing();
+  e2.env = addEnv(e1.defs, e1.env);
+  e2.returnType = nothing();
+}
+
+abstract production gteGoal
+top::Goal ::= e1::Expr e2::Expr
+{
+  propagate substituted;
+  top.pp = pp"(${e1.pp}) >= (${e2.pp})";
+  top.errors := e1.errors ++ e2.errors;
+  top.defs := e1.defs ++ e2.defs;
+  top.transform =
+    ableC_Expr {
+      ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
+        $Expr{decExpr(e1, location=builtin)} >= $Expr{decExpr(e2, location=builtin)};}) &&
+        $Expr{top.transformIn}
+    };
+  
+  -- TODO: Types should both be comparison types
+  top.errors <-
+    if compatibleTypes(e1.typerep, e2.typerep, true, true)
+    then []
+    else [err(top.location, s"Types to >= goal must match (got ${showType(e1.typerep)}, ${showType(e2.typerep)})")];
+  
+  e1.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
+  e1.returnType = nothing();
+  e2.env = addEnv(e1.defs, e1.env);
+  e2.returnType = nothing();
+}
+
 abstract production notGoal
 top::Goal ::= g::Goal
 {
@@ -218,5 +376,5 @@ Stmt ::= freeVariables::[Name] env::Decorated Env
             end
           | _ -> []
           end,
-        freeVariables));
+        nubBy(nameEq, freeVariables)));
 }

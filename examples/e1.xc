@@ -1,5 +1,6 @@
 #include <unification.xh>
 #include <list.xh>
+#include <prolog_utils.xh>
 #include <stdbool.h>
 
 int main() {
@@ -11,7 +12,7 @@ int main() {
   printf("%s\n", show(inst head<int>(l3)).text);
   printf("%s\n", show(inst tail<int>(l3)).text);
   printf("%s\n", show(l4).text);
-
+  
   bool res = unify(l3, l4);
   printf("%d\n", res);
   
@@ -31,6 +32,11 @@ int main() {
   query length<int>([1, 2, 3, 4], N) {
     printf("N: %s\n", show(N).text);
     printf("\n");
+    return false;
+  };
+
+  query between(1, 10, N) {
+    printf("%s\n", show(N).text);
     return false;
   };
 }

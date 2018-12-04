@@ -2,6 +2,7 @@ grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 
 import silver:util:raw:treemap as tm;
 
+-- Represents a type parameter
 abstract production typeParamValueItem
 top::ValueItem ::= t::Type loc::Location
 {
@@ -11,6 +12,7 @@ top::ValueItem ::= t::Type loc::Location
   top.isItemType = true;
 }
 
+-- Represents a unification variable
 abstract production varValueItem
 top::ValueItem ::= t::Type loc::Location
 {
@@ -18,6 +20,19 @@ top::ValueItem ::= t::Type loc::Location
   top.typerep = t;
   top.sourceLocation = loc;
   top.isItemValue = true;
+}
+
+-- Wraps another ValueItem and canonicalizes its type
+abstract production canonicalValueItem
+top::ValueItem ::= v::ValueItem
+{
+  top.pp = pp"canonical ${v.pp}";
+  top.typerep = v.typerep.canonicalType;
+  top.sourceLocation = v.sourceLocation;
+  top.directRefHandler = v.directRefHandler;
+  top.directCallHandler = v.directCallHandler;
+  top.isItemValue = v.isItemValue;
+  top.isItemType = v.isItemType;
 }
 
 -- Generate defs for "unwrapped" values corresponding to variables referenced
@@ -58,7 +73,6 @@ top::PredicateItem ::=
 }
 
 synthesized attribute predicates::Scopes<PredicateItem> occurs on Env;
-synthesized attribute predicateContribs::Contribs<PredicateItem> occurs on Defs, Def;
 
 aspect production emptyEnv_i
 top::Env ::=
@@ -86,27 +100,39 @@ top::Env ::= e::Decorated Env
   top.predicates = nonGlobalScope(e.predicates);
 }
 
+synthesized attribute predicateContribs::Contribs<PredicateItem> occurs on Defs, Def;
+synthesized attribute canonicalDefs::[Def] occurs on Defs, Def;
+
 aspect production nilDefs
 top::Defs ::=
 {
   top.predicateContribs = [];
+  top.canonicalDefs = [];
 }
 aspect production consDefs
 top::Defs ::= h::Def  t::Defs
 {
   top.predicateContribs = h.predicateContribs ++ t.predicateContribs;
+  top.canonicalDefs = h.canonicalDefs ++ t.canonicalDefs;
 }
 
 aspect default production
 top::Def ::=
 {
   top.predicateContribs = [];
+  top.canonicalDefs = [];
 }
 
 abstract production predicateDef
 top::Def ::= s::String  t::PredicateItem
 {
   top.predicateContribs = [pair(s, t)];
+}
+
+aspect production valueDef
+top::Def ::= s::String  t::ValueItem
+{
+  top.canonicalDefs = [valueDef(s, canonicalValueItem(t))];
 }
 
 function lookupPredicate

@@ -7,16 +7,26 @@ top::Expr ::= gs::Goals body::Stmt
   top.pp = pp"query ${ppImplode(pp", ", gs.pps)} ${braces(nestlines(2, body.pp))}";
   
   local localErrors::[Message] = gs.errors ++ body.errors;
+  
   gs.env = openScopeEnv(top.env);
-  body.env = openScopeEnv(addEnv(gs.defs, gs.env));
+  
+  -- Need to decorate var decls here to compute the env for body, since this may
+  -- contain defs not in gs.defs
+  local varDecls::Stmt = makeVarDecls(gs.defs);
+  varDecls.env = gs.env;
+  varDecls.returnType = nothing();
+  
+  body.env = capturedEnv(addEnv(varDecls.defs, gs.env));
   body.returnType = just(builtinType(nilQualifier(), boolType()));
   
-  gs.continuationTransformIn = ableC_Expr { lambda allocate(alloca) () -> (_Bool) { $Stmt{body} } };
+  gs.continuationTransformIn = ableC_Expr { _success_continuation };
   local fwrd::Expr =
     ableC_Expr {
       proto_typedef unification_trail;
-      ({unification_trail _trail = new_trail();
-        $Stmt{makeVarDecls(gs.defs)}
+      ({$Stmt{decStmt(varDecls)}
+        closure<() -> _Bool> _success_continuation =
+          lambda allocate(alloca) () -> (_Bool) { $Stmt{decStmt(body)} };
+        unification_trail _trail = new_trail();
         _Bool _result = $Expr{gs.transform};
         undo_trail(_trail, 0);
         delete _trail;
