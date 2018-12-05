@@ -277,17 +277,7 @@ Expr ::= allocator::Expr allowUnificationTypes::Boolean t::Type e::Expr
   local tmpName::String = s"_tmp_var_${toString(genInt())}";
   return
     case allowUnificationTypes, t of
-    | false, extType(_, varType(sub)) ->
-      ableC_Expr {
-        ({$directTypeExpr{t} $name{tmpName} =
-            $Expr{
-              freeVarExpr(
-                typeName(directTypeExpr(sub), baseTypeExpr()),
-                allocator,
-                location=builtin)};
-          $Expr{unifyExpr(e, ableC_Expr { $name{tmpName} }, nothingExpr(), location=builtin)};
-          $name{tmpName};})
-      }
+    | false, extType(_, varType(_)) -> boundVarExpr(e, allocator, location=builtin)
     | _, _ -> e
     end;
 }
