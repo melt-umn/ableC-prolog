@@ -16,7 +16,7 @@ terminal Is_t 'is';
 terminal NotGoal_t '\+';
 terminal NotEquals_t '\=';
 terminal Eq_t '=:=';
-terminal NotEq_t '=/=';
+terminal NotEq_t '=\=';
 terminal PLessThan_t '<';
 terminal EqualLessThan_t '=<';
 terminal Wildcard_t '_';
@@ -122,7 +122,7 @@ concrete productions top::Goal_c
   { top.ast = notEqualsGoal(le1.ast, le2.ast, location=top.location); }
 | e1::PrologPrimaryExpr_c '=:=' e2::PrimaryExpr_c
   { top.ast = eqGoal(e1.ast, e2.ast, location=top.location); }
-| e1::PrologPrimaryExpr_c '=/=' e2::PrimaryExpr_c
+| e1::PrologPrimaryExpr_c '=\=' e2::PrimaryExpr_c
   { top.ast = neqGoal(e1.ast, e2.ast, location=top.location); }
 | e1::PrologPrimaryExpr_c PLessThan_t e2::PrimaryExpr_c
   { top.ast = ltGoal(e1.ast, e2.ast, location=top.location); }

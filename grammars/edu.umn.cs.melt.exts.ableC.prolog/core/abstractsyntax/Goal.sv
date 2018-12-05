@@ -162,7 +162,7 @@ abstract production notEqualsGoal
 top::Goal ::= le1::LogicExpr le2::LogicExpr
 {
   propagate substituted;
-  top.pp = pp"(${le1.pp}) /= (${le2.pp})";
+  top.pp = pp"(${le1.pp}) \= (${le2.pp})";
   
   forwards to notGoal(equalsGoal(le1, le2, location=top.location), location=top.location);
 }
@@ -197,7 +197,7 @@ abstract production neqGoal
 top::Goal ::= e1::Expr e2::Expr
 {
   propagate substituted;
-  top.pp = pp"(${e1.pp}) =/= (${e2.pp})";
+  top.pp = pp"(${e1.pp}) =\= (${e2.pp})";
   top.errors := e1.errors ++ e2.errors;
   top.defs := e1.defs ++ e2.defs;
   top.transform =

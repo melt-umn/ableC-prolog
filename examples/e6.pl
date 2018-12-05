@@ -8,7 +8,7 @@ nqueens_partial(H, W, [Q | Qs]) :-
 nqueens_partial(0, _, []).
 
 safe(R, C, [Q | Qs]) :-
-    C \= Q,
+    C =\= Q,
     R1 is (R + 1), D is (abs(C - Q)), R1 \= D,
     safe(R1, C, Qs).
 safe(_, _, []).
