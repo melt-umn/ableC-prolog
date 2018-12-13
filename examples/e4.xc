@@ -73,7 +73,6 @@ bool test(Expr ?e) {
 }
 
 int main() {
-  test(term<Expr>(alloca) { exponent(negative(variable("x")), value(3)) });
-  test(term<Expr>(alloca) { exponent(negative(variable("x")), add(value(4), negative(value(1)))) });
-  
+  test(term<Expr ?>(alloca) { exponent(negative(variable("x")), value(3)) });
+  test(term<Expr ?>(alloca) { exponent(negative(variable("x")), add(value(4), negative(value(1)))) });
 }

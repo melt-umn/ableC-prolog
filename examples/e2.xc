@@ -33,7 +33,7 @@ unsigned count_leaves(inst Tree<a> ?tree, a val) {
 }
 
 int main() {
-  inst Tree<int> ?tree = term<inst Tree<int>>(GC_malloc) {
+  inst Tree<int> ?tree = term<inst Tree<int> ?>(GC_malloc) {
     node(node(node(leaf(1), leaf(2)), leaf(2)), node(leaf(3), leaf(2)))
   };
   printf("tree: %s\n", show(tree).text);

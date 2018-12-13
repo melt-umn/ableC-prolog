@@ -56,6 +56,6 @@ void test(Expr ?e) {
 }
 
 int main() {
-  test(term<Expr>(alloca) { andE(varE("a"), notE(varE("a"))) });
-  test(term<Expr>(alloca) { andE(orE(varE("a"), varE("b")), andE(varE("c"), notE(varE("a")))) });
+  test(term<Expr ?>(alloca) { andE(varE("a"), notE(varE("a"))) });
+  test(term<Expr ?>(alloca) { andE(orE(varE("a"), varE("b")), andE(varE("c"), notE(varE("a")))) });
 }
