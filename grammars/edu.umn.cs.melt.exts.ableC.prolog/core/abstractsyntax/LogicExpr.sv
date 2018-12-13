@@ -221,7 +221,7 @@ top::LogicExpr ::= n::Name les::LogicExprs
     case adtType, adtName, adtLookup, constructorParamLookup of
     | errorType(), _, _, _ -> []
     -- Check that expected type is an ADT of some sort
-    | t, nothing(), _, _ -> [err(top.location, s"Constructor expected to unify with a datatype (got ${showType(t)}).")]
+    | _, nothing(), _, _ -> [err(top.location, s"Constructor expected to unify with a datatype (got ${showType(top.expectedType)}).")]
     -- Check that this ADT has a definition
     | _, just(id), [], _ -> [err(top.location, s"datatype ${id} does not have a definition.")]
     -- Check that this is a constructor for the expected ADT type.
