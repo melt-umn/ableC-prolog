@@ -246,7 +246,7 @@ top::LogicExpr ::= n::Name les::LogicExprs
   -- expected type for all the constructor parameters have already been checked as well.
   les.expectedTypes =
     case constructorParamLookup of
-    | just(params) -> params.typereps
+    | just(params) -> map(\ t::Type -> t.canonicalType, params.typereps)
     | nothing() -> []
     end;
   les.allowUnificationTypes = false;
@@ -256,14 +256,16 @@ top::LogicExpr ::= n::Name les::LogicExprs
       top.allocator,
       top.allowUnificationTypes,
       top.expectedType,
-      -- TODO: Interfering hack to call the constructor for template datatypes
       case adtType of
+      -- Avoid calling constructors when we know there is something wrong with the type
+      | errorType() -> errorExpr([], location=builtin)
+      -- TODO: Interfering hack to call the constructor for template datatypes
       | templatedType(_, _, args, _) ->
         ableC_Expr {
           inst $name{n.name}<$TypeNames{
             foldr(
               consTypeName, nilTypeName(),
-              map(\ t::Type -> typeName(directTypeExpr(t), baseTypeExpr()), args))
+              map(\ t::Type -> typeName(directTypeExpr(t.canonicalType), baseTypeExpr()), args))
           }>($Exprs{les.transform})
         }
       | _ -> ableC_Expr { $name{n.name}($Exprs{les.transform}) }
