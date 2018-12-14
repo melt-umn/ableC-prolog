@@ -335,7 +335,12 @@ top::Goal ::= g::Goal
   g.continuationTransformIn = ableC_Expr { lambda allocate(alloca) () -> ((_Bool)1) };
   top.transform =
     ableC_Expr {
-      !$Expr{g.transform} && $Expr{top.transformIn}
+      proto_typedef size_t;
+      ({size_t _not_trail_index = _trail.length;
+        $Expr{g.transform}? 0 :
+          // Undo substitutions made before failure.  Only needed if g fails, since when g succeeds
+          // the entire rule fails so thse are fixed later.
+          (undo_trail(_trail, _not_trail_index), 1);}) && $Expr{top.transformIn}
     };
 }
 
