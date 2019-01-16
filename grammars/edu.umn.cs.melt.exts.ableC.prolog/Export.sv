@@ -9,3 +9,4 @@ grammar edu:umn:cs:melt:exts:ableC:prolog;
 exports edu:umn:cs:melt:exts:ableC:prolog:core;
 exports edu:umn:cs:melt:exts:ableC:prolog:list;
 
+exports edu:umn:cs:melt:exts:ableC:unification;

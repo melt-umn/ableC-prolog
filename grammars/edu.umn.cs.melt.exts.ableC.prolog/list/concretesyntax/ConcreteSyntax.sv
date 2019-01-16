@@ -2,7 +2,7 @@ grammar edu:umn:cs:melt:exts:ableC:prolog:list:concretesyntax;
 
 imports silver:langutil;
 imports edu:umn:cs:melt:ableC:concretesyntax;
---imports edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:concretesyntax;
+imports edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:concretesyntax;
 imports edu:umn:cs:melt:exts:ableC:prolog:core:concretesyntax;
 
 imports edu:umn:cs:melt:ableC:abstractsyntax:host;

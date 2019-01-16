@@ -7,7 +7,7 @@ datatype Pair {
   pair(a fst, b snd);
 };
 
-typedef list<inst Pair<string ?, bool ?> ?> ?Env;
+typedef list<Pair<string ?, bool ?> ?> ?Env;
 
 typedef datatype Expr Expr;
 
@@ -46,7 +46,7 @@ prolog {
   evaluate(Expr ?, bool, Env);
   sat(Expr ?);
 
-# define member(l, item) member<inst Pair<string ?, bool ?>>(l, item)
+# define member(l, item) member<Pair<string ?, bool ?>>(l, item)
 # include "e5.pl"
 # undef member
 }

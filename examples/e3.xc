@@ -21,7 +21,7 @@ prolog {
 
 int main() {
   query a(X, Y) {
-    printf("%d %d\n", inst value<int>(X), inst value<int>(Y));
+    printf("%d %d\n", value<int>(X), value<int>(Y));
     return false;
   };
 }
