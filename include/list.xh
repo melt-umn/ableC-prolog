@@ -13,14 +13,14 @@ datatype _list_d {
 template<a>
 list<a> ?cons(void *(*alloc)(size_t), a head, list<a> ?tail) {
   list<a> ?result = freevar<list<a>>(*alloc);
-  unify(result, (list<a>)inst _Cons<a>(head, tail));
+  unify(result, (list<a>)_Cons<a>(head, tail));
   return result;
 }
 
 template<a>
 list<a> ?nil(void *(*alloc)(size_t)) {
   list<a> ?result = freevar<list<a>>(*alloc);
-  unify(result, (list<a>)inst _Nil<a>());
+  unify(result, (list<a>)_Nil<a>());
   return result;
 }
 
@@ -28,19 +28,19 @@ list<a> ?nil(void *(*alloc)(size_t)) {
 template<a>
 void delete_list(void (*dealloc)(void *), list<a> ?l) {
   match (l) {
-    ?&[h | t] -> { inst delete_list<a>(dealloc, t); }
+    ?&[h | t] -> { delete_list<a>(dealloc, t); }
   }
-  inst delete_var<list<a>>(dealloc, l);
+  delete_var<list<a>>(dealloc, l);
 }
 
 template<a>
 _Bool null(list<a> ?l) {
-  return inst value<list<a>>(l)->tag == _list_d__Nil;
+  return value<list<a>>(l)->tag == _list_d__Nil;
 }
 
 template<a>
 a head(list<a> ?l) {
-  match (inst value<list<a>>(l)) {
+  match (value<list<a>>(l)) {
     [h | t] -> { return h; }
     [] -> {
       fprintf(stderr, "Error: Cannot access head of empty list\n");
@@ -51,7 +51,7 @@ a head(list<a> ?l) {
 
 template<a>
 list<a> ?tail(list<a> ?l) {
-  match (inst value<list<a>>(l)) {
+  match (value<list<a>>(l)) {
     [h | t] -> { return t; }
     [] -> {
       fprintf(stderr, "Error: Cannot access tail of empty list\n");
@@ -62,23 +62,23 @@ list<a> ?tail(list<a> ?l) {
 
 template<a>
 list<a> ?append_list(void *(*alloc)(size_t), list<a> ?l1, list<a> ?l2) {
-  return match (inst value<list<a>>(l1))
-    ([h | t] -> newlist<a>(alloc)[h | inst append_list<a>(alloc, t, l2)];
+  return match (value<list<a>>(l1))
+    ([h | t] -> newlist<a>(alloc)[h | append_list<a>(alloc, t, l2)];
      [] -> l2;);
-}
-
-template<a>
-string show_list(list<a> l) {
-  return "[" + inst _show_list_contents<a>(l) + "]";
 }
 
 template<a>
 string _show_list_contents(list<a> l) {
   return match (l)
-    ([h | ?&(t@[_ | _])] -> show(h) + ", " + inst _show_list_contents<a>(t);
+    ([h | ?&(t@[_ | _])] -> show(h) + ", " + _show_list_contents<a>(t);
      [h] -> show(h);
      [h | v@freevar] -> show(h) + " | " + show(v);
      [] -> str(""););
+}
+
+template<a>
+string show_list(list<a> l) {
+  return "[" + _show_list_contents<a>(l) + "]";
 }
 
 template<a>

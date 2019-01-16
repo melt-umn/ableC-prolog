@@ -3,27 +3,27 @@
 
 template<a>
 datatype Tree {
-  node(inst Tree<a> ?left, inst Tree<a> ?right);
+  node(Tree<a> ?left, Tree<a> ?right);
   leaf(a ?val);
 };
 
 prolog {
-  subtree<a>(inst Tree<a> ?tree1, inst Tree<a> ?tree2);
+  subtree<a>(Tree<a> ?tree1, Tree<a> ?tree2);
   subtree(T, T).
   subtree(node(T1, _), T2) :- subtree<a>(T1, T2).
   subtree(node(_, T1), T2) :- subtree<a>(T1, T2).
   
-  isleaf<a>(inst Tree<a> ?tree, a ?val);
+  isleaf<a>(Tree<a> ?tree, a ?val);
   isleaf(T, V) :- subtree<a>(T, leaf(V)).
 
-  numleaves<a>(inst Tree<a> ?tree, a ?val, unsigned ?count);
+  numleaves<a>(Tree<a> ?tree, a ?val, unsigned ?count);
   numleaves(node(T1, T2), V, C) :- numleaves<a>(T1, V, C1), numleaves<a>(T2, V, C2), C is (C1 + C2).
   numleaves(leaf(V), V, 1u).
   numleaves(leaf(_), _, 0u).
 }
 
 template<a>
-unsigned count_leaves(inst Tree<a> ?tree, a val) {
+unsigned count_leaves(Tree<a> ?tree, a val) {
   unsigned count = 0, *count_p = &count;
   query T is tree, V is val, isleaf<a>(T, V) {
     (*count_p)++;
@@ -33,7 +33,7 @@ unsigned count_leaves(inst Tree<a> ?tree, a val) {
 }
 
 int main() {
-  inst Tree<int> ?tree = term<inst Tree<int> ?>(GC_malloc) {
+  Tree<int> ?tree = term<Tree<int> ?>(GC_malloc) {
     node(node(node(leaf(1), leaf(2)), leaf(2)), node(leaf(3), leaf(2)))
   };
   printf("tree: %s\n", show(tree).text);
@@ -48,11 +48,11 @@ int main() {
     return true; // Stop after the first one
   };
 
-  unsigned count = inst count_leaves<int>(tree, 2);
+  unsigned count = count_leaves<int>(tree, 2);
   printf("count_leaves(tree, 2): %u\n", count);
   
   query T is tree, numleaves<int>(T, 2, C) {
-    printf("numleaves(tree, 2, C): %d\n", inst value<unsigned>(C));
+    printf("numleaves(tree, 2, C): %d\n", value<unsigned>(C));
     return false; // Should only be 1 result
   };
   

@@ -73,4 +73,3 @@ d(divide(U, V), X, divide(subtract(multiply(V, DU), multiply(U, DV)), exponent(V
 d(exponent(U, V), X, multiply(V, multiply(DU, exponent(U, subtract(V, value(1)))))) :- constant(V, X), !, d(U, X, DU).
 d(exponent(U, V), X, multiply(DV, multiply(logrithm(e(), U), exponent(U, V)))) :- constant(U, X), !, d(V, X, DV).
 d(logrithm(U, V), X, divide(DV, multiply(logrithm(e(), U), V))) :- constant(U, X), !, d(V, X, DV).
-

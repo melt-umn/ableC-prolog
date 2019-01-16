@@ -3,37 +3,37 @@
 
 template<a>
 datatype Tree {
-  node(inst Tree<a> ?left, inst Tree<a> ?right);
+  node(Tree<a> ?left, Tree<a> ?right);
   leaf(a ?val);
 };
 
 prolog {
-  subtree<a>(inst Tree<a> ?, inst Tree<a> ?);
+  subtree<a>(Tree<a> ?, Tree<a> ?);
   subtree(T, T).
   subtree(node(T1, _), T2) :- subtree<a>(T1, T2).
   subtree(node(_, T1), T2) :- subtree<a>(T1, T2).
   
-  commonSubtree<a>(inst Tree<a> ?, inst Tree<a> ?, inst Tree<a> ?);
+  commonSubtree<a>(Tree<a> ?, Tree<a> ?, Tree<a> ?);
   commonSubtree(T1, T2, T3) :- subtree<a>(T1, T3), subtree<a>(T2, T3).
   
-  isleaf<a>(inst Tree<a> ?tree, a ?val);
+  isleaf<a>(Tree<a> ?tree, a ?val);
   isleaf(T, V) :- subtree<a>(T, leaf(V)).
 }
 
 int main() {
-  inst Tree<float> ?t1 =
-    term<inst Tree<float> ?>(alloca) {
+  Tree<float> ?t1 =
+    term<Tree<float> ?>(alloca) {
       node(leaf(3.3), node(leaf(1.1), leaf(2.2)))
     };
-  inst Tree<float> ?t2 =
-    term<inst Tree<float> ?>(alloca) {
+  Tree<float> ?t2 =
+    term<Tree<float> ?>(alloca) {
       // Term contains a free variable A
       node(node(leaf(1.1), leaf(A)), leaf(2.2))
     };
   
   bool res =
     query T1 is t1, T2 is t2, commonSubtree<float>(T1, T2, S), isleaf<float>(S, L) {
-      printf("%g\n", inst value<float>(L)); // Demand the value of L
+      printf("%g\n", value<float>(L)); // Demand the value of L
       return false; // "Fail", keep asking for more values
     };
 }

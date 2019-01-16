@@ -1,14 +1,13 @@
 grammar edu:umn:cs:melt:exts:ableC:prolog:core:concretesyntax;
 
 imports edu:umn:cs:melt:ableC:concretesyntax;
-imports edu:umn:cs:melt:ableC:concretesyntax:lexerHack as lh;
 imports silver:langutil; 
 
 imports edu:umn:cs:melt:ableC:abstractsyntax:host;
 imports edu:umn:cs:melt:ableC:abstractsyntax:construction;
 imports edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 
-exports edu:umn:cs:melt:exts:ableC:unification:concretesyntax;
+exports edu:umn:cs:melt:exts:ableC:templating:concretesyntax:typeParameters;
 
 marking terminal Prolog_t 'prolog' lexer classes {Ckeyword};
 terminal If_t ':-';
@@ -19,15 +18,6 @@ terminal Eq_t '=:=';
 terminal NotEq_t '=\=';
 terminal PLessThan_t '<';
 terminal EqualLessThan_t '=<';
-terminal Wildcard_t '_';
-
-disambiguate Identifier_t, Wildcard_t {
-  pluck Wildcard_t;
-}
-
-disambiguate Identifier_t, TypeName_t, Wildcard_t {
-  pluck Wildcard_t;
-}
 
 -- Fix ambiguity between 'a<...>(...)' and 'a < b' due to insufficient lookahead.
 -- This makes so the lhs of the '<' goal must be wrapped in parentheses
@@ -36,6 +26,14 @@ disambiguate LessThan_t, PLessThan_t {
 }
 
 terminal PrologComment_t /% .*/ lexer classes {Ccomment};
+
+-- Used to seed follow sets for MDA
+terminal LogicExprNEVER_t 'LogicExprNEVER_t123456789!!!never';
+
+-- Record the type parameters of all known prediates so that rules can add the
+-- appropriate names to the parser context.
+parser attribute predicateTypeParams::[Pair<String [String]>]
+  action { predicateTypeParams = []; };
 
 concrete productions top::Declaration_c
 | 'prolog' '{' ls::LogicStmts_c '}'
@@ -54,51 +52,48 @@ concrete productions top::LogicStmts_c
 closed nonterminal LogicStmt_c with location, ast<LogicStmt>;
 
 concrete productions top::LogicStmt_c
-| id::Identifier_c '<' typeParams::TypeParameters_c '>' LParen_t params::ParameterTypeList_c ')' ';'
+| id::Identifier_c LessThan_t typeParams::TypeParameters_c '>' LParen_t params::ParameterTypeList_c ')' ';'
   { top.ast = declLogicStmt(predicateDecl(id.ast, typeParams.ast, foldParameterDecl(params.ast), location=top.location), location=top.location); }
-  action { context = lh:closeScope(context); } -- Opened by TemplateParams_c
-| id::Identifier_c '<' typeParams::TypeParameters_c '>' LParen_t ')' ';'
+  action {
+    context = closeScope(context); -- Opened by TemplateParams_c
+    predicateTypeParams = pair(id.ast.name, typeParams.ast.names) :: predicateTypeParams;
+  }
+| id::Identifier_c LessThan_t typeParams::TypeParameters_c '>' LParen_t ')' ';'
   { top.ast = declLogicStmt(predicateDecl(id.ast, typeParams.ast, nilParameters(), location=top.location), location=top.location); }
-  action { context = lh:closeScope(context); } -- Opened by TemplateParams_c
+  action {
+    context = closeScope(context); -- Opened by TemplateParams_c
+    predicateTypeParams = pair(id.ast.name, typeParams.ast.names) :: predicateTypeParams;
+  }
 | id::Identifier_c LParen_t params::ParameterTypeList_c ')' ';'
   { top.ast = declLogicStmt(predicateDecl(id.ast, nilName(), foldParameterDecl(params.ast), location=top.location), location=top.location); }
 | id::Identifier_c LParen_t ')' ';'
   { top.ast = declLogicStmt(predicateDecl(id.ast, nilName(), nilParameters(), location=top.location), location=top.location); }
-| id::Identifier_c LParen_t le::LogicExprs_c ')' '.'
-  { top.ast = ruleLogicStmt(id.ast, foldLogicExpr(le.ast), nilGoal(), location=top.location); }
-| id::Identifier_c LParen_t le::LogicExprs_c ')' ':-' ps::Goals_c '.'
-  { top.ast = ruleLogicStmt(id.ast, foldLogicExpr(le.ast), foldGoal(ps.ast), location=top.location); }
+| h::Head_c '.'
+  { top.ast = ruleLogicStmt(h.ast.fst, h.ast.snd, nilGoal(), location=top.location); }
+  action { context = closeScope(context); } -- Opened by Head_c
+| h::Head_c ':-' ps::Body_c '.'
+  { top.ast = ruleLogicStmt(h.ast.fst, h.ast.snd, foldGoal(ps.ast), location=top.location); }
+  action { context = closeScope(context); } -- Opened by Head_c
 
-closed nonterminal LogicExprs_c with location, ast<[LogicExpr]>;
+closed nonterminal Head_c with location, ast<Pair<Name LogicExprs>>;
 
-concrete productions top::LogicExprs_c
-| h::LogicExpr_c ',' t::LogicExprs_c
-  { top.ast = h.ast :: t.ast; }
-| h::LogicExpr_c
-  { top.ast = [h.ast]; }
-
-closed nonterminal LogicExpr_c with location, ast<LogicExpr>;
-
-concrete productions top::LogicExpr_c
-| id::Identifier_c
-  { top.ast = varLogicExpr(id.ast, location=top.location); }
-| '_'
-  { top.ast = wildcardLogicExpr(location=top.location); }
-| c::Constant_c
-  { top.ast = constLogicExpr(c.ast, location=top.location); }
-| '-' c::Constant_c
-  { top.ast = constLogicExpr(negativeExpr(c.ast, location=top.location), location=top.location); }
-| s::StringConstant_c
-  { top.ast = constLogicExpr(stringLiteral(s.ast, location=s.location), location=top.location); }
+concrete productions top::Head_c
 | id::Identifier_c LParen_t le::LogicExprs_c ')'
-  { top.ast = constructorLogicExpr(id.ast, foldLogicExpr(le.ast), location=top.location); }
-| id::Identifier_c LParen_t ')'
-  { top.ast = constructorLogicExpr(id.ast, nilLogicExpr(), location=top.location); }
+  { top.ast = pair(id.ast, foldLogicExpr(le.ast)); }
+  action {
+    local typeParams::[String] =
+      fromMaybe([], lookupBy(stringEq, id.ast.name, predicateTypeParams));
+    context =
+      addIdentsToScope(
+        map(name(_, location=id.location), typeParams),
+        TypeName_t,
+        openScope(context));
+  }
 
-closed nonterminal Goals_c with location, ast<[Goal]>;
+closed nonterminal Body_c with location, ast<[Goal]>;
 
-concrete productions top::Goals_c
-| h::Goal_c ',' t::Goals_c
+concrete productions top::Body_c
+| h::Goal_c ',' t::Body_c
   { top.ast = h.ast :: t.ast; }
 | h::Goal_c
   { top.ast = [h.ast]; }
@@ -114,35 +109,78 @@ concrete productions top::Goal_c
   { top.ast = predicateGoal(id.ast, nilTypeName(), foldLogicExpr(les.ast), location=top.location); }
 | id::Identifier_c LParen_t ')'
   { top.ast = predicateGoal(id.ast, nilTypeName(), nilLogicExpr(), location=top.location); }
-| le::LogicExpr_c 'is' e::PrimaryExpr_c
+| le::LogicExpr_c 'is' e::PrologPrimaryExpr_c
   { top.ast = isGoal(le.ast, e.ast, location=top.location); }
 | le1::LogicExpr_c '=' le2::LogicExpr_c
   { top.ast = equalsGoal(le1.ast, le2.ast, location=top.location); }
 | le1::LogicExpr_c '\=' le2::LogicExpr_c
   { top.ast = notEqualsGoal(le1.ast, le2.ast, location=top.location); }
-| e1::PrologPrimaryExpr_c '=:=' e2::PrimaryExpr_c
+| e1::PrologPrimaryExpr_c '=:=' e2::PrologPrimaryExpr_c
   { top.ast = eqGoal(e1.ast, e2.ast, location=top.location); }
-| e1::PrologPrimaryExpr_c '=\=' e2::PrimaryExpr_c
+| e1::PrologPrimaryExpr_c '=\=' e2::PrologPrimaryExpr_c
   { top.ast = neqGoal(e1.ast, e2.ast, location=top.location); }
-| e1::PrologPrimaryExpr_c PLessThan_t e2::PrimaryExpr_c
+| e1::PrologPrimaryExpr_c PLessThan_t e2::PrologPrimaryExpr_c
   { top.ast = ltGoal(e1.ast, e2.ast, location=top.location); }
-| e1::PrologPrimaryExpr_c '=<' e2::PrimaryExpr_c
+| e1::PrologPrimaryExpr_c '=<' e2::PrologPrimaryExpr_c
   { top.ast = eltGoal(e1.ast, e2.ast, location=top.location); }
-| e1::PrologPrimaryExpr_c '>' e2::PrimaryExpr_c
+| e1::PrologPrimaryExpr_c '>' e2::PrologPrimaryExpr_c
   { top.ast = gtGoal(e1.ast, e2.ast, location=top.location); }
-| e1::PrologPrimaryExpr_c '>=' e2::PrimaryExpr_c
+| e1::PrologPrimaryExpr_c '>=' e2::PrologPrimaryExpr_c
   { top.ast = gteGoal(e1.ast, e2.ast, location=top.location); }
 | '\+' g::Goal_c
   { top.ast = notGoal(g.ast, location=top.location); }
 | Not_t
   { top.ast = cutGoal(location=top.location); }
 
--- Needed due to MWDA
+closed nonterminal LogicExprs_c with location, ast<[LogicExpr]>;
+
+concrete productions top::LogicExprs_c
+| h::LogicExpr_c ',' t::LogicExprs_c
+  { top.ast = h.ast :: t.ast; }
+| h::LogicExpr_c
+  { top.ast = [h.ast]; }
+
+closed nonterminal LogicExpr_c with location, ast<LogicExpr>;
+
+concrete productions top::LogicExpr_c
+| id::Identifier_t
+  { top.ast =
+      if id.lexeme == "_"
+      then wildcardLogicExpr(location=top.location)
+      else varLogicExpr(fromId(id), location=top.location); }
+| c::PrologConstant_c
+  { top.ast = constLogicExpr(c.ast, location=top.location); }
+| '-' c::PrologConstant_c
+  { top.ast = constLogicExpr(negativeExpr(c.ast, location=top.location), location=top.location); }
+| sc::StringConstant_t
+  { top.ast = constLogicExpr(stringLiteral(sc.lexeme, location=sc.location), location=top.location); }
+| id::Identifier_c LParen_t le::LogicExprs_c ')'
+  { top.ast = constructorLogicExpr(id.ast, foldLogicExpr(le.ast), location=top.location); }
+| id::Identifier_c LParen_t ')'
+  { top.ast = constructorLogicExpr(id.ast, nilLogicExpr(), location=top.location); }
+-- Seed follow set with some extra terminals useful for extensions,
+-- such as Prolog lists
+| LogicExprNEVER_t LogicExpr_c ']'
+  { top.ast = error("shouldn't occur in parse tree!"); }
+| LogicExprNEVER_t LogicExpr_c '|'
+  { top.ast = error("shouldn't occur in parse tree!"); }
+
+-- Needed due to MDA
 nonterminal PrologPrimaryExpr_c with location, ast<Expr>;
 
 concrete productions top::PrologPrimaryExpr_c
-| id::Identifier_c
-    { top.ast = directRefExpr(id.ast, location=top.location); }
+| id::Identifier_t
+    { top.ast = directRefExpr(fromId(id), location=top.location); }
+| c::PrologConstant_c
+    { top.ast = c.ast; }
+| sc::StringConstant_t
+    { top.ast = stringLiteral(sc.lexeme, location=top.location); }
+| LParen_t e::Expr_c  ')'
+    { top.ast = parenExpr(e.ast, location=top.location); }
+
+nonterminal PrologConstant_c with location, ast<Expr>;
+
+concrete productions top::PrologConstant_c
 -- dec
 | c::DecConstant_t
     { top.ast = realConstant(integerConstant(c.lexeme, false, noIntSuffix(), location=top.location), location=top.location); }
@@ -207,7 +245,3 @@ concrete productions top::PrologPrimaryExpr_c
     { top.ast = characterConstant(c.lexeme, char16CharPrefix(), location=top.location); }
 | c::CharConstantUBig_t
     { top.ast = characterConstant(c.lexeme, char32CharPrefix(), location=top.location); }
-| sc::StringConstant_t
-    { top.ast = stringLiteral(sc.lexeme, location=top.location); }
-| LParen_t e::Expr_c  ')'
-    { top.ast = parenExpr(e.ast, location=top.location); }

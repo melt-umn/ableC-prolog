@@ -45,7 +45,7 @@ int mod(int a, int b) {
   return a % b;
 }
 
-// TODO: Workaround for lack of dif predicate
+// Workaround for lack of dif predicate
 #define dif(A, B) A \= B
 
 prolog {
@@ -73,6 +73,12 @@ bool test(Expr ?e) {
 }
 
 int main() {
-  test(term<Expr ?>(alloca) { exponent(negative(variable("x")), value(3)) });
-  test(term<Expr ?>(alloca) { exponent(negative(variable("x")), add(value(4), negative(value(1)))) });
+  //test(term<Expr ?>(alloca) { exponent(negative(variable("x")), value(3)) });
+  //test(term<Expr ?>(alloca) { exponent(negative(variable("x")), add(value(4), negative(value(1)))) });
+
+  //Expr ?e = term<Expr ?>(alloca) { logrithm(value(10), logrithm(value(10), logrithm(value(10), logrithm(value(10), logrithm(value(10), logrithm(value(10), variable("x"))))))) };
+  //Expr ?e = term<Expr ?>(alloca) { divide(divide(divide(divide(variable(x), variable(x)), variable(x)), variable(x)), variable(x)) };
+  Expr ?e = term<Expr ?>(alloca) { multiply(add(variable("x"), value(1)), multiply(add(exponent(variable("x"), value(2)), value(2)), multiply(add(exponent(variable("x"), value(3)), value(3)), multiply(add(exponent(variable("x"), value(4)), value(4)), add(exponent(variable("x"), value(5)), value(5)))))) };
+  
+  test(e);
 }
