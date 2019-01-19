@@ -106,9 +106,9 @@ concrete productions top::Goal_c
 | id::Identifier_c LessThan_t tns::TypeNames_c '>' LParen_t ')'
   { top.ast = predicateGoal(id.ast, tns.ast, nilLogicExpr(), location=top.location); }
 | id::Identifier_c LParen_t les::LogicExprs_c ')'
-  { top.ast = predicateGoal(id.ast, nilTypeName(), foldLogicExpr(les.ast), location=top.location); }
+  { top.ast = inferredPredicateGoal(id.ast, foldLogicExpr(les.ast), location=top.location); }
 | id::Identifier_c LParen_t ')'
-  { top.ast = predicateGoal(id.ast, nilTypeName(), nilLogicExpr(), location=top.location); }
+  { top.ast = inferredPredicateGoal(id.ast, nilLogicExpr(), location=top.location); }
 | le::LogicExpr_c 'is' e::PrologPrimaryExpr_c
   { top.ast = isGoal(le.ast, e.ast, location=top.location); }
 | le1::LogicExpr_c '=' le2::LogicExpr_c

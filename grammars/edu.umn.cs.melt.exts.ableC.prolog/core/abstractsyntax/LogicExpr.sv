@@ -11,8 +11,10 @@ autocopy attribute allocator::Expr;
 inherited attribute paramNamesIn::[String];
 synthesized attribute paramUnifyTransform::Expr;
 
-nonterminal LogicExprs with pps, env, count, expectedTypes, allowUnificationTypes, allocator, errors, defs, transform<Exprs>, paramNamesIn, paramUnifyTransform, substitutions, substituted<LogicExprs>;
-flowtype LogicExprs = decorate {env, expectedTypes, allowUnificationTypes, allocator}, pps {}, count {}, errors {decorate}, defs {decorate}, transform {decorate}, paramUnifyTransform {decorate, paramNamesIn}, substituted {substitutions};
+synthesized attribute maybeTypereps ::[Maybe<Type>];
+
+nonterminal LogicExprs with pps, env, count, expectedTypes, allowUnificationTypes, allocator, errors, defs, maybeTypereps, transform<Exprs>, paramNamesIn, paramUnifyTransform, substitutions, substituted<LogicExprs>;
+flowtype LogicExprs = decorate {env, expectedTypes, allowUnificationTypes, allocator}, pps {}, count {}, errors {decorate}, defs {decorate}, maybeTypereps {env, allowUnificationTypes}, transform {decorate}, paramUnifyTransform {decorate, paramNamesIn}, substituted {substitutions};
 
 abstract production consLogicExpr
 top::LogicExprs ::= h::LogicExpr t::LogicExprs
@@ -22,7 +24,13 @@ top::LogicExprs ::= h::LogicExpr t::LogicExprs
   top.count = 1 + t.count;
   top.errors := h.errors ++ t.errors;
   top.defs := h.defs ++ t.defs;
+  top.maybeTypereps = h.maybeTyperep :: newT.maybeTypereps;
   top.transform = consExpr(h.transform, t.transform);
+  
+  -- Needed to compute maybeTypereps approximatly without using h.defs
+  local newT::LogicExprs = t;
+  newT.env = top.env;
+  newT.allowUnificationTypes = top.allowUnificationTypes;
   
   t.paramNamesIn = tail(top.paramNamesIn);
   top.paramUnifyTransform =
@@ -54,6 +62,7 @@ top::LogicExprs ::=
   top.count = 0;
   top.errors := [];
   top.defs := [];
+  top.maybeTypereps = [];
   top.transform = nilExpr();
   top.paramUnifyTransform = ableC_Expr { (_Bool)1 };
 }
@@ -68,6 +77,17 @@ inherited attribute expectedType::Type;
 
 closed nonterminal LogicExpr with location, pp, env, expectedType, allowUnificationTypes, allocator, errors, defs, maybeTyperep, transform<Expr>, substitutions, substituted<LogicExpr>;
 flowtype LogicExpr = decorate {env, expectedType, allowUnificationTypes, allocator}, pp {}, errors {decorate}, defs {decorate}, maybeTyperep {env, allowUnificationTypes}, transform {decorate}, substituted {substitutions};
+
+abstract production decLogicExpr
+top::LogicExpr ::= le::Decorated LogicExpr
+{
+  propagate substituted;
+  top.pp = le.pp;
+  top.errors := le.errors;
+  top.defs := le.defs;
+  top.maybeTyperep = le.maybeTyperep;
+  top.transform = le.transform;
+}
 
 abstract production nameLogicExpr
 top::LogicExpr ::= n::Name

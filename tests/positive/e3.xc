@@ -28,9 +28,9 @@ int main() {
   int result[10][2];
   int i[1] = {0};
   query a(X, Y) {
-    printf("%d %d\n", value<int>(X), value<int>(Y));
-    result[*i][0] = value<int>(X);
-    result[*i][1] = value<int>(Y);
+    printf("%d %d\n", value(X), value(Y));
+    result[*i][0] = value(X);
+    result[*i][1] = value(Y);
     (*i)++;
     return false;
   };

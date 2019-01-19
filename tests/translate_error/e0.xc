@@ -15,13 +15,13 @@ prolog {
   subtree(node(_, T1), T2) :- subtree<a>(T1, T2, 0). // Wrong number of arguments to subtree
   
   commonSubtree<a>(Tree<a> ?, Tree<a> ?, Tree<a> ?);
-  commonSubtree(T1, T2, T3) :- subtree<a>(T1, T3), subtree<a>(T2, T3).
+  commonSubtree(T1, T2, T3) :- subtree(T1, T3), subtree(T2, T3).
   
   isleaf<a>(Tree<a> ?tree, a ?val);
 }
 
 prolog {
-  isleaf(T, V) :- subtree<a>(T, leaf(V)). // Rule seperated from predicate declaration
+  isleaf(T, V) :- subtree(T, leaf(V)). // Rule seperated from predicate declaration
 }
 
 int main() {
@@ -35,7 +35,7 @@ int main() {
     };
   
   bool res =
-    query T1 is t1, commonSubtree<float>(T1, T2, S), isleaf<long>(S, L) { // Wrong type to isleaf
+    query T1 is t1, commonSubtree(T1, T2, S), isleaf<long>(S, L) { // Wrong type to isleaf
       printf("%g\n", value<float>(L)); // Wrong type to value
       return 3.14; // Wrong return type
     };

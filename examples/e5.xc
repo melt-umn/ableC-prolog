@@ -46,9 +46,7 @@ prolog {
   evaluate(Expr ?, bool, Env);
   sat(Expr ?);
 
-# define member(l, item) member<Pair<string ?, bool ?>>(l, item)
 # include "e5.pl"
-# undef member
 }
 
 void test(Expr ?e) {

@@ -22,6 +22,8 @@ marking terminal NewList_t 'newlist' lexer classes {Ckeyword};
 concrete productions top::PrimaryExpr_c
 | 'newlist' LessThan_t sub::TypeName_c '>' LParen_t allocate::Expr_c ')' LBracket_t init::ListInitializerList_c ']'
   { top.ast = constructList(sub.ast, allocate.ast, init.ast, location=top.location); }
+| 'newlist' LParen_t allocate::Expr_c ')' LBracket_t init::ListInitializerList_c ']'
+  { top.ast = inferredConstructList(allocate.ast, init.ast, location=top.location); }
 
 nonterminal ListInitializerList_c with location, ast<ListInitializers>;
 

@@ -48,7 +48,7 @@ abstract production predicateGoal
 top::Goal ::= n::Name ts::TypeNames les::LogicExprs
 {
   propagate substituted;
-  top.pp = pp"${n.pp}${if ts.count == 0 then pp"" else pp"<${ppImplode(pp", ", ts.pps)}>"}(${ppImplode(pp", ", les.pps)})";
+  top.pp = pp"${n.pp}<${ppImplode(pp", ", ts.pps)}>(${ppImplode(pp", ", les.pps)})";
   top.errors := ts.errors ++ les.errors;
   top.defs := ts.defs ++ les.defs;
   top.transform =
@@ -80,20 +80,101 @@ top::Goal ::= n::Name ts::TypeNames les::LogicExprs
   
   top.errors <- n.predicateLookupCheck;
   top.errors <-
-    if null(n.predicateLookupCheck) && ts.count != n.predicateItem.typeParams.count
+    if null(n.predicateLookupCheck) && ts.count != typeParams.count
     then [err(
             n.location,
             s"Wrong number of type arguments for ${n.name}, " ++
-            s"expected ${toString(n.predicateItem.typeParams.count)} but got ${toString(ts.count)}")]
+            s"expected ${toString(typeParams.count)} but got ${toString(ts.count)}")]
     else [];
   top.errors <-
-    if null(n.predicateLookupCheck) && les.count != length(les.expectedTypes)
-    then [err(top.location, s"Wrong number of arguments to predicate ${n.name} (expected ${toString(length(les.expectedTypes))}, got ${toString(les.count)})")]
+    if null(n.predicateLookupCheck) && les.count != params.count
+    then [err(top.location, s"Wrong number of arguments to predicate ${n.name} (expected ${toString(params.count)}, got ${toString(les.count)})")]
     else [];
   top.errors <-
     flatMap(
       \ t::Type -> decorate t with { otherType = t; }.unifyErrors(n.location, top.env),
       ts.typereps);
+}
+
+abstract production inferredPredicateGoal
+top::Goal ::= n::Name les::LogicExprs
+{
+  propagate substituted;
+  top.pp = pp"${n.pp}(${ppImplode(pp", ", les.pps)})";
+  top.errors :=
+    if inferredTypeArguments.isJust && !containsErrorType(inferredTypeArguments.fromJust)
+    then les.errors
+    else [];
+  top.defs :=
+    if inferredTypeArguments.isJust
+    then les.defs
+    else [];
+  top.transform =
+    ableC_Expr {
+      inst $name{s"_predicate_${n.name}"}<$TypeNames{
+        foldr(
+          consTypeName, nilTypeName(),
+          map(
+           \ t::Type -> typeName(directTypeExpr(t), baseTypeExpr()),
+           inferredTypeArguments.fromJust))}>(
+        $Exprs{les.transform}, _trail, $Expr{top.continuationTransformIn})
+    };
+  
+  local typeParams::Names = n.predicateItem.typeParams;
+  typeParams.instParamTypes = inferredTypeArguments.fromJust;
+  
+  local params::Parameters = n.predicateItem.params;
+  params.env =
+    addEnv(
+      -- Add type args to global scope so that they are visible within template instantiations
+      [globalDefsDef(typeParams.typeParamInstDefs)],
+      -- NOT the env at the declaration site, but this is equivalent (and more efficient.)
+      openScopeEnv(globalEnv(top.env)));
+  params.returnType = nothing();
+  params.position = 0;
+  params.partialArgumentTypes = les.maybeTypereps;
+  
+  local inferredTypeArguments::Maybe<[Type]> =
+    lookupAll(params.partialInferredTypes, typeParams.names);
+  
+  top.defs <-
+    if inferredTypeArguments.isJust
+    then foldr(consDefs, nilDefs(), params.defs).canonicalDefs
+    else [];
+  
+  les.expectedTypes = map(\ t::Type -> t.canonicalType, params.typereps);
+  les.allowUnificationTypes = false;
+  les.allocator = ableC_Expr { alloca };
+  
+  top.errors <- n.predicateLookupCheck;
+  top.errors <-
+    if null(n.predicateLookupCheck) && (!inferredTypeArguments.isJust || containsErrorType(inferredTypeArguments.fromJust))
+    then 
+      [err(
+         top.location,
+         s"Type argument inference failed for ${n.name}(${
+           implode(
+             ", ",
+             map(
+               \ m::Maybe<Type> ->
+                 case m of
+                 | just(t) -> showType(t)
+                 | nothing() -> "_"
+                 end,
+               les.maybeTypereps))})")]
+    else [];
+  top.errors <-
+    if null(n.predicateLookupCheck) && les.count != params.count
+    then [err(top.location, s"Wrong number of arguments to predicate ${n.name} (expected ${toString(params.count)}, got ${toString(les.count)})")]
+    else [];
+  top.errors <-
+    case inferredTypeArguments of
+    | just(ts) ->
+      flatMap(
+        \ t::Type -> decorate t with { otherType = t; }.unifyErrors(n.location, top.env),
+        ts)
+    | nothing() -> []
+    end;
 }
 
 abstract production isGoal
