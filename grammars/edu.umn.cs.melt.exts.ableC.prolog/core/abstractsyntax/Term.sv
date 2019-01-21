@@ -37,3 +37,29 @@ top::Expr ::= ty::TypeName allocator::Expr le::LogicExpr
   
   forwards to mkErrorCheck(localErrors, fwrd);
 }
+
+abstract production inferredTermExpr
+top::Expr ::= allocator::Expr le::LogicExpr
+{
+  propagate substituted;
+  top.pp = pp"term(${allocator.pp}) {${le.pp}}";
+  
+  local localErrors::[Message] =
+    allocator.errors ++
+    if !le.maybeTyperep.isJust
+    then [err(top.location, "Couldn't infer type of term")]
+    else le.errors;
+  
+  le.expectedType = le.maybeTyperep.fromJust;
+  le.allowUnificationTypes = false;
+  le.allocator = allocator;
+  
+  local fwrd::Expr =
+    termExpr(
+      typeName(directTypeExpr(le.maybeTyperep.fromJust), baseTypeExpr()),
+      decExpr(allocator, location=allocator.location),
+      decLogicExpr(le, location=allocator.location),
+      location=builtin);
+  
+  forwards to mkErrorCheck(localErrors, fwrd);
+}

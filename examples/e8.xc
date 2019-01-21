@@ -12,7 +12,7 @@ prolog {
 
 int main() {
   query 3 = X, a(X) {
-    printf("%d\n", value<int>(X));
+    printf("%d\n", value(X));
     return false;
   };
 }

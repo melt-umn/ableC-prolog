@@ -13,7 +13,7 @@ datatype _list_d {
 template<a>
 list<a> ?cons(void *(*alloc)(size_t), a head, list<a> ?tail) {
   list<a> ?result = freevar<list<a>>(*alloc);
-  unify(result, (list<a>)_Cons<a>(head, tail));
+  unify(result, (list<a>)_Cons(head, tail));
   return result;
 }
 
@@ -28,19 +28,19 @@ list<a> ?nil(void *(*alloc)(size_t)) {
 template<a>
 void delete_list(void (*dealloc)(void *), list<a> ?l) {
   match (l) {
-    ?&[h | t] -> { delete_list<a>(dealloc, t); }
+    ?&[h | t] -> { delete_list(dealloc, t); }
   }
-  delete_var<list<a>>(dealloc, l);
+  delete_var(dealloc, l);
 }
 
 template<a>
 _Bool null(list<a> ?l) {
-  return value<list<a>>(l)->tag == _list_d__Nil;
+  return value(l)->tag == _list_d__Nil;
 }
 
 template<a>
 a head(list<a> ?l) {
-  match (value<list<a>>(l)) {
+  match (value(l)) {
     [h | t] -> { return h; }
     [] -> {
       fprintf(stderr, "Error: Cannot access head of empty list\n");
@@ -51,7 +51,7 @@ a head(list<a> ?l) {
 
 template<a>
 list<a> ?tail(list<a> ?l) {
-  match (value<list<a>>(l)) {
+  match (value(l)) {
     [h | t] -> { return t; }
     [] -> {
       fprintf(stderr, "Error: Cannot access tail of empty list\n");
@@ -62,15 +62,15 @@ list<a> ?tail(list<a> ?l) {
 
 template<a>
 list<a> ?append_list(void *(*alloc)(size_t), list<a> ?l1, list<a> ?l2) {
-  return match (value<list<a>>(l1))
-    ([h | t] -> newlist<a>(alloc)[h | append_list<a>(alloc, t, l2)];
+  return match (value(l1))
+    ([h | t] -> newlist(alloc)[h | append_list(alloc, t, l2)];
      [] -> l2;);
 }
 
 template<a>
 string _show_list_contents(list<a> l) {
   return match (l)
-    ([h | ?&(t@[_ | _])] -> show(h) + ", " + _show_list_contents<a>(t);
+    ([h | ?&(t@[_ | _])] -> show(h) + ", " + _show_list_contents(t);
      [h] -> show(h);
      [h | v@freevar] -> show(h) + " | " + show(v);
      [] -> str(""););
@@ -78,7 +78,7 @@ string _show_list_contents(list<a> l) {
 
 template<a>
 string show_list(list<a> l) {
-  return "[" + _show_list_contents<a>(l) + "]";
+  return "[" + _show_list_contents(l) + "]";
 }
 
 template<a>
@@ -92,15 +92,15 @@ _Bool unify_list(list<a> l1, list<a> l2, unification_trail trail) {
 prolog {
   append<a>(list<a?> ?, list<a?> ?, list<a?> ?);
   append([], A, A).
-  append([H | A], B, [H | C]) :- append<a>(A, B, C).
+  append([H | A], B, [H | C]) :- append(A, B, C).
   
   length<a>(list<a?> ?, size_t ?);
   length([], 0).
-  length([_ | T], N1) :- length<a>(T, N2), N1 is (N2 + 1u).
+  length([_ | T], N1) :- length(T, N2), N1 is (N2 + 1u).
 
   member<a>(a ?item, list<a ?> ?l);
   member(A, [A | _]).
-  member(A, [_ | T]) :- member<a>(A, T).
+  member(A, [_ | T]) :- member(A, T).
 }
 
 #endif

@@ -20,9 +20,30 @@ top::Expr ::= sub::TypeName allocate::Expr init::ListInitializers
   forwards to mkErrorCheck(localErrors, fwrd);
 }
 
+abstract production inferredConstructList
+top::Expr ::= allocate::Expr init::ListInitializers
+{
+  propagate substituted;
+  top.pp = pp"newlist(${allocate.pp})[${ppImplode(pp", ", init.pps)}]";
+  
+  local localErrors::[Message] =
+    allocate.errors ++
+    (if !init.maybeTyperep.isJust
+     then [err(top.location, "Can't infer type argument for empty list")]
+     else init.errors) ++
+    checkListHeaderDef("_list_d", top.location, top.env);
+  
+  init.paramType = init.maybeTyperep.fromJust;
+  init.allocator = allocate;
+  
+  local fwrd::Expr = init.host;
+  
+  forwards to mkErrorCheck(localErrors, fwrd);
+}
+
 autocopy attribute paramType::Type;
 
-nonterminal ListInitializers with pps, env, returnType, paramType, allocator, errors, host<Expr>, substituted<ListInitializers>, substitutions;
+nonterminal ListInitializers with pps, env, returnType, paramType, allocator, errors, maybeTyperep, host<Expr>, substituted<ListInitializers>, substitutions;
 
 abstract production consListInitializer
 top::ListInitializers ::= h::Expr t::ListInitializers
@@ -30,6 +51,7 @@ top::ListInitializers ::= h::Expr t::ListInitializers
   propagate substituted;
   top.pps = h.pp :: t.pps;
   top.errors := h.errors ++ t.errors;
+  top.maybeTyperep = just(h.typerep);
   top.host =
     ableC_Expr {
       inst cons<$directTypeExpr{top.paramType}>(
@@ -48,6 +70,7 @@ top::ListInitializers ::= e::Expr
   propagate substituted;
   top.pps = [pp"| ${e.pp}"]; -- TODO: Fix this
   top.errors := e.errors;
+  top.maybeTyperep = just(listSubType(e.typerep));
   top.host = decExpr(e, location=builtin);
   
   top.errors <-
@@ -62,6 +85,7 @@ top::ListInitializers ::=
   propagate substituted;
   top.pps = [];
   top.errors := [];
+  top.maybeTyperep = nothing();
   top.host =
     ableC_Expr {
       inst nil<$directTypeExpr{top.paramType}>($Expr{top.allocator})
