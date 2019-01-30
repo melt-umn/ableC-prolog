@@ -25,7 +25,7 @@ top::Expr ::= gs::Goals body::Stmt
       proto_typedef unification_trail;
       ({$Stmt{decStmt(varDecls)}
         closure<() -> _Bool> _success_continuation =
-          lambda allocate(alloca) () -> (_Bool) { $Stmt{decStmt(body)} };
+          lambda allocate(alloca) () -> _Bool { $Stmt{decStmt(body)} };
         unification_trail _trail = new_trail();
         _Bool _result = $Expr{gs.transform};
         undo_trail(_trail, 0);

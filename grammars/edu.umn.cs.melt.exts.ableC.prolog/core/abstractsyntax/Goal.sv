@@ -17,7 +17,7 @@ top::Goals ::= h::Goal t::Goals
   t.env = addEnv(h.defs, h.env);
   
   top.continuationTransform =
-    ableC_Expr { lambda allocate(alloca) () -> ((_Bool)$Expr{top.transform}) };
+    ableC_Expr { lambda allocate(alloca) () -> (_Bool)$Expr{top.transform} };
   top.transform = h.transform;
   h.continuationTransformIn = t.continuationTransform;
   h.transformIn = t.transform;
@@ -413,7 +413,7 @@ top::Goal ::= g::Goal
   top.defs := g.defs;
   
   g.transformIn = ableC_Expr { (_Bool)1 };
-  g.continuationTransformIn = ableC_Expr { lambda allocate(alloca) () -> ((_Bool)1) };
+  g.continuationTransformIn = ableC_Expr { lambda allocate(alloca) () -> (_Bool)1 };
   top.transform =
     ableC_Expr {
       proto_typedef size_t;
