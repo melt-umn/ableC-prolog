@@ -16,7 +16,7 @@ top::Expr ::= gs::Goals body::Stmt
   varDecls.env = gs.env;
   varDecls.returnType = nothing();
   
-  body.env = addEnv(body.functionDefs, capturedEnv(addEnv(varDecls.defs, gs.env)));
+  body.env = capturedEnv(addEnv(varDecls.defs, gs.env));
   body.returnType = just(builtinType(nilQualifier(), boolType()));
   
   gs.continuationTransformIn = ableC_Expr { _success_continuation };
