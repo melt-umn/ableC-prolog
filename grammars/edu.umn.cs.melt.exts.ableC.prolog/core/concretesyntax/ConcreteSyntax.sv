@@ -9,7 +9,7 @@ imports edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 
 exports edu:umn:cs:melt:exts:ableC:templating:concretesyntax:typeParameters;
 
-marking terminal Prolog_t 'prolog' lexer classes {Ckeyword};
+marking terminal Prolog_t 'prolog' lexer classes {Cidentifier}, font=font_all;
 terminal If_t ':-';
 terminal Is_t 'is';
 terminal NotGoal_t '\+';
@@ -18,6 +18,11 @@ terminal Eq_t '=:=';
 terminal NotEq_t '=\=';
 terminal PLessThan_t '<';
 terminal EqualLessThan_t '=<';
+
+aspect parser attribute context
+  action {
+    context = addIdentsToScope([name("prolog", location=builtin)], Prolog_t, context);
+  };
 
 -- Fix ambiguity between 'a<...>(...)' and 'a < b' due to insufficient lookahead.
 -- This makes so the lhs of the '<' goal must be wrapped in parentheses
