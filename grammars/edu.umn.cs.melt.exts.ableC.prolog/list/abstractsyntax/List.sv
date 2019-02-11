@@ -60,6 +60,8 @@ top::ListInitializers ::= h::Expr t::ListInitializers
         $Expr{top.allocator}, $Expr{decExpr(h, location=builtin)}, $Expr{t.host})
     };
   
+  t.env = addEnv(h.defs, h.env);
+  
   top.errors <-
     if !typeAssignableTo(top.paramType, h.typerep)
     then [err(h.location, s"Invalid type in list initializer: Expected ${showType(top.paramType)}, got ${showType(top.paramType)}")]
@@ -115,15 +117,14 @@ top::Expr ::= e::Expr
   
   local subType::Type = listSubType(e.typerep);
   local localErrors::[Message] =
-    decorate showExpr(e, location=e.location) with {
-      env = top.env; returnType = top.returnType;
-    }.errors ++
+    -- TODO: Check subType can be shown
     checkListHeaderDef("show_list", top.location, top.env);
   
-  forwards to
+  local fwrd::Expr =
     ableC_Expr {
       inst show_list<$directTypeExpr{subType}>($Expr{e})
     };
+  forwards to mkErrorCheck(localErrors, fwrd);
 }
 
 abstract production listLogicExpr
@@ -241,6 +242,7 @@ top::Pattern ::= l::ListPatterns
   top.errors <-
     case top.expectedType of
     | extType(_, listType(_)) -> []
+    | errorType() -> []
     | _ -> [err(top.location, s"List pattern expected to match a list (got ${showType(top.expectedType)})")]
     end;
 }

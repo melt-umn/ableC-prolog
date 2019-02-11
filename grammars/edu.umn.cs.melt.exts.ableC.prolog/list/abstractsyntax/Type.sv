@@ -27,10 +27,15 @@ top::BaseTypeExpr ::= q::Qualifiers sub::TypeName loc::Location
   
   -- Non-interfering overrides for better performance
   top.decls = [injectGlobalDeclsDecl(globalDecls)];
-  top.typerep = extType(q, listType(sub.typerep));
+  top.errors := localErrors;
+  top.typerep =
+    case sub.typerep of
+    | errorType() -> errorType()
+    | _ -> extType(q, listType(sub.typerep))
+    end;
   
   forwards to
-    if !null(localErrors)
+    if !null(localErrors) || case sub.typerep of errorType() -> true | _ -> false end
     then errorTypeExpr(localErrors)
     else injectGlobalDeclsTypeExpr(globalDecls, extTypeExpr(q, listType(sub.typerep)));
 }
