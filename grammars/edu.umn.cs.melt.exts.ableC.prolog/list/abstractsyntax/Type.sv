@@ -20,16 +20,19 @@ top::BaseTypeExpr ::= q::Qualifiers sub::TypeName loc::Location
   local localErrors::[Message] =
     sub.errors ++ checkListHeaderDef("_list_d", loc, top.env);
   
+  local globalDecls::Decls =
+    foldDecl(
+      sub.decls ++
+      [templateTypeExprInstDecl(q, name("_list_d", location=builtin), [sub.typerep])]);
+  
+  -- Non-interfering overrides for better performance
+  top.decls = [injectGlobalDeclsDecl(globalDecls)];
+  top.typerep = extType(q, listType(sub.typerep));
+  
   forwards to
     if !null(localErrors)
     then errorTypeExpr(localErrors)
-    else
-      injectGlobalDeclsTypeExpr(
-        foldDecl(
-          sub.decls ++
-          [templateTypeExprInstDecl(
-             q, name("_list_d", location=builtin), [sub.typerep])]),
-        extTypeExpr(q, listType(sub.typerep)));
+    else injectGlobalDeclsTypeExpr(globalDecls, extTypeExpr(q, listType(sub.typerep)));
 }
 
 abstract production listType

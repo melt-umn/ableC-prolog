@@ -8,6 +8,7 @@ top::Expr ::= sub::TypeName allocate::Expr init::ListInitializers
   
   local localErrors::[Message] =
     sub.errors ++ allocate.errors ++ init.errors ++
+    decorate sub.typerep with {otherType = sub.typerep;}.unifyErrors(top.location, top.env) ++
     checkListHeaderDef("_list_d", top.location, top.env);
   
   sub.env = globalEnv(top.env);
@@ -28,9 +29,10 @@ top::Expr ::= allocate::Expr init::ListInitializers
   
   local localErrors::[Message] =
     allocate.errors ++
-    (if !init.maybeTyperep.isJust
-     then [err(top.location, "Can't infer type argument for empty list")]
-     else init.errors) ++
+    case init.maybeTyperep of
+    | just(t) -> decorate t with {otherType = t;}.unifyErrors(top.location, top.env) ++ init.errors
+    | nothing() -> [err(top.location, "Can't infer type argument for empty list")]
+    end ++
     checkListHeaderDef("_list_d", top.location, top.env);
   
   init.paramType = init.maybeTyperep.fromJust;
@@ -262,22 +264,25 @@ top::ListPatterns ::= h::Pattern t::ListPatterns
   h.expectedType = top.expectedType;
   t.expectedType = top.expectedType;
   
+  local tmpName::String = "_tmp_list_" ++ toString(genInt());
   top.transform =
     ableC_Expr {
       proto_typedef _list_d;
       $Expr{top.isBoundTransformIn} &&
-      ((inst _list_d<$directTypeExpr{top.expectedType}>)$Expr{top.valueTransformIn}).tag == _list_d__Cons &&
-      $Expr{h.transform} && $Expr{t.transform}
+      ({inst _list_d<$directTypeExpr{top.expectedType}> $name{tmpName} =
+          (inst _list_d<$directTypeExpr{top.expectedType}>)$Expr{top.valueTransformIn};
+        $name{tmpName}.tag == _list_d__Cons &&
+        $Expr{h.transform} && $Expr{t.transform};})
     };
   h.transformIn =
     ableC_Expr {
       proto_typedef _list_d;
-      ((inst _list_d<$directTypeExpr{top.expectedType}>)$Expr{top.valueTransformIn}).contents._Cons.head
+      $name{tmpName}.contents._Cons.head
     };
   t.transformIn =
     ableC_Expr {
       proto_typedef _list_d;
-      ((inst _list_d<$directTypeExpr{top.expectedType}>)$Expr{top.valueTransformIn}).contents._Cons.tail
+      $name{tmpName}.contents._Cons.tail
     };
   t.isBoundTransformIn =
     ableC_Expr {
