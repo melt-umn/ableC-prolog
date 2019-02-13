@@ -85,7 +85,13 @@ top::ExtType ::= sub::Type
     | extType(_, varType(_)) -> valVarUnifyExpr(_, _, _, location=_)
     | errorType() -> \ Expr Expr Expr l::Location -> errorExpr([], location=l)
     end;
-  top.showProd = just(showList(_, location=_));
+  
+  top.showErrors =
+    \ l::Location env::Decorated Env ->
+      sub.showErrors(l, env) ++
+      checkListHeaderDef("show_list", l, env);
+  top.showProd =
+    \ e::Expr -> ableC_Expr { inst show_list<$directTypeExpr{sub}>($Expr{e}) };
 }
 
 -- Find the sub-type of a list type

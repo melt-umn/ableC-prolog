@@ -109,24 +109,6 @@ top::Expr ::= e1::Expr e2::Expr trail::Expr
     };
 }
 
-abstract production showList
-top::Expr ::= e::Expr
-{
-  propagate substituted;
-  top.pp = pp"showList(${e.pp})";
-  
-  local subType::Type = listSubType(e.typerep);
-  local localErrors::[Message] =
-    -- TODO: Check subType can be shown
-    checkListHeaderDef("show_list", top.location, top.env);
-  
-  local fwrd::Expr =
-    ableC_Expr {
-      inst show_list<$directTypeExpr{subType}>($Expr{e})
-    };
-  forwards to mkErrorCheck(localErrors, fwrd);
-}
-
 abstract production listLogicExpr
 top::LogicExpr ::= l::ListLogicExprs
 {
