@@ -31,11 +31,11 @@ concrete productions top::ListInitializerList_c
 | h::ExclusiveOrExpr_c ',' t::ListInitializerList_c
     { top.ast = consListInitializer(h.ast, t.ast);  }
 | e::ExclusiveOrExpr_c
-    { top.ast = consListInitializer(e.ast, nilListInitializer()); }
+    { top.ast = consListInitializer(e.ast, nilListInitializer(top.location)); }
 | h::InclusiveOrExpr_c '|' t::ExclusiveOrExpr_c
     { top.ast = consListInitializer(h.ast, tailListInitializer(t.ast)); }
 |
-    { top.ast = nilListInitializer(); }
+    { top.ast = nilListInitializer(top.location); }
 
 marking terminal ListLBracket_t '[' lexer classes {Csymbol};
 

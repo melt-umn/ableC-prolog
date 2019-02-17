@@ -13,7 +13,7 @@ top::Expr ::= sub::TypeName allocate::Expr init::ListInitializers
   
   sub.env = globalEnv(top.env);
   init.env = addEnv(sub.defs, top.env);
-  init.paramType = sub.typerep;
+  init.maybeParamType = just(sub.typerep);
   init.allocator = allocate;
   
   local fwrd::Expr = init.host;
@@ -28,14 +28,10 @@ top::Expr ::= allocate::Expr init::ListInitializers
   top.pp = pp"newlist(${allocate.pp})[${ppImplode(pp", ", init.pps)}]";
   
   local localErrors::[Message] =
-    allocate.errors ++
-    case init.maybeTyperep of
-    | just(t) -> decorate t with {otherType = t;}.unifyErrors(top.location, top.env) ++ init.errors
-    | nothing() -> [err(top.location, "Can't infer type argument for empty list")]
-    end ++
+    allocate.errors ++ init.errors ++
     checkListHeaderDef("_list_d", top.location, top.env);
   
-  init.paramType = init.maybeTyperep.fromJust;
+  init.maybeParamType = nothing();
   init.allocator = allocate;
   
   local fwrd::Expr = init.host;
@@ -43,9 +39,9 @@ top::Expr ::= allocate::Expr init::ListInitializers
   forwards to mkErrorCheck(localErrors, fwrd);
 }
 
-autocopy attribute paramType::Type;
+autocopy attribute maybeParamType::Maybe<Type>;
 
-nonterminal ListInitializers with pps, env, returnType, paramType, allocator, errors, maybeTyperep, host<Expr>, substituted<ListInitializers>, substitutions;
+nonterminal ListInitializers with pps, env, returnType, maybeParamType, allocator, errors, host<Expr>, substituted<ListInitializers>, substitutions;
 
 abstract production consListInitializer
 top::ListInitializers ::= h::Expr t::ListInitializers
@@ -53,19 +49,35 @@ top::ListInitializers ::= h::Expr t::ListInitializers
   propagate substituted;
   top.pps = h.pp :: t.pps;
   top.errors := h.errors ++ t.errors;
-  top.maybeTyperep = just(h.typerep);
+  
+  t.maybeParamType = just(fromMaybe(h.typerep, top.maybeParamType));
+  
+  local cons::Expr = 
+    ableC_Expr {
+      inst cons<$directTypeExpr{t.maybeParamType.fromJust}>
+    };
+  cons.env = top.env;
+  cons.returnType = nothing();
+  
+  -- Avoid rececorating h unless we are using it to infer the parameter type
+  h.env = if top.maybeParamType.isJust then addEnv(cons.defs, cons.env) else top.env;
+  t.env = addEnv((if top.maybeParamType.isJust then [] else cons.defs) ++ h.defs, h.env);
   top.host =
     ableC_Expr {
-      inst cons<$directTypeExpr{top.paramType}>(
-        $Expr{top.allocator}, $Expr{decExpr(h, location=builtin)}, $Expr{t.host})
+      $Expr{decExpr(cons, location=builtin)}(
+        $Expr{top.allocator},
+        $Expr{if top.maybeParamType.isJust then decExpr(h, location=builtin) else h},
+        $Expr{t.host})
     };
   
-  t.env = addEnv(h.defs, h.env);
-  
   top.errors <-
-    if !typeAssignableTo(top.paramType, h.typerep)
-    then [err(h.location, s"Invalid type in list initializer: Expected ${showType(top.paramType)}, got ${showType(top.paramType)}")]
-    else [];
+    case top.maybeParamType of
+    | just(t) ->
+      if !typeAssignableTo(t, h.typerep)
+      then [err(h.location, s"Invalid type in list initializer: Expected ${showType(t)}, got ${showType(h.typerep)}")]
+      else []
+    | nothing() -> decorate h.typerep with {otherType = h.typerep;}.unifyErrors(h.location, t.env)
+    end;
 }
 
 abstract production tailListInitializer
@@ -74,25 +86,26 @@ top::ListInitializers ::= e::Expr
   propagate substituted;
   top.pps = [pp"| ${e.pp}"]; -- TODO: Fix this
   top.errors := e.errors;
-  top.maybeTyperep = just(listSubType(e.typerep));
   top.host = decExpr(e, location=builtin);
   
   top.errors <-
-    if !typeAssignableTo(extType(nilQualifier(), varType(extType(nilQualifier(), listType(top.paramType)))), e.typerep)
-    then [err(e.location, s"Invalid type in list initializer tail: Expected list<${showType(top.paramType)}> ?, got ${showType(top.paramType)}")]
+    if !typeAssignableTo(extType(nilQualifier(), varType(extType(nilQualifier(), listType(top.maybeParamType.fromJust)))), e.typerep)
+    then [err(e.location, s"Invalid type in list initializer tail: Expected list<${showType(top.maybeParamType.fromJust)}> ?, got ${showType(e.typerep)}")]
     else [];
 }
 
 abstract production nilListInitializer
-top::ListInitializers ::=
+top::ListInitializers ::= loc::Location
 {
   propagate substituted;
   top.pps = [];
-  top.errors := [];
-  top.maybeTyperep = nothing();
+  top.errors :=
+    if top.maybeParamType.isJust
+    then []
+    else [err(loc, "Can't infer type argument for empty list")];
   top.host =
     ableC_Expr {
-      inst nil<$directTypeExpr{top.paramType}>($Expr{top.allocator})
+      inst nil<$directTypeExpr{top.maybeParamType.fromJust}>($Expr{top.allocator})
     };
 }
 
@@ -108,6 +121,8 @@ top::Expr ::= e1::Expr e2::Expr trail::Expr
       inst unify_list<$directTypeExpr{subType}>($Expr{e1}, $Expr{e2}, $Expr{trail})
     };
 }
+
+autocopy attribute paramType::Type;
 
 abstract production listLogicExpr
 top::LogicExpr ::= l::ListLogicExprs
