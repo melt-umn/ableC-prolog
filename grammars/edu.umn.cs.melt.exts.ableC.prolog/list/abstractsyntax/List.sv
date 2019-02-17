@@ -214,6 +214,7 @@ top::Pattern ::= l::ListPatterns
   top.errors := l.errors;
   top.defs := l.defs;
   top.decls = l.decls;
+  top.patternDefs := l.patternDefs;
   top.transform = l.transform;
   
   l.expectedType = listSubType(top.expectedType);
@@ -232,7 +233,7 @@ top::Pattern ::= l::ListPatterns
 inherited attribute isBoundTransformIn::Expr;
 inherited attribute valueTransformIn::Expr;
 
-nonterminal ListPatterns with pps, errors, env, returnType, defs, edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:decls, edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:expectedType, edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:transform<Expr>, transformIn<Expr>, isBoundTransformIn, valueTransformIn, substituted<ListPatterns>, substitutions;
+nonterminal ListPatterns with pps, errors, env, returnType, defs, edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:decls, patternDefs, edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:expectedType, edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:transform<Expr>, transformIn<Expr>, isBoundTransformIn, valueTransformIn, substituted<ListPatterns>, substitutions;
 
 abstract production consListPattern
 top::ListPatterns ::= h::Pattern t::ListPatterns
@@ -242,19 +243,34 @@ top::ListPatterns ::= h::Pattern t::ListPatterns
   top.errors := h.errors ++ t.errors;
   top.defs := h.defs ++ t.defs;
   top.decls = h.decls ++ t.decls;
-  
-  t.env = addEnv(h.defs, h.env);
+  top.patternDefs := h.patternDefs ++ t.patternDefs;
   
   h.expectedType = top.expectedType;
   t.expectedType = top.expectedType;
   
+  local isBound::Expr = top.isBoundTransformIn;
+  isBound.env = top.env;
+  isBound.returnType = nothing();
+  top.defs <- isBound.defs;
+  
+  local valueDecl::Stmt =
+    ableC_Stmt {
+      proto_typedef _list_d;
+      inst _list_d<$directTypeExpr{top.expectedType}> $name{tmpName} =
+        (inst _list_d<$directTypeExpr{top.expectedType}>)$Expr{top.valueTransformIn};
+    };
+  valueDecl.env = addEnv(isBound.defs, openScopeEnv(isBound.env));
+  valueDecl.returnType = nothing();
+  top.defs <- valueDecl.defs;
+  
+  h.env = addEnv(valueDecl.defs, valueDecl.env);
+  t.env = addEnv(h.defs, h.env);
+  
   local tmpName::String = "_tmp_list_" ++ toString(genInt());
   top.transform =
     ableC_Expr {
-      proto_typedef _list_d;
-      $Expr{top.isBoundTransformIn} &&
-      ({inst _list_d<$directTypeExpr{top.expectedType}> $name{tmpName} =
-          (inst _list_d<$directTypeExpr{top.expectedType}>)$Expr{top.valueTransformIn};
+      $Expr{decExpr(isBound, location=builtin)} &&
+      ({$Stmt{decStmt(valueDecl)}
         $name{tmpName}.tag == _list_d__Cons &&
         $Expr{h.transform} && $Expr{t.transform};})
     };
@@ -270,11 +286,13 @@ top::ListPatterns ::= h::Pattern t::ListPatterns
     };
   t.isBoundTransformIn =
     ableC_Expr {
-      inst is_bound<$directTypeExpr{extType(nilQualifier(), listType(top.expectedType))}>($Expr{t.transformIn})
+      ({template<a> _Bool is_bound();
+        is_bound($Expr{t.transformIn});})
     };
   t.valueTransformIn =
     ableC_Expr {
-      inst value<$directTypeExpr{extType(nilQualifier(), listType(top.expectedType))}>($Expr{t.transformIn})
+      ({template<a> a value();
+        value($Expr{t.transformIn});})
     };
 }
 
@@ -286,6 +304,7 @@ top::ListPatterns ::= p::Pattern
   top.errors := p.errors;
   top.defs := p.defs;
   top.decls = p.decls;
+  top.patternDefs := p.patternDefs;
   top.transform = p.transform;
   
   p.expectedType = extType(nilQualifier(), varType(extType(nilQualifier(), listType(top.expectedType))));
@@ -300,10 +319,17 @@ top::ListPatterns ::=
   top.errors := [];
   top.defs := [];
   top.decls = [];
+  top.patternDefs := [];
+  
+  local isBound::Expr = top.isBoundTransformIn;
+  isBound.env = top.env;
+  isBound.returnType = nothing();
+  top.defs <- isBound.defs;
+  
   top.transform =
     ableC_Expr {
       proto_typedef _list_d;
-      $Expr{top.isBoundTransformIn} &&
+      $Expr{decExpr(isBound, location=builtin)} &&
       ((inst _list_d<$directTypeExpr{top.expectedType}>)$Expr{top.valueTransformIn}).tag == _list_d__Nil
     };
 }
