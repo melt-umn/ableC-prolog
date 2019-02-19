@@ -93,6 +93,10 @@ prolog {
   append<a>(list<a?> ?, list<a?> ?, list<a?> ?);
   append([], A, A).
   append([H | A], B, [H | C]) :- append(A, B, C).
+
+  reverse<a>(list<a?> ?, list<a?> ?);
+  reverse([], []).
+  reverse([H | A], B) :- reverse(A, C), append(C, [H], B).
   
   length<a>(list<a?> ?, size_t ?);
   length([], 0).
