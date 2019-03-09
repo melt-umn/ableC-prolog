@@ -301,12 +301,12 @@ top::ListPatterns ::= h::Pattern t::ListPatterns
     };
   t.isBoundTransformIn =
     ableC_Expr {
-      ({template<a> _Bool is_bound();
+      ({template<typename a> _Bool is_bound();
         is_bound($Expr{t.transformIn});})
     };
   t.valueTransformIn =
     ableC_Expr {
-      ({template<a> a value();
+      ({template<typename a> a value();
         value($Expr{t.transformIn});})
     };
 }

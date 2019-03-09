@@ -5,9 +5,11 @@ imports silver:langutil;
 
 imports edu:umn:cs:melt:ableC:abstractsyntax:host;
 imports edu:umn:cs:melt:ableC:abstractsyntax:construction;
+imports edu:umn:cs:melt:exts:ableC:templating:abstractsyntax;
 imports edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 
-exports edu:umn:cs:melt:exts:ableC:templating:concretesyntax:typeParameters;
+exports edu:umn:cs:melt:exts:ableC:templating:concretesyntax:templateParameters;
+exports edu:umn:cs:melt:exts:ableC:templating:concretesyntax:templateArguments;
 
 marking terminal Prolog_t 'prolog' lexer classes {Cidentifier}, font=font_all;
 terminal If_t ':-';
@@ -37,8 +39,8 @@ terminal LogicExprNEVER_t 'LogicExprNEVER_t123456789!!!never';
 
 -- Record the type parameters of all known prediates so that rules can add the
 -- appropriate names to the parser context.
-parser attribute predicateTypeParams::[Pair<String [String]>]
-  action { predicateTypeParams = []; };
+parser attribute predicateTemplateParams::[Pair<String [Pair<String TerminalId>]>]
+  action { predicateTemplateParams = []; };
 
 concrete productions top::Declaration_c
 | 'prolog' '{' ls::LogicStmts_c '}'
@@ -57,22 +59,38 @@ concrete productions top::LogicStmts_c
 closed nonterminal LogicStmt_c with location, ast<LogicStmt>;
 
 concrete productions top::LogicStmt_c
-| id::Identifier_c LessThan_t typeParams::TypeParameters_c '>' LParen_t params::ParameterTypeList_c ')' ';'
-  { top.ast = declLogicStmt(predicateDecl(id.ast, typeParams.ast, foldParameterDecl(params.ast), location=top.location), location=top.location); }
+| id::Identifier_c LessThan_t templateParams::TemplateParameters_c '>' LParen_t params::ParameterTypeList_c ')' ';'
+  { top.ast = declLogicStmt(predicateDecl(id.ast, templateParams.ast, foldParameterDecl(params.ast), location=top.location), location=top.location); }
   action {
-    context = closeScope(context); -- Opened by TemplateParams_c
-    predicateTypeParams = pair(id.ast.name, typeParams.ast.names) :: predicateTypeParams;
+    context = closeScope(context); -- Opened by TemplateParameters_c
+    predicateTemplateParams =
+      pair(
+        id.ast.name,
+        zipWith(
+          pair, templateParams.ast.names,
+          map(
+            \ k::Maybe<TypeName> -> if k.isJust then Identifier_t else TypeName_t,
+            templateParams.ast.kinds))) ::
+        predicateTemplateParams;
   }
-| id::Identifier_c LessThan_t typeParams::TypeParameters_c '>' LParen_t ')' ';'
-  { top.ast = declLogicStmt(predicateDecl(id.ast, typeParams.ast, nilParameters(), location=top.location), location=top.location); }
+| id::Identifier_c LessThan_t templateParams::TemplateParameters_c '>' LParen_t ')' ';'
+  { top.ast = declLogicStmt(predicateDecl(id.ast, templateParams.ast, nilParameters(), location=top.location), location=top.location); }
   action {
-    context = closeScope(context); -- Opened by TemplateParams_c
-    predicateTypeParams = pair(id.ast.name, typeParams.ast.names) :: predicateTypeParams;
+    context = closeScope(context); -- Opened by TemplateParameters_c
+    predicateTemplateParams =
+      pair(
+        id.ast.name,
+        zipWith(
+          pair, templateParams.ast.names,
+          map(
+            \ k::Maybe<TypeName> -> if k.isJust then Identifier_t else TypeName_t,
+            templateParams.ast.kinds))) ::
+        predicateTemplateParams;
   }
 | id::Identifier_c LParen_t params::ParameterTypeList_c ')' ';'
-  { top.ast = declLogicStmt(predicateDecl(id.ast, nilName(), foldParameterDecl(params.ast), location=top.location), location=top.location); }
+  { top.ast = declLogicStmt(predicateDecl(id.ast, nilTemplateParameter(), foldParameterDecl(params.ast), location=top.location), location=top.location); }
 | id::Identifier_c LParen_t ')' ';'
-  { top.ast = declLogicStmt(predicateDecl(id.ast, nilName(), nilParameters(), location=top.location), location=top.location); }
+  { top.ast = declLogicStmt(predicateDecl(id.ast, nilTemplateParameter(), nilParameters(), location=top.location), location=top.location); }
 | h::Head_c '.'
   { top.ast = ruleLogicStmt(h.ast.fst, h.ast.snd, nilGoal(), location=top.location); }
   action { context = closeScope(context); } -- Opened by Head_c
@@ -86,13 +104,10 @@ concrete productions top::Head_c
 | id::Identifier_c LParen_t le::LogicExprs_c ')'
   { top.ast = pair(id.ast, foldLogicExpr(le.ast)); }
   action {
-    local typeParams::[String] =
-      fromMaybe([], lookupBy(stringEq, id.ast.name, predicateTypeParams));
-    context =
-      addIdentsToScope(
-        map(name(_, location=id.location), typeParams),
-        TypeName_t,
-        openScope(context));
+    local templateParams::[Pair<String TerminalId>] =
+      fromMaybe([], lookupBy(stringEq, id.ast.name, predicateTemplateParams));
+    -- Open a new scope containing templateParams
+    context = (templateParams ++ head(context)) :: context;
   }
 
 closed nonterminal Body_c with location, ast<[Goal]>;
@@ -106,10 +121,10 @@ concrete productions top::Body_c
 closed nonterminal Goal_c with location, ast<Goal>;
 
 concrete productions top::Goal_c
-| id::Identifier_c LessThan_t tns::TypeNames_c '>' LParen_t les::LogicExprs_c ')'
-  { top.ast = predicateGoal(id.ast, tns.ast, foldLogicExpr(les.ast), location=top.location); }
-| id::Identifier_c LessThan_t tns::TypeNames_c '>' LParen_t ')'
-  { top.ast = predicateGoal(id.ast, tns.ast, nilLogicExpr(), location=top.location); }
+| id::Identifier_c LessThan_t tas::TemplateArguments_c '>' LParen_t les::LogicExprs_c ')'
+  { top.ast = predicateGoal(id.ast, tas.ast, foldLogicExpr(les.ast), location=top.location); }
+| id::Identifier_c LessThan_t tas::TemplateArguments_c '>' LParen_t ')'
+  { top.ast = predicateGoal(id.ast, tas.ast, nilLogicExpr(), location=top.location); }
 | id::Identifier_c LParen_t les::LogicExprs_c ')'
   { top.ast = inferredPredicateGoal(id.ast, foldLogicExpr(les.ast), location=top.location); }
 | id::Identifier_c LParen_t ')'

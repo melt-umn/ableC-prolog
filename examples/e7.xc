@@ -1,22 +1,22 @@
 #include <unification.xh>
 #include <stdbool.h>
 
-template<a>
+template<typename a>
 datatype Tree {
   node(Tree<a> ?left, Tree<a> ?right);
   leaf(a ?val);
 };
 
 prolog {
-  subtree<a>(Tree<a> ?, Tree<a> ?);
+  subtree<typename a>(Tree<a> ?, Tree<a> ?);
   subtree(T, T).
   subtree(node(T1, _), T2) :- subtree(T1, T2).
   subtree(node(_, T1), T2) :- subtree(T1, T2).
   
-  commonSubtree<a>(Tree<a> ?, Tree<a> ?, Tree<a> ?);
+  commonSubtree<typename a>(Tree<a> ?, Tree<a> ?, Tree<a> ?);
   commonSubtree(T1, T2, T3) :- subtree(T1, T3), subtree(T2, T3).
   
-  isleaf<a>(Tree<a> ?tree, a ?val);
+  isleaf<typename a>(Tree<a> ?tree, a ?val);
   isleaf(T, V) :- subtree(T, leaf(V)).
 }
 

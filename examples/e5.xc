@@ -2,7 +2,7 @@
 #include <list.xh>
 #include <stdbool.h>
 
-template<a, b>
+template<typename a, typename b>
 datatype Pair {
   pair(a fst, b snd);
 };

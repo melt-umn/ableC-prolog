@@ -282,11 +282,7 @@ top::LogicExpr ::= n::Name les::LogicExprs
       -- TODO: Interfering hack to call the constructor for template datatypes
       | templatedType(_, _, args, _) ->
         ableC_Expr {
-          inst $name{n.name}<$TypeNames{
-            foldr(
-              consTypeName, nilTypeName(),
-              map(\ t::Type -> typeName(directTypeExpr(t.canonicalType), baseTypeExpr()), args))
-          }>($Exprs{les.transform})
+          inst $name{n.name}<$TemplateArgNames{args.argNames}>($Exprs{les.transform})
         }
       | _ -> ableC_Expr { $name{n.name}($Exprs{les.transform}) }
       end);
