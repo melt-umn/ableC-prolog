@@ -64,48 +64,26 @@ top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parame
 }
 
 synthesized attribute templateParamDefs::[Def] occurs on TemplateParameters, TemplateParameter;
-synthesized attribute templateParamInstDefs::[Def] occurs on TemplateParameters, TemplateParameter;
 autocopy attribute templateParamEnv::Decorated Env occurs on TemplateParameters, TemplateParameter;
-autocopy attribute templateParamInstEnv::Decorated Env occurs on TemplateParameters, TemplateParameter;
-inherited attribute instParamArgs::TemplateArgs occurs on TemplateParameters;
 
 aspect production consTemplateParameter
 top::TemplateParameters ::= h::TemplateParameter t::TemplateParameters
 {
   top.templateParamDefs = h.templateParamDefs ++ t.templateParamDefs;
-  top.templateParamInstDefs = h.templateParamInstDefs ++ t.templateParamInstDefs;
-  
   h.templateParamEnv = addEnv(h.templateParamDefs, top.templateParamEnv);
-  h.templateParamInstEnv = addEnv(h.templateParamInstDefs, top.templateParamInstEnv);
-  
-  local splitArgs :: Pair<TemplateArg TemplateArgs> =
-    case top.instParamArgs of
-    | consTemplateArg(t, ts) -> pair(t, ts)
-    | nilTemplateArg() -> pair(errorTemplateArg(), nilTemplateArg())
-    end;
-  h.instParamArg = splitArgs.fst;
-  t.instParamArgs = splitArgs.snd;
 }
 
 aspect production nilTemplateParameter
 top::TemplateParameters ::=
 {
   top.templateParamDefs = [];
-  top.templateParamInstDefs = [];
 }
-
-inherited attribute instParamArg::TemplateArg occurs on TemplateParameter;
 
 aspect production typeTemplateParameter
 top::TemplateParameter ::= n::Name
 {
   top.templateParamDefs =
     [valueDef(n.name, templateParamValueItem(extType(nilQualifier(), typeParamType(n.name)), true, top.location))];
-  top.templateParamInstDefs =
-    case top.instParamArg of
-    | typeTemplateArg(t) -> [valueDef(n.name, templateParamValueItem(t, true, top.location))]
-    | _ -> []
-    end;
 }
 
 aspect production valueTemplateParameter
@@ -123,19 +101,6 @@ top::TemplateParameter ::= bty::BaseTypeExpr n::Name mty::TypeModifierExpr
   top.templateParamDefs =
     valueDef(n.name, templateParamValueItem(mty1.typerep, false, top.location)) ::
     bty1.defs ++ mty1.defs;
-  
-  local bty2::BaseTypeExpr = bty;
-  bty2.env = top.templateParamInstEnv;
-  bty2.returnType = nothing();
-  bty2.givenRefId = nothing();
-  local mty2::TypeModifierExpr = mty;
-  mty2.env = top.templateParamInstEnv;
-  mty2.returnType = nothing();
-  mty2.typeModifiersIn = bty2.typeModifiers;
-  mty2.baseType = bty2.typerep;
-  top.templateParamInstDefs = 
-    valueDef(n.name, templateParamValueItem(mty2.typerep, false, top.location)) ::
-    bty2.defs ++ mty2.defs;
 }
 
 synthesized attribute paramNames::[String] occurs on Parameters;

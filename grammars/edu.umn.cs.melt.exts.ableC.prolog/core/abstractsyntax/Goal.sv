@@ -60,20 +60,14 @@ top::Goal ::= n::Name ts::TemplateArgNames les::LogicExprs
     };
   
   local templateParams::TemplateParameters = n.predicateItem.templateParams;
-  templateParams.templateParamInstEnv = globalEnv(top.env);
-  templateParams.instParamArgs = ts.argreps;
   
   ts.edu:umn:cs:melt:exts:ableC:templating:abstractsyntax:paramNames = templateParams.names;
   ts.paramKinds = templateParams.kinds;
   ts.substEnv = [];
   
-  local params::Parameters = n.predicateItem.params;
-  params.env =
-    addEnv(
-      -- Add type args to global scope so that they are visible within template instantiations
-      [globalDefsDef(templateParams.templateParamInstDefs)],
-      -- NOT the env at the declaration site, but this is equivalent (and more efficient.)
-      openScopeEnv(globalEnv(addEnv(ts.defs, ts.env))));
+  local params::Parameters = substParameters(ts.substDefs, n.predicateItem.params);
+  -- NOT the env at the declaration site, but this is equivalent (and more efficient.)
+  params.env = openScopeEnv(globalEnv(addEnv(ts.defs, ts.env)));
   params.returnType = nothing();
   params.position = 0;
   
@@ -120,26 +114,32 @@ top::Goal ::= n::Name les::LogicExprs
     };
   
   local templateParams::TemplateParameters = n.predicateItem.templateParams;
-  templateParams.templateParamInstEnv = globalEnv(top.env);
-  templateParams.instParamArgs = inferredTemplateArguments.fromJust;
+  templateParams.templateParamEnv = globalEnv(top.env);
   
-  local params::Parameters = n.predicateItem.params;
-  params.env =
-    addEnv(
-      -- Add type args to global scope so that they are visible within template instantiations
-      [globalDefsDef(templateParams.templateParamInstDefs)],
-      -- NOT the env at the declaration site, but this is equivalent (and more efficient.)
-      openScopeEnv(globalEnv(top.env)));
-  params.returnType = nothing();
-  params.position = 0;
-  params.partialArgumentTypes = les.maybeTypereps;
+  -- Decorate parameters the first time for template parameter inference...
+  local infParams::Parameters = n.predicateItem.params;
+  -- NOT the env at the declaration site, but this is equivalent (and more efficient.)
+  infParams.env = openScopeEnv(globalEnv(top.env));
+  infParams.returnType = nothing();
+  infParams.position = 0;
+  infParams.partialArgumentTypes = les.maybeTypereps;
   
   local inferredTemplateArguments::Maybe<TemplateArgs> =
     do (bindMaybe, returnMaybe) {
       tas::[TemplateArg] <-
-        lookupAll(params.partialInferredArgs, templateParams.names);
+        lookupAll(infParams.partialInferredArgs, templateParams.names);
       return foldr(consTemplateArg, nilTemplateArg(), tas);
     };
+  
+  local ts::TemplateArgs = inferredTemplateArguments.fromJust;
+  ts.edu:umn:cs:melt:exts:ableC:templating:abstractsyntax:paramNames = templateParams.names;
+  
+  -- ... then re-decorate the substituted parameters to compute the expected types.
+  local params::Parameters = substParameters(ts.substDefs, n.predicateItem.params);
+  -- NOT the env at the declaration site, but this is equivalent (and more efficient.)
+  params.env = openScopeEnv(globalEnv(top.env));
+  params.returnType = nothing();
+  params.position = 0;
   
   top.defs <-
     if inferredTemplateArguments.isJust
