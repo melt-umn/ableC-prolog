@@ -146,7 +146,10 @@ top::Goal ::= n::Name les::LogicExprs
     then foldr(consDefs, nilDefs(), params.defs).canonicalDefs
     else [];
   
-  les.expectedTypes = map(\ t::Type -> t.canonicalType, params.typereps);
+  les.expectedTypes =
+    if inferredTemplateArguments.isJust
+    then map(\ t::Type -> t.canonicalType, params.typereps)
+    else [];
   les.allowUnificationTypes = false;
   les.allocator = ableC_Expr { alloca };
   
@@ -168,8 +171,8 @@ top::Goal ::= n::Name les::LogicExprs
                les.maybeTypereps))})")]
     else [];
   top.errors <-
-    if null(n.predicateLookupCheck) && les.count != params.count
-    then [err(top.location, s"Wrong number of arguments to predicate ${n.name} (expected ${toString(params.count)}, got ${toString(les.count)})")]
+    if null(n.predicateLookupCheck) && les.count != infParams.count
+    then [err(top.location, s"Wrong number of arguments to predicate ${n.name} (expected ${toString(infParams.count)}, got ${toString(les.count)})")]
     else [];
   top.errors <-
     case inferredTemplateArguments of

@@ -113,7 +113,7 @@ top::LogicExpr ::= n::Name
     else [];
   top.maybeTyperep =
     if !null(n.valueLocalLookup)
-    then unsafeTrace(just(n.valueItem.typerep), print(n.location.unparse ++ " " ++ n.name ++ ": " ++ hackUnparse(n.valueItem.typerep) ++ "\n\n", unsafeIO()))
+    then just(n.valueItem.typerep)
     else nothing();
   top.transform = ableC_Expr { $name{n.name} };
   
