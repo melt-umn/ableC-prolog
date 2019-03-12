@@ -1,5 +1,7 @@
 #include <unification.xh>
 
+#define mod(a, b) ((a) % (b))
+
 // Non-list utility predicates
 prolog {
   between(int ?, int ?, int ?);
