@@ -1,0 +1,28 @@
+#include <unification.xh>
+#include <list.xh>
+#include <stdlib.h>
+
+#ifndef _MAP_XH
+#define _MAP_XH
+
+template<typename k, typename v, int (*cmp)(k, k)>
+datatype map {
+  Node(k ?key, v ?value, map<k, v, cmp> ?left, map<k, v, cmp> ?right);
+  Empty();
+};
+
+template var_reference datatype map with GC_malloc;
+
+prolog {
+  emptyMap<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1);
+  mapContains<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k ?key, v ?value);
+  mapInsert<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k ?key, v ?value, map<k, v, cmp> ?m2);
+  mapMerge<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, map<k, v, cmp> ?m2, map<k, v, cmp> ?m3);
+  mapDelete<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k ?key, map<k, v, cmp> ?m2);
+  mapKeys<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m, list<k ?> ?keys, v? value);
+  #include "map.pl"
+}
+
+
+
+#endif
