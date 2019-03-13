@@ -106,6 +106,10 @@ prolog {
   member(A, [A | _]).
   member(A, [_ | T]) :- member(A, T).
 
+  select<typename a>(a ?item, list<a ?> ?l1, list<a ?> ?l2);
+  select(H, [H | T], T).
+  select(A, [H | T1], [H | T2]) :- select(A, T1, T2).
+
   nth<typename a>(list<a?> ?l, size_t ?n, a? item);
   nth([X | _], 0, X).
   nth([_ | T], N, X) :- nth(T, N1, X), N1 is (N - 1u).
