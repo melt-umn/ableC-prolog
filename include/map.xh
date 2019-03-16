@@ -23,7 +23,7 @@ prolog {
 }
 
 template<typename k, typename v, int (*cmp)(k, k)>
-map<k, v, cmp> emptyMap(void *(*alloc)(size_t)) {
+map<k, v, cmp> ?emptyMap(void *(*alloc)(size_t)) {
   return boundvar(alloc, Empty<k, v, cmp>());
 }
 
