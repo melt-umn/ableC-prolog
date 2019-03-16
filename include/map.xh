@@ -1,6 +1,7 @@
 #include <unification.xh>
 #include <list.xh>
 #include <stdlib.h>
+#include <stdio.h>
 
 #ifndef _MAP_XH
 #define _MAP_XH
@@ -10,8 +11,6 @@ datatype map {
   Node(k ?key, v ?value, map<k, v, cmp> ?left, map<k, v, cmp> ?right);
   Empty();
 };
-
-template var_reference datatype map with GC_malloc;
 
 prolog {
   emptyMap<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1);
@@ -23,6 +22,65 @@ prolog {
   #include "map.pl"
 }
 
+template<typename k, typename v, int (*cmp)(k, k)>
+_Bool mapContains(map<k, v, cmp> ?m, k key) {
+  return match (m)
+    (?&Node(?&key1, _, l, r) @when(cmp(key, key1) < 0) -> mapContains(l, key);
+     ?&Node(?&key1, _, l, r) @when(cmp(key, key1) > 0) -> mapContains(r, key);
+     ?&Node(_, _, l, r) -> 1;
+     ?&Empty() -> 0;);
+}
 
+template<typename k, typename v, int (*cmp)(k, k)>
+v mapGet(map<k, v, cmp> ?m, k key) {
+  return match (m)
+    (?&Node(?&key1, _, l, r) @when(cmp(key, key1) < 0) -> mapGet(l, key);
+     ?&Node(?&key1, _, l, r) @when(cmp(key, key1) > 0) -> mapGet(r, key);
+     ?&Node(_, ?&value, l, r) -> value;
+     ?&Empty() -> ({
+         fprintf(stderr, "Key %s not in map\n", show(key).text);
+         exit(1);
+         // Unreachable, needed since pattern RHS must have type v
+         (v){0};
+       }););
+}
+
+template<typename k, typename v, int (*cmp)(k, k)>
+map<k, v, cmp> ?mapInsert(void *(*alloc)(size_t), map<k, v, cmp> ?m, k key, v value) {
+  return match (m)
+    (?&Node(k@?&key1, v, l, r) @when(cmp(key, key1) < 0) ->
+       boundvar(Node(k, v, mapInsert(alloc, l, key, value), r), alloc);
+     ?&Node(k@?&key1, v, l, r) @when(cmp(key, key1) > 0) ->
+       boundvar(Node(k, v, l, mapInsert(alloc, r, key, value)), alloc);
+     ?&Node(_, _, l, r) ->
+       boundvar(Node(boundvar(key, alloc), boundvar(value, alloc), l, r), alloc);
+     ?&Empty() ->
+       // m is empty
+       boundvar(Node(boundvar(key, alloc), boundvar(value, alloc), m, m), alloc););
+}
+
+template<typename k, typename v, int (*cmp)(k, k)>
+map<k, v, cmp> ?mapMerge(void *(*alloc)(size_t), map<k, v, cmp> ?m1, map<k, v, cmp> ?m2) {
+  return match (m1, m2)
+    (?&Node(k1@?&key1, v1, l1, r1), ?&Node(k2@?&key2, _, _, _) @when(cmp(key1, key2) < 0) ->
+       boundvar(Node(k1, v1, mapMerge(alloc, m2, l1), r1), alloc);
+     ?&Node(k1@?&key1, v1, l1, r1), ?&Node(k2@?&key2, _, _, _) @when(cmp(key1, key2) > 0) ->
+       boundvar(Node(k1, v1, l1, mapMerge(alloc, m2, r1)), alloc);
+     ?&Node(k1, v1, l1, r1), ?&Node(k2, v2, l2, r2) ->
+       // Arbitrarily pick v1 to avoid a duplicate
+       boundvar(Node(k1, v1, mapMerge(alloc, l1, l2), mapMerge(alloc, r1, r2)), alloc);
+     ?&Empty(), _ -> m2;
+     _, ?&Empty() -> m1;);
+}
+
+template<typename k, typename v, int (*cmp)(k, k)>
+map<k, v, cmp> ?mapDelete(void *(*alloc)(size_t), map<k, v, cmp> ?m, k key) {
+  return match (m)
+    (?&Node(k@?&key1, v, l, r) @when(cmp(key, key1) < 0) ->
+       boundvar(Node(k, v, mapDelete(alloc, l, key), r), alloc);
+     ?&Node(k@?&key1, v, l, r) @when(cmp(key, key1) > 0) ->
+       boundvar(Node(k, v, l, mapDelete(alloc, r, key)), alloc);
+     ?&Node(_, _, l, r) -> mapMerge(alloc, l, r););
+}
 
 #endif
