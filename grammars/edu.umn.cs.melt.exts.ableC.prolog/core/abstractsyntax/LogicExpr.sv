@@ -295,7 +295,7 @@ Expr ::= allocator::Expr allowUnificationTypes::Boolean t::Type e::Expr
   local tmpName::String = s"_tmp_var_${toString(genInt())}";
   return
     case allowUnificationTypes, t of
-    | false, extType(_, varType(_)) -> boundVarExpr(e, allocator, location=builtin)
+    | false, extType(_, varType(_)) -> boundVarExpr(allocator, e, location=builtin)
     | _, _ -> e
     end;
 }

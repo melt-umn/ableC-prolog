@@ -4,7 +4,7 @@ abstract production logicDecl
 top::Decl ::= lss::LogicStmts loc::Location
 {
   propagate substituted;
-  --top.pp = pp"prolog ${braces(nestlines(2, terminate(line(), lss.pps)))}";
+  top.pp = pp"prolog ${braces(nestlines(2, terminate(line(), lss.pps)))}";
   
   -- Logic decls are *type checked* in a new scope to distinguish currently specifiable predicates,
   -- but defs are inserted at the global scope via defsDecl.

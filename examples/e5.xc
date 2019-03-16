@@ -55,15 +55,15 @@ void test(Expr ?e) {
 
 Expr ?randTerm(unsigned depth, unsigned numVars) {
   if (depth == 0) {
-    return boundvar(varE(boundvar("a" + str(rand() % numVars), GC_malloc)), GC_malloc);
+    return boundvar(GC_malloc, varE(boundvar(GC_malloc, "a" + str(rand() % numVars))));
   } else {
     switch (rand() % 3) {
     case 0:
-      return boundvar(andE(randTerm(depth - 1, numVars), randTerm(depth - 1, numVars)), GC_malloc);
+      return boundvar(GC_malloc, andE(randTerm(depth - 1, numVars), randTerm(depth - 1, numVars)));
     case 1:
-      return boundvar(orE(randTerm(depth - 1, numVars), randTerm(depth - 1, numVars)), GC_malloc);
+      return boundvar(GC_malloc, orE(randTerm(depth - 1, numVars), randTerm(depth - 1, numVars)));
     case 2:
-      return boundvar(notE(randTerm(depth - 1, numVars)), GC_malloc);
+      return boundvar(GC_malloc, notE(randTerm(depth - 1, numVars)));
     }
   }
 }
