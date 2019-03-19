@@ -108,6 +108,7 @@ concrete productions top::Head_c
       fromMaybe([], lookupBy(stringEq, id.ast.name, predicateTemplateParams));
     -- Open a new scope containing templateParams
     context = (templateParams ++ head(context)) :: context;
+    context = addIdentsToScope(le.declaredIdents, Identifier_t, context);
   }
 
 closed nonterminal Body_c with location, ast<[Goal]>;
@@ -123,16 +124,20 @@ closed nonterminal Goal_c with location, ast<Goal>;
 concrete productions top::Goal_c
 | id::Identifier_c LessThan_t tas::TemplateArguments_c '>' LParen_t les::LogicExprs_c ')'
   { top.ast = predicateGoal(id.ast, tas.ast, foldLogicExpr(les.ast), location=top.location); }
+  action { context = addIdentsToScope(les.declaredIdents, Identifier_t, context); }
 | id::Identifier_c LessThan_t tas::TemplateArguments_c '>' LParen_t ')'
   { top.ast = predicateGoal(id.ast, tas.ast, nilLogicExpr(), location=top.location); }
 | id::Identifier_c LParen_t les::LogicExprs_c ')'
   { top.ast = inferredPredicateGoal(id.ast, foldLogicExpr(les.ast), location=top.location); }
+  action { context = addIdentsToScope(les.declaredIdents, Identifier_t, context); }
 | id::Identifier_c LParen_t ')'
   { top.ast = inferredPredicateGoal(id.ast, nilLogicExpr(), location=top.location); }
 | le::LogicExpr_c 'is' e::PrologPrimaryExpr_c
   { top.ast = isGoal(le.ast, e.ast, location=top.location); }
+  action { context = addIdentsToScope(le.declaredIdents, Identifier_t, context); }
 | le1::LogicExpr_c '=' le2::LogicExpr_c
   { top.ast = equalsGoal(le1.ast, le2.ast, location=top.location); }
+  action { context = addIdentsToScope(le1.declaredIdents ++ le2.declaredIdents, Identifier_t, context); }
 | le1::LogicExpr_c '\=' le2::LogicExpr_c
   { top.ast = notEqualsGoal(le1.ast, le2.ast, location=top.location); }
 | e1::PrologPrimaryExpr_c '=:=' e2::PrologPrimaryExpr_c
@@ -152,22 +157,37 @@ concrete productions top::Goal_c
 | Not_t
   { top.ast = cutGoal(location=top.location); }
 
-closed nonterminal LogicExprs_c with location, ast<[LogicExpr]>;
+closed nonterminal LogicExprs_c with location, ast<[LogicExpr]>, declaredIdents;
 
 concrete productions top::LogicExprs_c
 | h::LogicExpr_c ',' t::LogicExprs_c
-  { top.ast = h.ast :: t.ast; }
+  {
+    top.ast = h.ast :: t.ast;
+    top.declaredIdents = h.declaredIdents ++ t.declaredIdents;
+  }
 | h::LogicExpr_c
-  { top.ast = [h.ast]; }
+  {
+    top.ast = [h.ast];
+    top.declaredIdents = [];
+  }
 
-closed nonterminal LogicExpr_c with location, ast<LogicExpr>;
+closed nonterminal LogicExpr_c with location, ast<LogicExpr>, declaredIdents;
+
+aspect default production
+top::LogicExpr_c ::=
+{
+  top.declaredIdents = [];
+}
 
 concrete productions top::LogicExpr_c
 | id::Identifier_t
-  { top.ast =
+  {
+    top.ast =
       if id.lexeme == "_"
       then wildcardLogicExpr(location=top.location)
-      else varLogicExpr(fromId(id), location=top.location); }
+      else nameLogicExpr(fromId(id), location=top.location);
+    top.declaredIdents = [fromId(id)];
+  }
 | c::PrologConstant_c
   { top.ast = constLogicExpr(c.ast, location=top.location); }
 | '-' c::PrologConstant_c
@@ -175,7 +195,10 @@ concrete productions top::LogicExpr_c
 | sc::StringConstant_t
   { top.ast = constLogicExpr(stringLiteral(sc.lexeme, location=sc.location), location=top.location); }
 | id::Identifier_c LParen_t le::LogicExprs_c ')'
-  { top.ast = constructorLogicExpr(id.ast, foldLogicExpr(le.ast), location=top.location); }
+  {
+    top.ast = constructorLogicExpr(id.ast, foldLogicExpr(le.ast), location=top.location);
+    top.declaredIdents = le.declaredIdents;
+  }
 | id::Identifier_c LParen_t ')'
   { top.ast = constructorLogicExpr(id.ast, nilLogicExpr(), location=top.location); }
 -- Seed follow set with some extra terminals useful for extensions,

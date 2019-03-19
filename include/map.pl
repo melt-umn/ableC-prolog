@@ -5,7 +5,7 @@ mapContains(Node(K1, _, L, R), K2, V) :- (cmp(K1, K2)) > 0, !, mapContains(R, K2
 mapContains(Node(K1, _, L, R), K2, V) :- (cmp(K1, K2)) < 0, !, mapContains(L, K2, V).
 
 mapInsert(Empty(), K, V, Node(K, V, Empty(), Empty())) :- !.
-mapInsert(Node(K1, V1, L, R), K2, V2, Node(K, V2, L, R)) :- (cmp(K1, K2)) =:= 0, !.
+mapInsert(Node(K1, V1, L, R), K2, V2, Node(K1, V2, L, R)) :- (cmp(K1, K2)) =:= 0, !.
 mapInsert(Node(K1, V1, L, R), K2, V2, Node(K1, V1, M, R)) :- (cmp(K1, K2)) < 0, !, mapInsert(L, K2, V2, M).
 mapInsert(Node(K1, V1, L, R), K2, V2, Node(K1, V1, L, M)) :- (cmp(K1, K2)) > 0, !, mapInsert(R, K2, V2, M).
 
