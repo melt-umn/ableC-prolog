@@ -56,5 +56,13 @@ int main() {
   };
   if (count != 10) return 5;
 
+  count = 0;
+  query subset(L, [1, 2, 3, 4]) {
+    printf("%s\n", show(L).text);
+    (*p_count)++;
+    return false;
+  };
+  if (count != 16) return 6;
+
   return 0;
 }
