@@ -16,8 +16,9 @@ prolog {
   emptyMap<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1);
   mapContains<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k ?key, v ?value);
   mapInsert<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k ?key, v ?value, map<k, v, cmp> ?m2);
-  mapMerge<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, map<k, v, cmp> ?m2, map<k, v, cmp> ?m3);
   mapDelete<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k ?key, map<k, v, cmp> ?m2);
+  mapSelectMin<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k ?key, v? value, map<k, v, cmp> ?m2);
+  mapSelectMax<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k ?key, v? value, map<k, v, cmp> ?m2);
   mapKeys<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m, list<k ?> ?keys, v? value);
   #include "map.pl"
 }
@@ -30,8 +31,8 @@ map<k, v, cmp> ?emptyMap(void *(*alloc)(size_t)) {
 template<typename k, typename v, int (*cmp)(k, k)>
 _Bool mapContains(map<k, v, cmp> ?m, k key) {
   return match (m)
-    (?&Node(?&key1, _, l, r) @when(cmp(key, key1) < 0) -> mapContains(l, key);
-     ?&Node(?&key1, _, l, r) @when(cmp(key, key1) > 0) -> mapContains(r, key);
+    (?&Node(?&key1, _, l, r) @when(cmp(key1, key) > 0) -> mapContains(l, key);
+     ?&Node(?&key1, _, l, r) @when(cmp(key1, key) < 0) -> mapContains(r, key);
      ?&Node(_, _, l, r) -> 1;
      ?&Empty() -> 0;);
 }
@@ -39,8 +40,8 @@ _Bool mapContains(map<k, v, cmp> ?m, k key) {
 template<typename k, typename v, int (*cmp)(k, k)>
 v mapGet(map<k, v, cmp> ?m, k key) {
   return match (m)
-    (?&Node(?&key1, _, l, r) @when(cmp(key, key1) < 0) -> mapGet(l, key);
-     ?&Node(?&key1, _, l, r) @when(cmp(key, key1) > 0) -> mapGet(r, key);
+    (?&Node(?&key1, _, l, r) @when(cmp(key1, key) > 0) -> mapGet(l, key);
+     ?&Node(?&key1, _, l, r) @when(cmp(key1, key) < 0) -> mapGet(r, key);
      ?&Node(_, ?&value, l, r) -> value;
      ?&Empty() -> ({
          fprintf(stderr, "Key %s not in map\n", show(key).text);
@@ -53,9 +54,9 @@ v mapGet(map<k, v, cmp> ?m, k key) {
 template<typename k, typename v, int (*cmp)(k, k)>
 map<k, v, cmp> ?mapInsert(void *(*alloc)(size_t), map<k, v, cmp> ?m, k key, v value) {
   return match (m)
-    (?&Node(k@?&key1, v, l, r) @when(cmp(key, key1) < 0) ->
+    (?&Node(k@?&key1, v, l, r) @when(cmp(key1, key) > 0) ->
        boundvar(alloc, Node(k, v, mapInsert(alloc, l, key, value), r));
-     ?&Node(k@?&key1, v, l, r) @when(cmp(key, key1) > 0) ->
+     ?&Node(k@?&key1, v, l, r) @when(cmp(key1, key) < 0) ->
        boundvar(alloc, Node(k, v, l, mapInsert(alloc, r, key, value)));
      ?&Node(_, _, l, r) ->
        boundvar(alloc, Node(boundvar(alloc, key), boundvar(alloc, value), l, r));
@@ -65,27 +66,39 @@ map<k, v, cmp> ?mapInsert(void *(*alloc)(size_t), map<k, v, cmp> ?m, k key, v va
 }
 
 template<typename k, typename v, int (*cmp)(k, k)>
-map<k, v, cmp> ?mapMerge(void *(*alloc)(size_t), map<k, v, cmp> ?m1, map<k, v, cmp> ?m2) {
-  return match (m1, m2)
-    (?&Node(k1@?&key1, v1, l1, r1), ?&Node(k2@?&key2, _, _, _) @when(cmp(key1, key2) < 0) ->
-       boundvar(alloc, Node(k1, v1, mapMerge(alloc, m2, l1), r1));
-     ?&Node(k1@?&key1, v1, l1, r1), ?&Node(k2@?&key2, _, _, _) @when(cmp(key1, key2) > 0) ->
-       boundvar(alloc, Node(k1, v1, l1, mapMerge(alloc, m2, r1)));
-     ?&Node(k1, v1, l1, r1), ?&Node(k2, v2, l2, r2) ->
-       // Arbitrarily pick v1 to avoid a duplicate
-       boundvar(alloc, Node(k1, v1, mapMerge(alloc, l1, l2), mapMerge(alloc, r1, r2)));
-     ?&Empty(), _ -> m2;
-     _, ?&Empty() -> m1;);
+k mapGetMaxKey(map<k, v, cmp> ?m) {
+  return match (m)
+    (?&Node(?&key, _, _, ?&Empty()) -> key;
+     ?&Node(_, _, _, r) -> mapGetMaxKey(r);
+     ?&Empty() -> ({
+         fprintf(stderr, "Map is empty\n");
+         exit(1);
+         // Unreachable, needed since pattern RHS must have type k
+         (k){0};
+       }););
 }
 
 template<typename k, typename v, int (*cmp)(k, k)>
 map<k, v, cmp> ?mapDelete(void *(*alloc)(size_t), map<k, v, cmp> ?m, k key) {
   return match (m)
-    (?&Node(k@?&key1, v, l, r) @when(cmp(key, key1) < 0) ->
+    (?&Node(k@?&key1, v, l, r) @when(cmp(key1, key) > 0) ->
        boundvar(alloc, Node(k, v, mapDelete(alloc, l, key), r));
-     ?&Node(k@?&key1, v, l, r) @when(cmp(key, key1) > 0) ->
+     ?&Node(k@?&key1, v, l, r) @when(cmp(key1, key) < 0) ->
        boundvar(alloc, Node(k, v, l, mapDelete(alloc, r, key)));
-     ?&Node(_, _, l, r) -> mapMerge(alloc, l, r););
+     ?&Node(_, _, ?&Empty(), r) -> r;
+     ?&Node(_, _, l, r) -> ({
+         k maxKey = mapGetMaxKey(l);
+         boundvar(alloc,
+                  Node(boundvar(alloc, maxKey),
+                       boundvar(alloc, mapGet(l, maxKey)),
+                       mapDelete(alloc, l, maxKey), r));
+       });
+     ?&Empty() -> ({
+         fprintf(stderr, "Key %s not in map\n", show(key).text);
+         exit(1);
+         // Unreachable, needed since pattern RHS must have type map<k, v, cmp> ?
+         (map<k, v, cmp> ?){0};
+       }););
 }
 
 #endif
