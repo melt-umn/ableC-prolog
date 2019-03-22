@@ -20,6 +20,6 @@ mapSelectMin(Node(K1, V1, L1, R), K2, V2, Node(K1, V1, L2, R)) :- mapSelectMin(L
 mapSelectMax(Node(K, V, L, Empty()), K, V, L) :- !.
 mapSelectMax(Node(K1, V1, L, R1), K2, V2, Node(K1, V1, L, R2)) :- mapSelectMax(R1, K2, V2, R2).
 
-mapKeys(Node(K, V, L, R), [K | KS], V) :- !, mapKeys(L, LKS, V), mapKeys(R, RKS, V), append(LKS, RKS, KS).
-mapKeys(Node(_, _, L, R), KS, V) :- mapKeys(L, LKS, V), mapKeys(R, RKS, V), append(LKS, RKS, KS).
+mapKeys(Node(K, V, L, R), [K | KS], V) :- mapKeys(L, LKS, V), mapKeys(R, RKS, V), append(LKS, RKS, KS).
+mapKeys(Node(_, V1, L, R), KS, V2) :- V1 =\= V2, mapKeys(L, LKS, V2), mapKeys(R, RKS, V2), append(LKS, RKS, KS).
 mapKeys(Empty(), [], _).
