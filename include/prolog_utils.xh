@@ -1,5 +1,8 @@
 #include <unification.xh>
 
+#ifndef _PROLOG_UTILS_H
+#define _PROLOG_UTILS_H
+
 #define mod(a, b) ((a) % (b))
 
 // Non-list utility predicates
@@ -12,3 +15,5 @@ prolog {
   betweenU(L, H, L).
   betweenU(L, H, N) :- L1 is (L + 1), L1 =< H, betweenU(L1, H, N).
 }
+
+#endif
