@@ -1,0 +1,104 @@
+#include <unification.xh>
+#include <list.xh>
+#include <stdlib.h>
+#include <stdio.h>
+
+#ifndef _MAP_XH
+#define _MAP_XH
+
+template<typename k, typename v, int (*cmp)(k, k)>
+datatype map {
+  Node(k ?key, v ?value, map<k, v, cmp> ?left, map<k, v, cmp> ?right);
+  Empty();
+};
+
+prolog {
+  emptyMap<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1);
+  mapContains<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k ?key, v ?value);
+  mapInsert<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k ?key, v ?value, map<k, v, cmp> ?m2);
+  mapDelete<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k ?key, map<k, v, cmp> ?m2);
+  mapSelectMin<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k ?key, v? value, map<k, v, cmp> ?m2);
+  mapSelectMax<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k ?key, v? value, map<k, v, cmp> ?m2);
+  mapKeys<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m, list<k ?> ?keys, v? value);
+  #include "map.pl"
+}
+
+template<typename k, typename v, int (*cmp)(k, k)>
+map<k, v, cmp> ?emptyMap(void *(*alloc)(size_t)) {
+  return boundvar(alloc, Empty<k, v, cmp>());
+}
+
+template<typename k, typename v, int (*cmp)(k, k)>
+_Bool mapContains(map<k, v, cmp> ?m, k key) {
+  return match (m)
+    (?&Node(?&key1, _, l, r) @when(cmp(key1, key) > 0) -> mapContains(l, key);
+     ?&Node(?&key1, _, l, r) @when(cmp(key1, key) < 0) -> mapContains(r, key);
+     ?&Node(_, _, l, r) -> 1;
+     ?&Empty() -> 0;);
+}
+
+template<typename k, typename v, int (*cmp)(k, k)>
+v mapGet(map<k, v, cmp> ?m, k key) {
+  return match (m)
+    (?&Node(?&key1, _, l, r) @when(cmp(key1, key) > 0) -> mapGet(l, key);
+     ?&Node(?&key1, _, l, r) @when(cmp(key1, key) < 0) -> mapGet(r, key);
+     ?&Node(_, ?&value, l, r) -> value;
+     ?&Empty() -> ({
+         fprintf(stderr, "Key %s not in map\n", show(key).text);
+         exit(1);
+         // Unreachable, needed since pattern RHS must have type v
+         (v){0};
+       }););
+}
+
+template<typename k, typename v, int (*cmp)(k, k)>
+map<k, v, cmp> ?mapInsert(void *(*alloc)(size_t), map<k, v, cmp> ?m, k key, v value) {
+  return match (m)
+    (?&Node(k@?&key1, v, l, r) @when(cmp(key1, key) > 0) ->
+       boundvar(alloc, Node(k, v, mapInsert(alloc, l, key, value), r));
+     ?&Node(k@?&key1, v, l, r) @when(cmp(key1, key) < 0) ->
+       boundvar(alloc, Node(k, v, l, mapInsert(alloc, r, key, value)));
+     ?&Node(_, _, l, r) ->
+       boundvar(alloc, Node(boundvar(alloc, key), boundvar(alloc, value), l, r));
+     ?&Empty() ->
+       // m is empty
+       boundvar(alloc, Node(boundvar(alloc, key), boundvar(alloc, value), m, m)););
+}
+
+template<typename k, typename v, int (*cmp)(k, k)>
+k mapGetMaxKey(map<k, v, cmp> ?m) {
+  return match (m)
+    (?&Node(?&key, _, _, ?&Empty()) -> key;
+     ?&Node(_, _, _, r) -> mapGetMaxKey(r);
+     ?&Empty() -> ({
+         fprintf(stderr, "Map is empty\n");
+         exit(1);
+         // Unreachable, needed since pattern RHS must have type k
+         (k){0};
+       }););
+}
+
+template<typename k, typename v, int (*cmp)(k, k)>
+map<k, v, cmp> ?mapDelete(void *(*alloc)(size_t), map<k, v, cmp> ?m, k key) {
+  return match (m)
+    (?&Node(k@?&key1, v, l, r) @when(cmp(key1, key) > 0) ->
+       boundvar(alloc, Node(k, v, mapDelete(alloc, l, key), r));
+     ?&Node(k@?&key1, v, l, r) @when(cmp(key1, key) < 0) ->
+       boundvar(alloc, Node(k, v, l, mapDelete(alloc, r, key)));
+     ?&Node(_, _, ?&Empty(), r) -> r;
+     ?&Node(_, _, l, r) -> ({
+         k maxKey = mapGetMaxKey(l);
+         boundvar(alloc,
+                  Node(boundvar(alloc, maxKey),
+                       boundvar(alloc, mapGet(l, maxKey)),
+                       mapDelete(alloc, l, maxKey), r));
+       });
+     ?&Empty() -> ({
+         fprintf(stderr, "Key %s not in map\n", show(key).text);
+         exit(1);
+         // Unreachable, needed since pattern RHS must have type map<k, v, cmp> ?
+         (map<k, v, cmp> ?){0};
+       }););
+}
+
+#endif

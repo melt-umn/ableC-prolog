@@ -22,15 +22,22 @@ top::Expr ::= gs::Goals body::Stmt
   gs.continuationTransformIn = ableC_Expr { _success_continuation };
   local fwrd::Expr =
     ableC_Expr {
-      proto_typedef unification_trail;
-      ({$Stmt{decStmt(varDecls)}
+      proto_typedef unification_trail, jmp_buf;
+      ({unification_trail _trail = new_trail();
+        $Stmt{decStmt(varDecls)}
         closure<() -> _Bool> _success_continuation =
           lambda allocate(alloca) () -> _Bool { $Stmt{decStmt(body)} };
-        unification_trail _trail = new_trail();
-        _Bool _result = $Expr{gs.transform};
-        undo_trail(_trail, 0);
-        delete _trail;
-        _result;})
+        
+        // If a failure after cut occurs, control is returned to this point with longjmp
+        jmp_buf _cut_buffer;
+        setjmp(_cut_buffer)?
+         ({undo_trail(_trail, 0);
+           delete _trail;
+           0;}) :
+         ({_Bool _result = $Expr{gs.transform};
+           undo_trail(_trail, 0);
+           delete _trail;
+           _result;});})
     };
   
   forwards to mkErrorCheck(localErrors, fwrd);

@@ -1,28 +1,28 @@
 #include <unification.xh>
 #include <stdbool.h>
 
-template<a>
+template<typename a>
 datatype Tree {
   node(Tree<a> ?left, Tree<a> ?right);
   leaf(a ?val);
 };
 
 prolog {
-  subtree<a>(Tree<a> ?tree1, Tree<a> ?tree2);
+  subtree<typename a>(Tree<a> ?tree1, Tree<a> ?tree2);
   subtree(T, T).
   subtree(node(T1, _), T2) :- subtree(T1, T2).
   subtree(node(_, T1), T2) :- subtree(T1, T2).
   
-  isleaf<a>(Tree<a> ?tree, a ?val);
+  isleaf<typename a>(Tree<a> ?tree, a ?val);
   isleaf(T, V) :- subtree(T, leaf(V)).
 
-  numleaves<a>(Tree<a> ?tree, a ?val, unsigned ?count);
+  numleaves<typename a>(Tree<a> ?tree, a ?val, unsigned ?count);
   numleaves(node(T1, T2), V, C) :- numleaves(T1, V, C1), numleaves(T2, V, C2), C is (C1 + C2).
   numleaves(leaf(V), V, 1u) :- !.
   numleaves(leaf(_), _, 0u).
 }
 
-template<a>
+template<typename a>
 unsigned count_leaves(Tree<a> ?tree, a val) {
   unsigned count = 0, *count_p = &count;
   query T is tree, V is val, isleaf(T, V) {

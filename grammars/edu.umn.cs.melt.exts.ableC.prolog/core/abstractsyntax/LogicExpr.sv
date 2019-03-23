@@ -282,11 +282,7 @@ top::LogicExpr ::= n::Name les::LogicExprs
       -- TODO: Interfering hack to call the constructor for template datatypes
       | templatedType(_, _, args, _) ->
         ableC_Expr {
-          inst $name{n.name}<$TypeNames{
-            foldr(
-              consTypeName, nilTypeName(),
-              map(\ t::Type -> typeName(directTypeExpr(t.canonicalType), baseTypeExpr()), args))
-          }>($Exprs{les.transform})
+          inst $name{n.name}<$TemplateArgNames{args.argNames}>($Exprs{les.transform})
         }
       | _ -> ableC_Expr { $name{n.name}($Exprs{les.transform}) }
       end);
@@ -299,7 +295,7 @@ Expr ::= allocator::Expr allowUnificationTypes::Boolean t::Type e::Expr
   local tmpName::String = s"_tmp_var_${toString(genInt())}";
   return
     case allowUnificationTypes, t of
-    | false, extType(_, varType(_)) -> boundVarExpr(e, allocator, location=builtin)
+    | false, extType(_, varType(_)) -> boundVarExpr(allocator, e, location=builtin)
     | _, _ -> e
     end;
 }

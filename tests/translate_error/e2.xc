@@ -1,7 +1,7 @@
 #include <unification.xh>
 
 prolog {
-  foo<a>(a? x, a? y, int z);
+  foo<typename a>(a? x, a? y, int z);
   foo(A, A, 1).
 }
 

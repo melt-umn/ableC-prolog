@@ -3,13 +3,14 @@ grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 import silver:util:raw:treemap as tm;
 
 -- Represents a type parameter
-abstract production typeParamValueItem
-top::ValueItem ::= t::Type loc::Location
+abstract production templateParamValueItem
+top::ValueItem ::= t::Type isTypeParam::Boolean loc::Location
 {
   top.pp = pp"type param";
   top.typerep = t;
   top.sourceLocation = loc;
-  top.isItemType = true;
+  top.isItemType = isTypeParam;
+  top.isItemValue = !isTypeParam;
 }
 
 -- Represents a unification variable
@@ -50,14 +51,14 @@ function makeUnwrappedVarDefs
       tm:toList(head(env.values)));
 }
 
-closed nonterminal PredicateItem with paramNames, typereps, typeParams, params, sourceLocation;
+closed nonterminal PredicateItem with paramNames, typereps, templateParams, params, sourceLocation;
 
 abstract production predicateItem
 top::PredicateItem ::= d::Decorated PredicateDecl
 {
   top.paramNames = d.paramNames;
   top.typereps = d.typereps;
-  top.typeParams = d.typeParams;
+  top.templateParams = d.templateParams;
   top.params = d.params;
   top.sourceLocation = d.location;
 }
@@ -67,7 +68,7 @@ top::PredicateItem ::=
 {
   top.paramNames = [];
   top.typereps = [];
-  top.typeParams = nilName();
+  top.templateParams = nilTemplateParameter();
   top.params = nilParameters();
   top.sourceLocation = loc("nowhere", -1, -1, -1, -1, -1, -1);
 }

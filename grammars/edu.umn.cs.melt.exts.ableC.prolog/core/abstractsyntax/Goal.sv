@@ -1,5 +1,7 @@
 grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 
+import core:monad;
+
 synthesized attribute continuationTransform::Expr;
 inherited attribute continuationTransformIn::Expr;
 
@@ -45,7 +47,7 @@ nonterminal Goal with location, env, pp, errors, defs, transform<Expr>, transfor
 flowtype Goal = decorate {env, transformIn, continuationTransformIn}, pp {}, errors {env}, defs {env}, transform {decorate}, substituted {substitutions};
 
 abstract production predicateGoal
-top::Goal ::= n::Name ts::TypeNames les::LogicExprs
+top::Goal ::= n::Name ts::TemplateArgNames les::LogicExprs
 {
   propagate substituted;
   top.pp = pp"${n.pp}<${ppImplode(pp", ", ts.pps)}>(${ppImplode(pp", ", les.pps)})";
@@ -53,26 +55,24 @@ top::Goal ::= n::Name ts::TypeNames les::LogicExprs
   top.defs := ts.defs ++ les.defs;
   top.transform =
     ableC_Expr {
-      inst $name{s"_predicate_${n.name}"}<$TypeNames{ts}>(
+      inst $name{s"_predicate_${n.name}"}<$TemplateArgNames{ts}>(
         $Exprs{les.transform}, _trail, $Expr{top.continuationTransformIn})
     };
   
-  local typeParams::Names = n.predicateItem.typeParams;
-  typeParams.instParamTypes = ts.typereps;
+  local templateParams::TemplateParameters = n.predicateItem.templateParams;
   
-  local params::Parameters = n.predicateItem.params;
-  params.env =
-    addEnv(
-      -- Add type args to global scope so that they are visible within template instantiations
-      [globalDefsDef(typeParams.typeParamInstDefs)],
-      -- NOT the env at the declaration site, but this is equivalent (and more efficient.)
-      openScopeEnv(globalEnv(addEnv(ts.defs, ts.env))));
+  ts.edu:umn:cs:melt:exts:ableC:templating:abstractsyntax:paramNames = templateParams.names;
+  ts.paramKinds = templateParams.kinds;
+  ts.substEnv = [];
+  
+  local params::Parameters = substParameters(ts.substDefs, n.predicateItem.params);
+  -- NOT the env at the declaration site, but this is equivalent (and more efficient.)
+  params.env = openScopeEnv(globalEnv(addEnv(ts.defs, ts.env)));
   params.returnType = nothing();
   params.position = 0;
   
   top.defs <- foldr(consDefs, nilDefs(), params.defs).canonicalDefs;
   
-  ts.returnType = nothing();
   les.env = addEnv(ts.defs ++ params.defs, ts.env);
   les.expectedTypes = map(\ t::Type -> t.canonicalType, params.typereps);
   les.allowUnificationTypes = false;
@@ -80,20 +80,17 @@ top::Goal ::= n::Name ts::TypeNames les::LogicExprs
   
   top.errors <- n.predicateLookupCheck;
   top.errors <-
-    if null(n.predicateLookupCheck) && ts.count != typeParams.count
+    if null(n.predicateLookupCheck) && ts.count != templateParams.count
     then [err(
             n.location,
             s"Wrong number of type arguments for ${n.name}, " ++
-            s"expected ${toString(typeParams.count)} but got ${toString(ts.count)}")]
+            s"expected ${toString(templateParams.count)} but got ${toString(ts.count)}")]
     else [];
   top.errors <-
     if null(n.predicateLookupCheck) && les.count != params.count
     then [err(top.location, s"Wrong number of arguments to predicate ${n.name} (expected ${toString(params.count)}, got ${toString(les.count)})")]
     else [];
-  top.errors <-
-    flatMap(
-      \ t::Type -> decorate t with { otherType = t; }.unifyErrors(n.location, top.env),
-      ts.typereps);
+  top.errors <- ts.argreps.templateArgUnifyErrors(n.location, top.env);
 }
 
 abstract production inferredPredicateGoal
@@ -102,53 +99,63 @@ top::Goal ::= n::Name les::LogicExprs
   propagate substituted;
   top.pp = pp"${n.pp}(${ppImplode(pp", ", les.pps)})";
   top.errors :=
-    if inferredTypeArguments.isJust && !containsErrorType(inferredTypeArguments.fromJust)
+    if inferredTemplateArguments.isJust && !inferredTemplateArguments.fromJust.containsErrorType
     then les.errors
     else [];
   top.defs :=
-    if inferredTypeArguments.isJust
+    if inferredTemplateArguments.isJust
     then les.defs
     else [];
   top.transform =
     ableC_Expr {
-      inst $name{s"_predicate_${n.name}"}<$TypeNames{
-        foldr(
-          consTypeName, nilTypeName(),
-          map(
-           \ t::Type -> typeName(directTypeExpr(t), baseTypeExpr()),
-           inferredTypeArguments.fromJust))}>(
+      inst $name{s"_predicate_${n.name}"}<$TemplateArgNames{
+        inferredTemplateArguments.fromJust.argNames}>(
         $Exprs{les.transform}, _trail, $Expr{top.continuationTransformIn})
     };
   
-  local typeParams::Names = n.predicateItem.typeParams;
-  typeParams.instParamTypes = inferredTypeArguments.fromJust;
+  local templateParams::TemplateParameters = n.predicateItem.templateParams;
+  templateParams.templateParamEnv = globalEnv(top.env);
   
-  local params::Parameters = n.predicateItem.params;
-  params.env =
-    addEnv(
-      -- Add type args to global scope so that they are visible within template instantiations
-      [globalDefsDef(typeParams.typeParamInstDefs)],
-      -- NOT the env at the declaration site, but this is equivalent (and more efficient.)
-      openScopeEnv(globalEnv(top.env)));
+  -- Decorate parameters the first time for template parameter inference...
+  local infParams::Parameters = n.predicateItem.params;
+  -- NOT the env at the declaration site, but this is equivalent (and more efficient.)
+  infParams.env = openScopeEnv(globalEnv(top.env));
+  infParams.returnType = nothing();
+  infParams.position = 0;
+  infParams.partialArgumentTypes = les.maybeTypereps;
+  
+  local inferredTemplateArguments::Maybe<TemplateArgs> =
+    do (bindMaybe, returnMaybe) {
+      tas::[TemplateArg] <-
+        lookupAll(infParams.partialInferredArgs, templateParams.names);
+      return foldr(consTemplateArg, nilTemplateArg(), tas);
+    };
+  
+  local ts::TemplateArgs = inferredTemplateArguments.fromJust;
+  ts.edu:umn:cs:melt:exts:ableC:templating:abstractsyntax:paramNames = templateParams.names;
+  
+  -- ... then re-decorate the substituted parameters to compute the expected types.
+  local params::Parameters = substParameters(ts.substDefs, n.predicateItem.params);
+  -- NOT the env at the declaration site, but this is equivalent (and more efficient.)
+  params.env = openScopeEnv(globalEnv(top.env));
   params.returnType = nothing();
   params.position = 0;
-  params.partialArgumentTypes = les.maybeTypereps;
-  
-  local inferredTypeArguments::Maybe<[Type]> =
-    lookupAll(params.partialInferredTypes, typeParams.names);
   
   top.defs <-
-    if inferredTypeArguments.isJust
+    if inferredTemplateArguments.isJust
     then foldr(consDefs, nilDefs(), params.defs).canonicalDefs
     else [];
   
-  les.expectedTypes = map(\ t::Type -> t.canonicalType, params.typereps);
+  les.expectedTypes =
+    if inferredTemplateArguments.isJust
+    then map(\ t::Type -> t.canonicalType, params.typereps)
+    else [];
   les.allowUnificationTypes = false;
   les.allocator = ableC_Expr { alloca };
   
   top.errors <- n.predicateLookupCheck;
   top.errors <-
-    if null(n.predicateLookupCheck) && (!inferredTypeArguments.isJust || containsErrorType(inferredTypeArguments.fromJust))
+    if null(n.predicateLookupCheck) && (!inferredTemplateArguments.isJust || inferredTemplateArguments.fromJust.containsErrorType)
     then 
       [err(
          top.location,
@@ -164,15 +171,12 @@ top::Goal ::= n::Name les::LogicExprs
                les.maybeTypereps))})")]
     else [];
   top.errors <-
-    if null(n.predicateLookupCheck) && les.count != params.count
-    then [err(top.location, s"Wrong number of arguments to predicate ${n.name} (expected ${toString(params.count)}, got ${toString(les.count)})")]
+    if null(n.predicateLookupCheck) && les.count != infParams.count
+    then [err(top.location, s"Wrong number of arguments to predicate ${n.name} (expected ${toString(infParams.count)}, got ${toString(les.count)})")]
     else [];
   top.errors <-
-    case inferredTypeArguments of
-    | just(ts) ->
-      flatMap(
-        \ t::Type -> decorate t with { otherType = t; }.unifyErrors(n.location, top.env),
-        ts)
+    case inferredTemplateArguments of
+    | just(ts) -> ts.templateArgUnifyErrors(n.location, top.env)
     | nothing() -> []
     end;
 }
@@ -439,6 +443,34 @@ top::Goal ::=
       // is stack-allocated.
       $Expr{top.transformIn} || (longjmp(_cut_buffer, 1), 1)
     };
+}
+
+synthesized attribute templateArgUnifyErrors::([Message] ::= Location Decorated Env) occurs on TemplateArgs, TemplateArg;
+
+aspect production consTemplateArg
+top::TemplateArgs ::= h::TemplateArg t::TemplateArgs
+{
+  top.templateArgUnifyErrors =
+    \ l::Location env::Decorated Env ->
+      h.templateArgUnifyErrors(l, env) ++ t.templateArgUnifyErrors(l, env);
+}
+
+aspect production nilTemplateArg
+top::TemplateArgs ::=
+{
+  top.templateArgUnifyErrors = \ l::Location env::Decorated Env -> [];
+}
+
+aspect default production
+top::TemplateArg ::=
+{
+  top.templateArgUnifyErrors = \ l::Location env::Decorated Env -> [];
+}
+
+aspect production typeTemplateArg
+top::TemplateArg ::= t::Type
+{
+  top.templateArgUnifyErrors = decorate t with {otherType = t;}.unifyErrors;
 }
 
 -- Generate "unwrapped" values corresponding to any variables referenced in the expression.

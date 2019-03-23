@@ -4,20 +4,20 @@
 #ifndef _LIST_XH
 #define _LIST_XH
 
-template<a>
+template<typename a>
 datatype _list_d {
   _Cons(a head, list<a> ?tail);
   _Nil();
 };
 
-template<a>
+template<typename a>
 list<a> ?cons(void *(*alloc)(size_t), a head, list<a> ?tail) {
   list<a> ?result = freevar<list<a>>(*alloc);
   unify(result, (list<a>)_Cons(head, tail));
   return result;
 }
 
-template<a>
+template<typename a>
 list<a> ?nil(void *(*alloc)(size_t)) {
   list<a> ?result = freevar<list<a>>(*alloc);
   unify(result, (list<a>)_Nil<a>());
@@ -25,7 +25,7 @@ list<a> ?nil(void *(*alloc)(size_t)) {
 }
 
 // Only deletes the list itself, and not its contents
-template<a>
+template<typename a>
 void delete_list(void (*dealloc)(void *), list<a> ?l) {
   match (l) {
     ?&[h | t] -> { delete_list(dealloc, t); }
@@ -33,12 +33,12 @@ void delete_list(void (*dealloc)(void *), list<a> ?l) {
   delete_var(dealloc, l);
 }
 
-template<a>
+template<typename a>
 _Bool null(list<a> ?l) {
   return value(l)->tag == _list_d__Nil;
 }
 
-template<a>
+template<typename a>
 a head(list<a> ?l) {
   match (value(l)) {
     [h | t] -> { return h; }
@@ -49,7 +49,7 @@ a head(list<a> ?l) {
   }
 }
 
-template<a>
+template<typename a>
 list<a> ?tail(list<a> ?l) {
   match (value(l)) {
     [h | t] -> { return t; }
@@ -60,14 +60,14 @@ list<a> ?tail(list<a> ?l) {
   }
 }
 
-template<a>
+template<typename a>
 list<a> ?append_list(void *(*alloc)(size_t), list<a> ?l1, list<a> ?l2) {
   return match (value(l1))
     ([h | t] -> newlist(alloc)[h | append_list(alloc, t, l2)];
      [] -> l2;);
 }
 
-template<a>
+template<typename a>
 string _show_list_contents(list<a> l) {
   return match (l)
     ([h | ?&(t@[_ | _])] -> show(h) + ", " + _show_list_contents(t);
@@ -76,12 +76,12 @@ string _show_list_contents(list<a> l) {
      [] -> str(""););
 }
 
-template<a>
+template<typename a>
 string show_list(list<a> l) {
   return "[" + _show_list_contents(l) + "]";
 }
 
-template<a>
+template<typename a>
 _Bool unify_list(list<a> l1, list<a> l2, unification_trail trail) {
   return match (l1, l2)
     ([h1 | t1], [h2 | t2] -> unify(h1, h2, trail) && unify(t1, t2, trail);
@@ -90,21 +90,34 @@ _Bool unify_list(list<a> l1, list<a> l2, unification_trail trail) {
 }
 
 prolog {
-  append<a>(list<a?> ?, list<a?> ?, list<a?> ?);
+  append<typename a>(list<a?> ?, list<a?> ?, list<a?> ?);
   append([], A, A).
   append([H | A], B, [H | C]) :- append(A, B, C).
 
-  reverse<a>(list<a?> ?, list<a?> ?);
+  reverse<typename a>(list<a?> ?, list<a?> ?);
   reverse([], []).
   reverse([H | A], B) :- reverse(A, C), append(C, [H], B).
   
-  length<a>(list<a?> ?, size_t ?);
+  length<typename a>(list<a?> ?, size_t ?);
   length([], 0).
   length([_ | T], N1) :- length(T, N2), N1 is (N2 + 1u).
 
-  member<a>(a ?item, list<a ?> ?l);
+  member<typename a>(a ?item, list<a ?> ?l);
   member(A, [A | _]).
   member(A, [_ | T]) :- member(A, T).
+
+  select<typename a>(a ?item, list<a ?> ?l1, list<a ?> ?l2);
+  select(H, [H | T], T).
+  select(A, [H | T1], [H | T2]) :- select(A, T1, T2).
+
+  subset<typename a>(list<a ?> ?sub, list<a ?> ?l);
+  subset([], []).
+  subset([H | T1], [H | T2]) :- subset(T1, T2).
+  subset(T1, [_ | T2]) :- subset(T1, T2).
+
+  nth<typename a>(list<a?> ?l, size_t ?n, a? item);
+  nth([X | _], 0, X).
+  nth([_ | T], N, X) :- nth(T, N1, X), N1 is (N - 1u).
 }
 
 #endif

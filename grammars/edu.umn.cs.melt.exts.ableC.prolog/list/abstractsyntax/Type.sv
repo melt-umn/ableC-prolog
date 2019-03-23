@@ -8,7 +8,7 @@ top::BaseTypeExpr ::= q::Qualifiers sub::TypeName loc::Location
   propagate substituted;
   top.pp = pp"${terminate(space(), q.pps)}list<${sub.pp}>";
   
-  top.inferredTypes = sub.inferredTypes;
+  top.inferredArgs = sub.inferredArgs;
   sub.argumentType =
     case top.argumentType of
     | extType(_, listType(t)) -> t
@@ -23,7 +23,9 @@ top::BaseTypeExpr ::= q::Qualifiers sub::TypeName loc::Location
   local globalDecls::Decls =
     foldDecl(
       sub.decls ++
-      [templateTypeExprInstDecl(q, name("_list_d", location=builtin), [sub.typerep])]);
+      [templateTypeExprInstDecl(
+         q, name("_list_d", location=builtin),
+         foldTemplateArg([typeTemplateArg(sub.typerep)]))]);
   
   -- Non-interfering overrides for better performance
   top.decls = [injectGlobalDeclsDecl(globalDecls)];
@@ -50,8 +52,8 @@ top::ExtType ::= sub::Type
       top.givenQualifiers,
       adtExtType(
         "_list_d",
-        templateMangledName("_list_d", [sub]),
-        templateMangledRefId("_list_d", [sub]))).host;
+        templateMangledName("_list_d", foldTemplateArg([typeTemplateArg(sub)])),
+        templateMangledRefId("_list_d", foldTemplateArg([typeTemplateArg(sub)])))).host;
   top.baseTypeExpr =
     listTypeExpr(top.givenQualifiers, typeName(sub.baseTypeExpr, sub.typeModifierExpr), builtin);
   top.mangledName = s"list_${sub.mangledName}_";
@@ -62,7 +64,7 @@ top::ExtType ::= sub::Type
       | _ -> false
       end;
   
-  top.maybeRefId = just(templateMangledRefId("_list_d", [sub]));
+  top.maybeRefId = just(templateMangledRefId("_list_d", foldTemplateArg([typeTemplateArg(sub)])));
   
   top.unifyErrors =
     \ l::Location env::Decorated Env ->

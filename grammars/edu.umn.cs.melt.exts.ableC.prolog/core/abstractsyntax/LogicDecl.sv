@@ -4,7 +4,7 @@ abstract production logicDecl
 top::Decl ::= lss::LogicStmts loc::Location
 {
   propagate substituted;
-  top.pp = pp"logic ${braces(nestlines(2, terminate(line(), lss.pps)))}";
+  top.pp = pp"prolog ${braces(nestlines(2, terminate(line(), lss.pps)))}";
   
   -- Logic decls are *type checked* in a new scope to distinguish currently specifiable predicates,
   -- but defs are inserted at the global scope via defsDecl.
@@ -68,7 +68,9 @@ top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
   top.defs := [];
   top.errorDefs := [];
   
-  les.env = addEnv([globalDefsDef(n.predicateItem.typeParams.typeParamDefs)], openScopeEnv(top.env));
+  local templateParams::TemplateParameters = n.predicateItem.templateParams;
+  templateParams.templateParamEnv = globalEnv(top.env);
+  les.env = addEnv([globalDefsDef(templateParams.templateParamDefs)], openScopeEnv(top.env));
   les.paramNamesIn = n.predicateItem.paramNames;
   les.expectedTypes = n.predicateItem.typereps;
   les.allowUnificationTypes = true;

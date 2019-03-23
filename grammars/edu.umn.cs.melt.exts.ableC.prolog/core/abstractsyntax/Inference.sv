@@ -1,16 +1,16 @@
 grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 
-synthesized attribute partialInferredTypes::[Pair<String Type>] occurs on Parameters;
+synthesized attribute partialInferredArgs::[Pair<String TemplateArg>] occurs on Parameters;
 inherited attribute partialArgumentTypes::[Maybe<Type>] occurs on Parameters;
 
 aspect production consParameters
 top::Parameters ::= h::ParameterDecl  t::Parameters
 {
-  top.partialInferredTypes =
+  top.partialInferredArgs =
     case top.partialArgumentTypes of
     | [] -> []
-    | just(_) :: _ -> newH.inferredTypes ++ t.partialInferredTypes
-    | nothing() :: _ -> t.partialInferredTypes
+    | just(_) :: _ -> newH.inferredArgs ++ t.partialInferredArgs
+    | nothing() :: _ -> t.partialInferredArgs
     end;
     
   local newH::ParameterDecl = h;
@@ -24,5 +24,5 @@ top::Parameters ::= h::ParameterDecl  t::Parameters
 aspect production nilParameters
 top::Parameters ::=
 {
-  top.partialInferredTypes = [];
+  top.partialInferredArgs = [];
 }
