@@ -3,7 +3,6 @@ grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 abstract production logicDecl
 top::Decl ::= lss::LogicStmts loc::Location
 {
-  propagate substituted;
   top.pp = pp"prolog ${braces(nestlines(2, terminate(line(), lss.pps)))}";
   
   -- Logic decls are *type checked* in a new scope to distinguish currently specifiable predicates,
@@ -29,13 +28,12 @@ inherited attribute ruleTransformIn::[Pair<String Stmt>];
 
 synthesized attribute errorDefs::[Def] with ++;
 
-nonterminal LogicStmts with pps, errors, errorDefs, env, transform<Decls>, ruleTransform, substitutions, substituted<LogicStmts>;
-flowtype LogicStmts = decorate {env}, pps {}, errors {decorate}, errorDefs {decorate}, transform {decorate}, ruleTransform {decorate}, substituted {substitutions};
+nonterminal LogicStmts with pps, errors, errorDefs, env, transform<Decls>, ruleTransform;
+flowtype LogicStmts = decorate {env}, pps {}, errors {decorate}, errorDefs {decorate}, transform {decorate}, ruleTransform {decorate};
 
 abstract production consLogicStmt
 top::LogicStmts ::= h::LogicStmt t::LogicStmts
 {
-  propagate substituted;
   top.pps = h.pp :: t.pps;
   top.errors := h.errors ++ t.errors;
   top.errorDefs := h.errorDefs ++ t.errorDefs;
@@ -48,7 +46,6 @@ top::LogicStmts ::= h::LogicStmt t::LogicStmts
 abstract production nilLogicStmt
 top::LogicStmts ::=
 {
-  propagate substituted;
   top.pps = [];
   top.errors := [];
   top.errorDefs := [];
@@ -56,13 +53,12 @@ top::LogicStmts ::=
   top.ruleTransform = [];
 }
 
-nonterminal LogicStmt with location, pp, errors, defs, errorDefs, env, transform<Decls>, ruleTransform, ruleTransformIn, substitutions, substituted<LogicStmt>;
-flowtype LogicStmt = decorate {env, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, errorDefs {decorate}, transform {decorate}, ruleTransform {decorate}, substituted {substitutions};
+nonterminal LogicStmt with location, pp, errors, defs, errorDefs, env, transform<Decls>, ruleTransform, ruleTransformIn;
+flowtype LogicStmt = decorate {env, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, errorDefs {decorate}, transform {decorate}, ruleTransform {decorate};
 
 abstract production ruleLogicStmt
 top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
 {
-  propagate substituted;
   top.pp = pp"${n.pp}(${ppImplode(pp", ", les.pps)})${if null(gs.pps) then pp"." else pp" :- ${ppImplode(pp", ", gs.pps)}"}";
   top.errors := les.errors ++ gs.errors;
   top.defs := [];
@@ -106,7 +102,6 @@ top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
 abstract production declLogicStmt
 top::LogicStmt ::= d::PredicateDecl
 {
-  propagate substituted;
   top.pp = d.pp;
   top.errors := d.errors;
   top.defs := d.defs;

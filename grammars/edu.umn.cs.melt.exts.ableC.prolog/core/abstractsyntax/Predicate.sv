@@ -3,13 +3,12 @@ grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 synthesized attribute templateParams::TemplateParameters;
 synthesized attribute params::Parameters;
 
-nonterminal PredicateDecl with location, env, pp, errors, defs, errorDefs, paramNames, typereps, templateParams, params, transform<Decls>, ruleTransformIn, substitutions, substituted<PredicateDecl>;
-flowtype PredicateDecl = decorate {env, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, typereps {decorate}, templateParams {decorate}, params {decorate}, transform {decorate}, substituted {substitutions};
+nonterminal PredicateDecl with location, env, pp, errors, defs, errorDefs, paramNames, typereps, templateParams, params, transform<Decls>, ruleTransformIn;
+flowtype PredicateDecl = decorate {env, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, typereps {decorate}, templateParams {decorate}, params {decorate}, transform {decorate};
 
 abstract production predicateDecl
 top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parameters
 {
-  propagate substituted;
   top.pp = pp"${n.pp}<${ppImplode(text(", "), templateParams.pps)}>(${ppImplode(pp", ", params.pps)});";
   top.errors := templateParams.errors ++ params.errors;
   top.defs := params.defs;

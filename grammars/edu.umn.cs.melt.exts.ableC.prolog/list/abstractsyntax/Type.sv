@@ -5,7 +5,6 @@ import edu:umn:cs:melt:ableC:abstractsyntax:overloadable;
 abstract production listTypeExpr 
 top::BaseTypeExpr ::= q::Qualifiers sub::TypeName loc::Location
 {
-  propagate substituted;
   top.pp = pp"${terminate(space(), q.pps)}list<${sub.pp}>";
   
   top.inferredArgs = sub.inferredArgs;
@@ -45,7 +44,7 @@ top::BaseTypeExpr ::= q::Qualifiers sub::TypeName loc::Location
 abstract production listType
 top::ExtType ::= sub::Type
 {
-  propagate substituted, canonicalType;
+  propagate canonicalType;
   top.pp = pp"list<${sub.lpp}${sub.rpp}>";
   top.host =
     extType(

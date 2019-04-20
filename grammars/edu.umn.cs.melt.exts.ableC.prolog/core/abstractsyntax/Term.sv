@@ -3,7 +3,6 @@ grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 abstract production termExpr
 top::Expr ::= ty::TypeName allocator::Expr le::LogicExpr
 {
-  propagate substituted;
   top.pp = pp"term<${ty.pp}>(${allocator.pp}) {${le.pp}}";
   
   local expectedAllocatorType::Type =
@@ -41,7 +40,6 @@ top::Expr ::= ty::TypeName allocator::Expr le::LogicExpr
 abstract production inferredTermExpr
 top::Expr ::= allocator::Expr le::LogicExpr
 {
-  propagate substituted;
   top.pp = pp"term(${allocator.pp}) {${le.pp}}";
   
   local localErrors::[Message] =

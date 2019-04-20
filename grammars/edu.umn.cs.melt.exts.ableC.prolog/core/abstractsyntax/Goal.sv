@@ -5,13 +5,12 @@ import core:monad;
 synthesized attribute continuationTransform::Expr;
 inherited attribute continuationTransformIn::Expr;
 
-nonterminal Goals with pps, env, errors, defs, transform<Expr>, continuationTransform, continuationTransformIn, substitutions, substituted<Goals>;
-flowtype Goals = decorate {env, continuationTransformIn}, pps {}, errors {env}, defs {env}, transform {decorate}, continuationTransform {decorate}, substituted {substitutions};
+nonterminal Goals with pps, env, errors, defs, transform<Expr>, continuationTransform, continuationTransformIn;
+flowtype Goals = decorate {env, continuationTransformIn}, pps {}, errors {env}, defs {env}, transform {decorate}, continuationTransform {decorate};
 
 abstract production consGoal
 top::Goals ::= h::Goal t::Goals
 {
-  propagate substituted;
   top.pps = h.pp :: t.pps;
   top.errors := h.errors ++ t.errors;
   top.defs := h.defs ++ t.defs;
@@ -29,7 +28,6 @@ top::Goals ::= h::Goal t::Goals
 abstract production nilGoal
 top::Goals ::=
 {
-  propagate substituted;
   top.pps = [];
   top.errors := [];
   top.defs := [];
@@ -43,13 +41,12 @@ Goals ::= les::[Goal]
   return foldr(consGoal, nilGoal(), les);
 }
 
-nonterminal Goal with location, env, pp, errors, defs, transform<Expr>, transformIn<Expr>, continuationTransformIn, substitutions, substituted<Goal>;
-flowtype Goal = decorate {env, transformIn, continuationTransformIn}, pp {}, errors {env}, defs {env}, transform {decorate}, substituted {substitutions};
+nonterminal Goal with location, env, pp, errors, defs, transform<Expr>, transformIn<Expr>, continuationTransformIn;
+flowtype Goal = decorate {env, transformIn, continuationTransformIn}, pp {}, errors {env}, defs {env}, transform {decorate};
 
 abstract production predicateGoal
 top::Goal ::= n::Name ts::TemplateArgNames les::LogicExprs
 {
-  propagate substituted;
   top.pp = pp"${n.pp}<${ppImplode(pp", ", ts.pps)}>(${ppImplode(pp", ", les.pps)})";
   top.errors := ts.errors ++ les.errors;
   top.defs := ts.defs ++ les.defs;
@@ -96,7 +93,6 @@ top::Goal ::= n::Name ts::TemplateArgNames les::LogicExprs
 abstract production inferredPredicateGoal
 top::Goal ::= n::Name les::LogicExprs
 {
-  propagate substituted;
   top.pp = pp"${n.pp}(${ppImplode(pp", ", les.pps)})";
   top.errors :=
     if inferredTemplateArguments.isJust && !inferredTemplateArguments.fromJust.containsErrorType
@@ -184,7 +180,6 @@ top::Goal ::= n::Name les::LogicExprs
 abstract production isGoal
 top::Goal ::= le::LogicExpr e::Expr
 {
-  propagate substituted;
   top.pp = pp"(${le.pp}) is (${e.pp})";
   top.errors := le.errors ++ e.errors;
   top.defs := le.defs ++ e.defs;
@@ -213,7 +208,6 @@ top::Goal ::= le::LogicExpr e::Expr
 abstract production equalsGoal
 top::Goal ::= le1::LogicExpr le2::LogicExpr
 {
-  propagate substituted;
   top.pp = pp"(${le1.pp}) = (${le2.pp})";
   top.errors := le1.errors ++ le2.errors;
   top.defs := le1.defs ++ le2.defs;
@@ -246,7 +240,6 @@ top::Goal ::= le1::LogicExpr le2::LogicExpr
 abstract production notEqualsGoal
 top::Goal ::= le1::LogicExpr le2::LogicExpr
 {
-  propagate substituted;
   top.pp = pp"(${le1.pp}) \= (${le2.pp})";
   
   forwards to notGoal(equalsGoal(le1, le2, location=top.location), location=top.location);
@@ -255,7 +248,6 @@ top::Goal ::= le1::LogicExpr le2::LogicExpr
 abstract production eqGoal
 top::Goal ::= e1::Expr e2::Expr
 {
-  propagate substituted;
   top.pp = pp"(${e1.pp}) =:= (${e2.pp})";
   top.errors := e1.errors ++ e2.errors;
   top.defs := e1.defs ++ e2.defs;
@@ -281,7 +273,6 @@ top::Goal ::= e1::Expr e2::Expr
 abstract production neqGoal
 top::Goal ::= e1::Expr e2::Expr
 {
-  propagate substituted;
   top.pp = pp"(${e1.pp}) =\= (${e2.pp})";
   top.errors := e1.errors ++ e2.errors;
   top.defs := e1.defs ++ e2.defs;
@@ -307,7 +298,6 @@ top::Goal ::= e1::Expr e2::Expr
 abstract production ltGoal
 top::Goal ::= e1::Expr e2::Expr
 {
-  propagate substituted;
   top.pp = pp"(${e1.pp}) < (${e2.pp})";
   top.errors := e1.errors ++ e2.errors;
   top.defs := e1.defs ++ e2.defs;
@@ -333,7 +323,6 @@ top::Goal ::= e1::Expr e2::Expr
 abstract production eltGoal
 top::Goal ::= e1::Expr e2::Expr
 {
-  propagate substituted;
   top.pp = pp"(${e1.pp}) =< (${e2.pp})";
   top.errors := e1.errors ++ e2.errors;
   top.defs := e1.defs ++ e2.defs;
@@ -359,7 +348,6 @@ top::Goal ::= e1::Expr e2::Expr
 abstract production gtGoal
 top::Goal ::= e1::Expr e2::Expr
 {
-  propagate substituted;
   top.pp = pp"(${e1.pp}) > (${e2.pp})";
   top.errors := e1.errors ++ e2.errors;
   top.defs := e1.defs ++ e2.defs;
@@ -385,7 +373,6 @@ top::Goal ::= e1::Expr e2::Expr
 abstract production gteGoal
 top::Goal ::= e1::Expr e2::Expr
 {
-  propagate substituted;
   top.pp = pp"(${e1.pp}) >= (${e2.pp})";
   top.errors := e1.errors ++ e2.errors;
   top.defs := e1.defs ++ e2.defs;
@@ -411,7 +398,6 @@ top::Goal ::= e1::Expr e2::Expr
 abstract production notGoal
 top::Goal ::= g::Goal
 {
-  propagate substituted;
   top.pp = pp"\+ (${g.pp})";
   top.errors := g.errors;
   top.defs := g.defs;
@@ -432,7 +418,6 @@ top::Goal ::= g::Goal
 abstract production cutGoal
 top::Goal ::=
 {
-  propagate substituted;
   top.pp = pp"!";
   top.errors := [];
   top.defs := [];
