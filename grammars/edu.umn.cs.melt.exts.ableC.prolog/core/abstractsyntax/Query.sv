@@ -3,7 +3,6 @@ grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 abstract production queryExpr
 top::Expr ::= gs::Goals body::Stmt
 {
-  propagate substituted;
   top.pp = pp"query ${ppImplode(pp", ", gs.pps)} ${braces(nestlines(2, body.pp))}";
   
   local localErrors::[Message] = gs.errors ++ body.errors;

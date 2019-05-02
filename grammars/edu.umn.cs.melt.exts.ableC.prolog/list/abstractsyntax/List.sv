@@ -3,7 +3,6 @@ grammar edu:umn:cs:melt:exts:ableC:prolog:list:abstractsyntax;
 abstract production constructList
 top::Expr ::= sub::TypeName allocate::Expr init::ListInitializers
 {
-  propagate substituted;
   top.pp = pp"newlist<${sub.pp}>(${allocate.pp})[${ppImplode(pp", ", init.pps)}]";
   
   local localErrors::[Message] =
@@ -24,7 +23,6 @@ top::Expr ::= sub::TypeName allocate::Expr init::ListInitializers
 abstract production inferredConstructList
 top::Expr ::= allocate::Expr init::ListInitializers
 {
-  propagate substituted;
   top.pp = pp"newlist(${allocate.pp})[${ppImplode(pp", ", init.pps)}]";
   
   local localErrors::[Message] =
@@ -41,12 +39,11 @@ top::Expr ::= allocate::Expr init::ListInitializers
 
 autocopy attribute maybeParamType::Maybe<Type>;
 
-nonterminal ListInitializers with pps, env, returnType, maybeParamType, allocator, errors, host<Expr>, substituted<ListInitializers>, substitutions;
+nonterminal ListInitializers with pps, env, returnType, maybeParamType, allocator, errors, host<Expr>;
 
 abstract production consListInitializer
 top::ListInitializers ::= h::Expr t::ListInitializers
 {
-  propagate substituted;
   top.pps = h.pp :: t.pps;
   top.errors := h.errors ++ t.errors;
   
@@ -83,7 +80,6 @@ top::ListInitializers ::= h::Expr t::ListInitializers
 abstract production tailListInitializer
 top::ListInitializers ::= e::Expr
 {
-  propagate substituted;
   top.pps = [pp"| ${e.pp}"]; -- TODO: Fix this
   top.errors := e.errors;
   top.host = decExpr(e, location=builtin);
@@ -97,7 +93,6 @@ top::ListInitializers ::= e::Expr
 abstract production nilListInitializer
 top::ListInitializers ::= loc::Location
 {
-  propagate substituted;
   top.pps = [];
   top.errors :=
     if top.maybeParamType.isJust
@@ -112,7 +107,6 @@ top::ListInitializers ::= loc::Location
 abstract production listUnifyExpr
 top::Expr ::= e1::Expr e2::Expr trail::Expr
 {
-  propagate substituted;
   top.pp = pp"unifyList(${e1.pp}, ${e2.pp}, ${trail.pp})";
   
   local subType::Type = listSubType(e1.typerep);
@@ -127,7 +121,6 @@ autocopy attribute paramType::Type;
 abstract production listLogicExpr
 top::LogicExpr ::= l::ListLogicExprs
 {
-  propagate substituted;
   top.pp = pp"[${ppImplode(pp", ", l.pps)}]";
   top.errors := l.errors;
   top.defs := l.defs;
@@ -151,13 +144,12 @@ top::LogicExpr ::= l::ListLogicExprs
   top.errors <- expectedType.unifyErrors(top.location, top.env);
 }
 
-nonterminal ListLogicExprs with pps, env, paramType, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:expectedType, allowUnificationTypes, allocator, errors, defs, maybeTyperep, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:transform<Expr>, substituted<ListLogicExprs>, substitutions;
-flowtype ListLogicExprs = decorate {env, paramType, expectedType, allowUnificationTypes, allocator}, pps {}, errors {decorate}, defs {decorate}, maybeTyperep {env, allowUnificationTypes}, transform {decorate}, substituted {substitutions};
+nonterminal ListLogicExprs with pps, env, paramType, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:expectedType, allowUnificationTypes, allocator, errors, defs, maybeTyperep, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:transform<Expr>;
+flowtype ListLogicExprs = decorate {env, paramType, expectedType, allowUnificationTypes, allocator}, pps {}, errors {decorate}, defs {decorate}, maybeTyperep {env, allowUnificationTypes}, transform {decorate};
 
 abstract production consListLogicExpr
 top::ListLogicExprs ::= h::LogicExpr t::ListLogicExprs
 {
-  propagate substituted;
   top.pps = h.pp :: t.pps;
   top.errors := h.errors ++ t.errors;
   top.defs := h.defs ++ t.defs;
@@ -187,7 +179,6 @@ top::ListLogicExprs ::= h::LogicExpr t::ListLogicExprs
 abstract production tailListLogicExpr
 top::ListLogicExprs ::= e::LogicExpr
 {
-  propagate substituted;
   top.pps = [pp"| ${e.pp}"]; -- TODO: Fix this
   top.errors := e.errors;
   top.defs := e.defs;
@@ -201,7 +192,6 @@ top::ListLogicExprs ::= e::LogicExpr
 abstract production nilListLogicExpr
 top::ListLogicExprs ::=
 {
-  propagate substituted;
   top.pps = [];
   top.errors := [];
   top.defs := [];
@@ -224,7 +214,6 @@ top::ListLogicExprs ::=
 abstract production listPattern
 top::Pattern ::= l::ListPatterns
 {
-  propagate substituted;
   top.pp = pp"[${ppImplode(pp", ", l.pps)}]";
   top.errors := l.errors;
   top.defs := l.defs;
@@ -248,12 +237,11 @@ top::Pattern ::= l::ListPatterns
 inherited attribute isBoundTransformIn::Expr;
 inherited attribute valueTransformIn::Expr;
 
-nonterminal ListPatterns with pps, errors, env, returnType, defs, edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:decls, patternDefs, edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:expectedType, edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:transform<Expr>, transformIn<Expr>, isBoundTransformIn, valueTransformIn, substituted<ListPatterns>, substitutions;
+nonterminal ListPatterns with pps, errors, env, returnType, defs, edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:decls, patternDefs, edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:expectedType, edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:transform<Expr>, transformIn<Expr>, isBoundTransformIn, valueTransformIn;
 
 abstract production consListPattern
 top::ListPatterns ::= h::Pattern t::ListPatterns
 {
-  propagate substituted;
   top.pps = h.pp :: t.pps;
   top.errors := h.errors ++ t.errors;
   top.defs := h.defs ++ t.defs;
@@ -314,7 +302,6 @@ top::ListPatterns ::= h::Pattern t::ListPatterns
 abstract production tailListPattern
 top::ListPatterns ::= p::Pattern
 {
-  propagate substituted;
   top.pps = [pp"| ${p.pp}"]; -- TODO: Fix this
   top.errors := p.errors;
   top.defs := p.defs;
@@ -329,7 +316,6 @@ top::ListPatterns ::= p::Pattern
 abstract production nilListPattern
 top::ListPatterns ::=
 {
-  propagate substituted;
   top.pps = [];
   top.errors := [];
   top.defs := [];

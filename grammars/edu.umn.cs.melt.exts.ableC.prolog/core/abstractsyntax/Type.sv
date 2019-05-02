@@ -15,14 +15,6 @@ top::ExtType ::= n::String
       | _ -> false
       end;
   
-  local substitutions::Substitutions = top.substitutions;
-  substitutions.nameIn = n;
-  top.substituted =
-    case substitutions.nameSub of
-      just(sub) -> typeParamType(sub.name)
-    | nothing() -> top
-    end;
-  
   top.unifyErrors =
     \ l::Location env::Decorated Env ->
       case top.otherType of

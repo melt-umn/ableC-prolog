@@ -13,13 +13,12 @@ synthesized attribute paramUnifyTransform::Expr;
 
 synthesized attribute maybeTypereps ::[Maybe<Type>];
 
-nonterminal LogicExprs with pps, env, count, expectedTypes, allowUnificationTypes, allocator, errors, defs, maybeTypereps, transform<Exprs>, paramNamesIn, paramUnifyTransform, substitutions, substituted<LogicExprs>;
-flowtype LogicExprs = decorate {env, expectedTypes, allowUnificationTypes, allocator}, pps {}, count {}, errors {decorate}, defs {decorate}, maybeTypereps {env, allowUnificationTypes}, transform {decorate}, paramUnifyTransform {decorate, paramNamesIn}, substituted {substitutions};
+nonterminal LogicExprs with pps, env, count, expectedTypes, allowUnificationTypes, allocator, errors, defs, maybeTypereps, transform<Exprs>, paramNamesIn, paramUnifyTransform;
+flowtype LogicExprs = decorate {env, expectedTypes, allowUnificationTypes, allocator}, pps {}, count {}, errors {decorate}, defs {decorate}, maybeTypereps {env, allowUnificationTypes}, transform {decorate}, paramUnifyTransform {decorate, paramNamesIn};
 
 abstract production consLogicExpr
 top::LogicExprs ::= h::LogicExpr t::LogicExprs
 {
-  propagate substituted;
   top.pps = h.pp :: t.pps;
   top.count = 1 + t.count;
   top.errors := h.errors ++ t.errors;
@@ -57,7 +56,6 @@ top::LogicExprs ::= h::LogicExpr t::LogicExprs
 abstract production nilLogicExpr
 top::LogicExprs ::=
 {
-  propagate substituted;
   top.pps = [];
   top.count = 0;
   top.errors := [];
@@ -75,13 +73,12 @@ LogicExprs ::= les::[LogicExpr]
 
 inherited attribute expectedType::Type;
 
-closed nonterminal LogicExpr with location, pp, env, expectedType, allowUnificationTypes, allocator, errors, defs, maybeTyperep, transform<Expr>, substitutions, substituted<LogicExpr>;
-flowtype LogicExpr = decorate {env, expectedType, allowUnificationTypes, allocator}, pp {}, errors {decorate}, defs {decorate}, maybeTyperep {env, allowUnificationTypes}, transform {decorate}, substituted {substitutions};
+closed nonterminal LogicExpr with location, pp, env, expectedType, allowUnificationTypes, allocator, errors, defs, maybeTyperep, transform<Expr>;
+flowtype LogicExpr = decorate {env, expectedType, allowUnificationTypes, allocator}, pp {}, errors {decorate}, defs {decorate}, maybeTyperep {env, allowUnificationTypes}, transform {decorate};
 
 abstract production decLogicExpr
 top::LogicExpr ::= le::Decorated LogicExpr
 {
-  propagate substituted;
   top.pp = le.pp;
   top.errors := le.errors;
   top.defs := le.defs;
@@ -92,7 +89,6 @@ top::LogicExpr ::= le::Decorated LogicExpr
 abstract production nameLogicExpr
 top::LogicExpr ::= n::Name
 {
-  propagate substituted;
   top.pp = n.pp;
   forwards to
     case n.valueItem of
@@ -104,7 +100,6 @@ top::LogicExpr ::= n::Name
 abstract production varLogicExpr
 top::LogicExpr ::= n::Name
 {
-  propagate substituted;
   top.pp = n.pp;
   top.errors := [];
   top.defs :=
@@ -140,7 +135,6 @@ top::LogicExpr ::= n::Name
 abstract production wildcardLogicExpr
 top::LogicExpr ::=
 {
-  propagate substituted;
   top.pp = pp"_";
   top.errors := [];
   top.defs := [];
@@ -172,7 +166,6 @@ top::LogicExpr ::=
 abstract production constLogicExpr
 top::LogicExpr ::= e::Expr
 {
-  propagate substituted;
   top.pp = e.pp;
   top.errors := e.errors;
   top.defs := e.defs;
@@ -210,7 +203,6 @@ top::LogicExpr ::= e::Expr
 abstract production constructorLogicExpr
 top::LogicExpr ::= n::Name les::LogicExprs
 {
-  propagate substituted;
   top.pp = cat( n.pp, parens( ppImplode(text(","), les.pps) ) );
   
   local adtType::Type =
