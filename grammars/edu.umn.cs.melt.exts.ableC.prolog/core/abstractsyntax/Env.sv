@@ -100,6 +100,11 @@ top::Env ::= e::Decorated Env
 {
   top.predicates = nonGlobalScope(e.predicates);
 }
+aspect production functionEnv_i
+top::Env ::= e::Decorated Env
+{
+  top.predicates = functionScope(e.predicates);
+}
 
 synthesized attribute predicateContribs::Contribs<PredicateItem> occurs on Defs, Def;
 synthesized attribute canonicalDefs::[Def] occurs on Defs, Def;
