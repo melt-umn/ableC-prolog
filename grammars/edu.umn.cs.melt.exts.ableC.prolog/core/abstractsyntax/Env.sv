@@ -1,32 +1,65 @@
-grammar edu:umn:cs:melt:exts:ableC:prolog:abstractsyntax;
+grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 
-abstract production typeParamValueItem
-top::ValueItem ::= t::Type loc::Location
+import silver:util:raw:treemap as tm;
+
+-- Represents a type parameter
+abstract production templateParamValueItem
+top::ValueItem ::= t::Type isTypeParam::Boolean loc::Location
 {
   top.pp = pp"type param";
   top.typerep = t;
   top.sourceLocation = loc;
-  top.isItemType = true;
+  top.isItemType = isTypeParam;
+  top.isItemValue = !isTypeParam;
 }
 
+-- Represents a unification variable
 abstract production varValueItem
 top::ValueItem ::= t::Type loc::Location
 {
   top.pp = pp"var";
-  top.typerep = extType(nilQualifier(), varType(t));
+  top.typerep = t;
   top.sourceLocation = loc;
   top.isItemValue = true;
 }
 
-closed nonterminal PredicateItem with paramNames, typereps, typeParams, instTypereps, sourceLocation;
+-- Wraps another ValueItem and canonicalizes its type
+abstract production canonicalValueItem
+top::ValueItem ::= v::ValueItem
+{
+  top.pp = pp"canonical ${v.pp}";
+  top.typerep = v.typerep.canonicalType;
+  top.sourceLocation = v.sourceLocation;
+  top.directRefHandler = v.directRefHandler;
+  top.directCallHandler = v.directCallHandler;
+  top.isItemValue = v.isItemValue;
+  top.isItemType = v.isItemType;
+}
+
+-- Generate defs for "unwrapped" values corresponding to variables referenced
+-- in "is" predicate expression.
+function makeUnwrappedVarDefs
+[Def] ::= env::Decorated Env
+{
+  return
+    flatMap(
+      \ p::Pair<String ValueItem> ->
+        case p of
+        | pair(n, varValueItem(t, l)) -> [valueDef(n, varValueItem(varSubType(t), l))]
+        | _ -> []
+        end,
+      tm:toList(head(env.values)));
+}
+
+closed nonterminal PredicateItem with paramNames, typereps, templateParams, params, sourceLocation;
 
 abstract production predicateItem
 top::PredicateItem ::= d::Decorated PredicateDecl
 {
   top.paramNames = d.paramNames;
   top.typereps = d.typereps;
-  top.typeParams = d.typeParams;
-  top.instTypereps = d.instTypereps;
+  top.templateParams = d.templateParams;
+  top.params = d.params;
   top.sourceLocation = d.location;
 }
 
@@ -35,13 +68,12 @@ top::PredicateItem ::=
 {
   top.paramNames = [];
   top.typereps = [];
-  top.typeParams = decorate nilName() with { env = emptyEnv(); };
-  top.instTypereps = \ [Type] -> [];
+  top.templateParams = nilTemplateParameter();
+  top.params = nilParameters();
   top.sourceLocation = loc("nowhere", -1, -1, -1, -1, -1, -1);
 }
 
 synthesized attribute predicates::Scopes<PredicateItem> occurs on Env;
-synthesized attribute predicateContribs::Contribs<PredicateItem> occurs on Defs, Def;
 
 aspect production emptyEnv_i
 top::Env ::=
@@ -68,28 +100,45 @@ top::Env ::= e::Decorated Env
 {
   top.predicates = nonGlobalScope(e.predicates);
 }
+aspect production functionEnv_i
+top::Env ::= e::Decorated Env
+{
+  top.predicates = functionScope(e.predicates);
+}
+
+synthesized attribute predicateContribs::Contribs<PredicateItem> occurs on Defs, Def;
+synthesized attribute canonicalDefs::[Def] occurs on Defs, Def;
 
 aspect production nilDefs
 top::Defs ::=
 {
   top.predicateContribs = [];
+  top.canonicalDefs = [];
 }
 aspect production consDefs
 top::Defs ::= h::Def  t::Defs
 {
   top.predicateContribs = h.predicateContribs ++ t.predicateContribs;
+  top.canonicalDefs = h.canonicalDefs ++ t.canonicalDefs;
 }
 
 aspect default production
 top::Def ::=
 {
   top.predicateContribs = [];
+  top.canonicalDefs = [];
 }
 
 abstract production predicateDef
 top::Def ::= s::String  t::PredicateItem
 {
   top.predicateContribs = [pair(s, t)];
+}
+
+aspect production valueDef
+top::Def ::= s::String  t::ValueItem
+{
+  top.canonicalDefs = [valueDef(s, canonicalValueItem(t))];
 }
 
 function lookupPredicate

@@ -1,9 +1,9 @@
-grammar edu:umn:cs:melt:exts:ableC:prolog:abstractsyntax;
+grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 
 abstract production typeParamType
 top::ExtType ::= n::String
 {
-  propagate substituted, canonicalType;
+  propagate canonicalType;
   top.pp = text(n);
   top.host = error("typeParamType shouldn't occur in host tree!");
   top.baseTypeExpr = typedefTypeExpr(top.givenQualifiers, name(n, location=builtin));

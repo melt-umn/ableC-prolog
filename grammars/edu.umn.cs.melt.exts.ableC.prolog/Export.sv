@@ -6,6 +6,7 @@ grammar edu:umn:cs:melt:exts:ableC:prolog;
  - grammar to a parser specification, or an extension writer can import both the
  - abstract syntax and concrete syntax of an extension by importing this grammar.
  -}
-exports edu:umn:cs:melt:exts:ableC:prolog:abstractsyntax;
-exports edu:umn:cs:melt:exts:ableC:prolog:concretesyntax;
+exports edu:umn:cs:melt:exts:ableC:prolog:core;
+exports edu:umn:cs:melt:exts:ableC:prolog:list;
 
+exports edu:umn:cs:melt:exts:ableC:unification;
