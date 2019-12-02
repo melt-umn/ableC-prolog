@@ -95,7 +95,7 @@ top::TemplateParameter ::= bty::BaseTypeExpr n::Name mty::TypeModifierExpr
   local mty1::TypeModifierExpr = mty;
   mty1.env = top.templateParamEnv;
   mty1.returnType = nothing();
-  mty1.typeModifiersIn = bty1.typeModifiers;
+  mty1.typeModifierIn = bty1.typeModifier;
   mty1.baseType = bty1.typerep;
   top.templateParamDefs =
     valueDef(n.name, templateParamValueItem(mty1.typerep, false, top.location)) ::
