@@ -11,20 +11,15 @@ imports edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 exports edu:umn:cs:melt:exts:ableC:templating:concretesyntax:templateParameters;
 exports edu:umn:cs:melt:exts:ableC:templating:concretesyntax:templateArguments;
 
-marking terminal Prolog_t 'prolog' lexer classes {Cidentifier}, font=font_all;
+marking terminal Prolog_t 'prolog' lexer classes {Keyword, Global};
 terminal If_t ':-';
-terminal Is_t 'is';
-terminal NotGoal_t '\+';
-terminal NotEquals_t '\=';
-terminal Eq_t '=:=';
-terminal NotEq_t '=\=';
-terminal PLessThan_t '<';
-terminal EqualLessThan_t '=<';
-
-aspect parser attribute context
-  action {
-    context = addIdentsToScope([name("prolog", location=builtin)], Prolog_t, context);
-  };
+terminal Is_t 'is' lexer classes {Keyword};
+terminal NotGoal_t '\+' lexer classes {Operator};
+terminal NotEquals_t '\=' lexer classes {Operator};
+terminal Eq_t '=:=' lexer classes {Operator};
+terminal NotEq_t '=\=' lexer classes {Operator};
+terminal PLessThan_t '<' lexer classes {Operator};
+terminal EqualLessThan_t '=<' lexer classes {Operator};
 
 -- Fix ambiguity between 'a<...>(...)' and 'a < b' due to insufficient lookahead.
 -- This makes so the lhs of the '<' goal must be wrapped in parentheses
@@ -32,7 +27,7 @@ disambiguate LessThan_t, PLessThan_t {
   pluck LessThan_t;
 }
 
-terminal PrologComment_t /% .*/ lexer classes {Ccomment};
+terminal PrologComment_t /% .*/ lexer classes {Comment};
 
 -- Used to seed follow sets for MDA
 terminal LogicExprNEVER_t 'LogicExprNEVER_t123456789!!!never';
