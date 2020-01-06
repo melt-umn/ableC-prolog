@@ -10,14 +10,14 @@ imports edu:umn:cs:melt:ableC:abstractsyntax:construction;
 imports edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 imports edu:umn:cs:melt:exts:ableC:prolog:list:abstractsyntax;
 
-marking terminal List_t 'list' lexer classes {Ckeyword};
+marking terminal List_t 'list' lexer classes {Type, Global};
 
 concrete productions top::TypeSpecifier_c
 | 'list' LessThan_t sub::TypeName_c '>'
     { top.realTypeSpecifiers = [listTypeExpr(top.givenQualifiers, sub.ast, top.location)];
       top.preTypeSpecifiers = []; }
 
-marking terminal NewList_t 'newlist' lexer classes {Ckeyword};
+marking terminal NewList_t 'newlist' lexer classes {Keyword, Global};
 
 concrete productions top::PrimaryExpr_c
 | 'newlist' LessThan_t sub::TypeName_c '>' LParen_t allocate::Expr_c ')' LBracket_t init::ListInitializerList_c ']'
@@ -37,7 +37,7 @@ concrete productions top::ListInitializerList_c
 |
     { top.ast = nilListInitializer(top.location); }
 
-marking terminal ListLBracket_t '[' lexer classes {Csymbol};
+marking terminal ListLBracket_t '[';
 
 concrete productions top::LogicExpr_c
 | ListLBracket_t l::ListLogicExprList_c ']'
@@ -55,7 +55,7 @@ concrete productions top::ListLogicExprList_c
 |
     { top.ast = nilListLogicExpr(); }
 
-marking terminal ListPatternLBracket_t '[' lexer classes {Csymbol};
+marking terminal ListPatternLBracket_t '[';
 
 concrete productions top::BasicPattern_c
 | ListPatternLBracket_t l::ListPatternList_c ']'
