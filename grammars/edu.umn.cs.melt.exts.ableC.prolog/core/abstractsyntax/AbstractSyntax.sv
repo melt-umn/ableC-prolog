@@ -2,11 +2,12 @@ grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 
 imports silver:langutil; 
 imports silver:langutil:pp;
+imports silver:rewrite as s;
 
 imports edu:umn:cs:melt:ableC:abstractsyntax:host;
 imports edu:umn:cs:melt:ableC:abstractsyntax:overloadable;
 imports edu:umn:cs:melt:ableC:abstractsyntax:construction;
-imports edu:umn:cs:melt:ableC:abstractsyntax:substitution;
+imports edu:umn:cs:melt:ableC:abstractsyntax:rewriting;
 imports edu:umn:cs:melt:ableC:abstractsyntax:env;
 
 imports edu:umn:cs:melt:exts:ableC:templateAlgebraicDataTypes:datatype:abstractsyntax;
