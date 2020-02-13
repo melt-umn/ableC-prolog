@@ -39,16 +39,16 @@ parser attribute predicateTemplateParams::[Pair<String [Pair<String TerminalId>]
 
 concrete productions top::Declaration_c
 | 'prolog' '{' ls::LogicStmts_c '}'
+  -- We are choosing to allow regular C line comments in addition to Prolog-style ones.
+  layout { PrologComment_t, LineComment_t, BlockComment_t, NewLine_t, Spaces_t }
   { top.ast = logicDecl(ls.ast, top.location); }
 
 closed nonterminal LogicStmts_c with location, ast<LogicStmts>;
 
 concrete productions top::LogicStmts_c
 | h::LogicStmt_c t::LogicStmts_c
-  layout {LineComment, BlockComment, Spaces_t, NewLine_t, PrologComment_t}
   { top.ast = consLogicStmt(h.ast, t.ast); }
 |
-  layout {LineComment, BlockComment, Spaces_t, NewLine_t, PrologComment_t}
   { top.ast = nilLogicStmt(); }
 
 closed nonterminal LogicStmt_c with location, ast<LogicStmt>;
