@@ -27,7 +27,7 @@ disambiguate LessThan_t, PLessThan_t {
   pluck LessThan_t;
 }
 
-terminal PrologComment_t /% .*/ lexer classes {Comment};
+terminal PrologComment_t /%.*/ lexer classes {Comment};
 
 -- Used to seed follow sets for MDA
 terminal LogicExprNEVER_t 'LogicExprNEVER_t123456789!!!never';
