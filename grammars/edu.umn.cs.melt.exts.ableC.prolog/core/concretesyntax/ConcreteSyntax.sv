@@ -39,8 +39,13 @@ parser attribute predicateTemplateParams::[Pair<String [Pair<String TerminalId>]
 
 concrete productions top::Declaration_c
 | 'prolog' '{' ls::LogicStmts_c '}'
-  -- We are choosing to allow regular C line comments in addition to Prolog-style ones.
-  layout { PrologComment_t, LineComment_t, BlockComment_t, NewLine_t, Spaces_t }
+  layout {
+    -- We are choosing to allow regular C line comments in addition to Prolog-style ones.
+    PrologComment_t, LineComment_t, BlockComment_t,
+    NewLine_t, Spaces_t,
+    -- Parse these to allow for .pl files to be #included in logic decl blocks
+    CPP_Location_Tag_t
+  }
   { top.ast = logicDecl(ls.ast, top.location); }
 
 closed nonterminal LogicStmts_c with location, ast<LogicStmts>;
@@ -51,7 +56,13 @@ concrete productions top::LogicStmts_c
 |
   { top.ast = nilLogicStmt(); }
 
-closed nonterminal LogicStmt_c with location, ast<LogicStmt>;
+closed nonterminal LogicStmt_c
+  layout {
+    -- Only C's layout terminals
+    LineComment_t, BlockComment_t,
+    NewLine_t, Spaces_t,  CPP_Location_Tag_t
+  }
+  with location, ast<LogicStmt>;
 
 concrete productions top::LogicStmt_c
 | id::Identifier_c LessThan_t templateParams::TemplateParameters_c '>' LParen_t params::ParameterTypeList_c ')' ';'
