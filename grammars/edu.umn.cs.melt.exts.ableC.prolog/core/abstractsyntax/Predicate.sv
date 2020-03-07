@@ -108,14 +108,14 @@ attribute transform<Parameters> occurs on Parameters;
 aspect production consParameters
 top::Parameters ::= h::ParameterDecl t::Parameters
 {
-  propagate transform;
+  top.transform = consParameters(h.transform, t.transform);
   top.paramNames = h.paramName :: t.paramNames;
 }
 
 aspect production nilParameters
 top::Parameters ::= 
 {
-  propagate transform;
+  top.transform = nilParameters();
   top.paramNames = [];
 }
 
