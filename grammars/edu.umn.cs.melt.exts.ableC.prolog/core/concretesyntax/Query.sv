@@ -1,11 +1,6 @@
 grammar edu:umn:cs:melt:exts:ableC:prolog:core:concretesyntax;
 
-marking terminal Query_t 'query' lexer classes {Cidentifier}, font=font_all;
-
-aspect parser attribute context
-  action {
-    context = addIdentsToScope([name("query", location=builtin)], Query_t, context);
-  };
+marking terminal Query_t 'query' lexer classes {Keyword, Global};
 
 concrete productions top::PrimaryExpr_c
 | 'query' ps::Body_c '{' body::BlockItemList_c '}'
