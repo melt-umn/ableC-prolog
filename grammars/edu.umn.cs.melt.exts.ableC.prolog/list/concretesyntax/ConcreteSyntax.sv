@@ -6,7 +6,9 @@ imports edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:concretesy
 imports edu:umn:cs:melt:exts:ableC:prolog:core:concretesyntax;
 
 imports edu:umn:cs:melt:ableC:abstractsyntax:host;
+imports edu:umn:cs:melt:ableC:abstractsyntax:overloadable as ovrld;
 imports edu:umn:cs:melt:ableC:abstractsyntax:construction;
+imports edu:umn:cs:melt:ableC:abstractsyntax:env;
 imports edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 imports edu:umn:cs:melt:exts:ableC:prolog:list:abstractsyntax;
 
@@ -28,12 +30,16 @@ concrete productions top::PrimaryExpr_c
 nonterminal ListInitializerList_c with location, ast<ListInitializers>;
 
 concrete productions top::ListInitializerList_c
-| h::ExclusiveOrExpr_c ',' t::ListInitializerList_c
+| h::AssignExpr_c ',' t::ListInitializerList_c
     { top.ast = consListInitializer(h.ast, t.ast);  }
-| e::ExclusiveOrExpr_c
-    { top.ast = consListInitializer(e.ast, nilListInitializer(top.location)); }
-| h::InclusiveOrExpr_c '|' t::ExclusiveOrExpr_c
-    { top.ast = consListInitializer(h.ast, tailListInitializer(t.ast)); }
+| e::AssignExpr_c
+    { top.ast =
+        -- Semantic workaround for parsing ambiguity with |
+        case decorate e.ast with { returnType = nothing(); env = emptyEnv(); } of
+        | ovrld:orBitExpr(h, t) -> consListInitializer(h, tailListInitializer(t))
+        | _ -> consListInitializer(e.ast, nilListInitializer(top.location))
+        end;
+    }
 |
     { top.ast = nilListInitializer(top.location); }
 
