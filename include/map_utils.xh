@@ -1,0 +1,19 @@
+#include <map.xh>
+
+// Utilities that depend on other extensions
+
+#ifdef _MAP_XH
+#define _MAP_XH
+
+template<typename k, typename v, int (*cmp)(k, k)>
+void mapForeach(map<k, v, cmp> ?m, closure<(k, v) -> void> fn) {
+  match (m) {
+    ?&Node(?&k, ?&v, l, r) -> {
+      mapForeach(l, fn);
+      fn(k, v);
+      mapForeach(r, fn);
+    }
+  }
+}
+
+#endif
