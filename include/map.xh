@@ -15,6 +15,7 @@ datatype map {
 prolog {
   emptyMap<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1);
   mapContains<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k ?key, v ?value);
+  mapContainsValue<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k ?key, v ?value);
   mapInsert<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k ?key, v ?value, map<k, v, cmp> ?m2);
   mapDelete<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k ?key, map<k, v, cmp> ?m2);
   mapSelectMin<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k ?key, v? value, map<k, v, cmp> ?m2);
