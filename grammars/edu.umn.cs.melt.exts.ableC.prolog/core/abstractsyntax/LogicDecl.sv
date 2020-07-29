@@ -65,11 +65,13 @@ top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
   local templateParams::TemplateParameters = n.predicateItem.templateParams;
   templateParams.templateParamEnv = globalEnv(top.env);
   les.env = addEnv([globalDefsDef(templateParams.templateParamDefs)], openScopeEnv(top.env));
+  les.refVariables = removeDefsFromNames(les.defs, gs.freeVariables);
   les.paramNamesIn = n.predicateItem.paramNames;
   les.expectedTypes = n.predicateItem.typereps;
   les.allowUnificationTypes = true;
   les.allocator = ableC_Expr { alloca };
   gs.env = addEnv(les.defs, les.env);
+  gs.refVariables = les.refVariables;
   
   top.errors <- n.predicateLocalLookupCheck;
   top.errors <-

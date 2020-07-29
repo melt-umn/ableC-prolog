@@ -2,11 +2,13 @@ grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 
 import core:monad;
 
+autocopy attribute refVariables::[Name];
+
 synthesized attribute continuationTransform::Expr;
 inherited attribute continuationTransformIn::Expr;
 
-nonterminal Goals with pps, env, errors, defs, transform<Expr>, continuationTransform, continuationTransformIn;
-flowtype Goals = decorate {env, continuationTransformIn}, pps {}, errors {env}, defs {env}, transform {decorate}, continuationTransform {decorate};
+nonterminal Goals with pps, env, refVariables, errors, defs, freeVariables, transform<Expr>, continuationTransform, continuationTransformIn;
+flowtype Goals = decorate {env, refVariables, continuationTransformIn}, pps {}, errors {refVariables, env}, defs {env}, freeVariables {env}, transform {decorate}, continuationTransform {decorate};
 
 propagate errors, defs on Goals;
 
@@ -14,6 +16,7 @@ abstract production consGoal
 top::Goals ::= h::Goal t::Goals
 {
   top.pps = h.pp :: t.pps;
+  top.freeVariables := h.freeVariables ++ removeDefsFromNames(h.defs, t.freeVariables);
   
   t.env = addEnv(h.defs, h.env);
   
@@ -28,6 +31,7 @@ top::Goals ::= h::Goal t::Goals
 abstract production nilGoal
 top::Goals ::=
 {
+  propagate freeVariables;
   top.pps = [];
   top.continuationTransform = top.continuationTransformIn;
   top.transform = ableC_Expr { $Expr{top.continuationTransformIn}() };
@@ -39,8 +43,10 @@ Goals ::= les::[Goal]
   return foldr(consGoal, nilGoal(), les);
 }
 
-nonterminal Goal with location, env, pp, errors, defs, transform<Expr>, transformIn<Expr>, continuationTransformIn;
-flowtype Goal = decorate {env, transformIn, continuationTransformIn}, pp {}, errors {env}, defs {env}, transform {decorate};
+nonterminal Goal with location, env, refVariables, pp, errors, defs, freeVariables, transform<Expr>, transformIn<Expr>, continuationTransformIn;
+flowtype Goal = decorate {env, refVariables, transformIn, continuationTransformIn}, pp {}, errors {refVariables, env}, defs {env}, freeVariables {env}, transform {decorate};
+
+propagate freeVariables on Goal;
 
 abstract production predicateGoal
 top::Goal ::= n::Name ts::TemplateArgNames les::LogicExprs
@@ -118,11 +124,9 @@ top::Goal ::= n::Name les::LogicExprs
   infParams.partialArgumentTypes = les.maybeTypereps;
   
   local inferredTemplateArguments::Maybe<TemplateArgs> =
-    do (bindMaybe, returnMaybe) {
-      tas::[TemplateArg] <-
-        lookupAll(infParams.partialInferredArgs, templateParams.names);
-      return foldr(consTemplateArg, nilTemplateArg(), tas);
-    };
+    mapMaybe(
+      foldr(consTemplateArg, nilTemplateArg(), _),
+      lookupAll(infParams.partialInferredArgs, templateParams.names));
   
   local ts::TemplateArgs = inferredTemplateArguments.fromJust;
   ts.edu:umn:cs:melt:exts:ableC:templating:abstractsyntax:paramNames = templateParams.names;

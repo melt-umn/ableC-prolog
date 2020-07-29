@@ -143,8 +143,8 @@ top::LogicExpr ::= l::ListLogicExprs
   top.errors <- expectedType.unifyErrors(top.location, top.env);
 }
 
-nonterminal ListLogicExprs with pps, env, paramType, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:expectedType, allowUnificationTypes, allocator, errors, defs, maybeTyperep, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:transform<Expr>;
-flowtype ListLogicExprs = decorate {env, paramType, expectedType, allowUnificationTypes, allocator}, pps {}, errors {decorate}, defs {decorate}, maybeTyperep {env, allowUnificationTypes}, transform {decorate};
+nonterminal ListLogicExprs with pps, env, paramType, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:expectedType, allowUnificationTypes, allocator, refVariables, errors, defs, maybeTyperep, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:transform<Expr>;
+flowtype ListLogicExprs = decorate {env, paramType, expectedType, allowUnificationTypes, allocator, refVariables}, pps {}, errors {decorate}, defs {env, paramType, expectedType, allowUnificationTypes}, maybeTyperep {env, allowUnificationTypes}, transform {decorate};
 
 propagate errors, defs on ListLogicExprs;
 

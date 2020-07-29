@@ -13,8 +13,8 @@ synthesized attribute paramUnifyTransform::Expr;
 
 synthesized attribute maybeTypereps ::[Maybe<Type>];
 
-nonterminal LogicExprs with pps, env, count, expectedTypes, allowUnificationTypes, allocator, errors, defs, maybeTypereps, transform<Exprs>, paramNamesIn, paramUnifyTransform;
-flowtype LogicExprs = decorate {env, expectedTypes, allowUnificationTypes, allocator}, pps {}, count {}, errors {decorate}, defs {decorate}, maybeTypereps {env, allowUnificationTypes}, transform {decorate}, paramUnifyTransform {decorate, paramNamesIn};
+nonterminal LogicExprs with pps, env, count, expectedTypes, allowUnificationTypes, allocator, refVariables, errors, defs, maybeTypereps, transform<Exprs>, paramNamesIn, paramUnifyTransform;
+flowtype LogicExprs = decorate {env, expectedTypes, allowUnificationTypes, allocator, refVariables}, pps {}, count {}, errors {decorate}, defs {env, expectedTypes, allowUnificationTypes}, maybeTypereps {env, allowUnificationTypes}, transform {decorate}, paramUnifyTransform {decorate, paramNamesIn};
 
 propagate errors, defs on LogicExprs;
 
@@ -71,8 +71,8 @@ LogicExprs ::= les::[LogicExpr]
 
 inherited attribute expectedType::Type;
 
-closed nonterminal LogicExpr with location, pp, env, expectedType, allowUnificationTypes, allocator, errors, defs, maybeTyperep, transform<Expr>;
-flowtype LogicExpr = decorate {env, expectedType, allowUnificationTypes, allocator}, pp {}, errors {decorate}, defs {decorate}, maybeTyperep {env, allowUnificationTypes}, transform {decorate};
+closed nonterminal LogicExpr with location, pp, env, expectedType, allowUnificationTypes, allocator, refVariables, errors, defs, maybeTyperep, transform<Expr>;
+flowtype LogicExpr = decorate {env, expectedType, allowUnificationTypes, allocator, refVariables}, pp {}, errors {decorate}, defs {env, expectedType, allowUnificationTypes}, maybeTyperep {env, allowUnificationTypes}, transform {decorate};
 
 abstract production decLogicExpr
 top::LogicExpr ::= le::Decorated LogicExpr
@@ -128,6 +128,10 @@ top::LogicExpr ::= n::Name
       | t -> [err(n.location, s"Variable expected to unify with a variable type (got ${showType(top.expectedType)})")]
       end;
   top.errors <- n.valueRedeclarationCheck(extType(nilQualifier(), varType(baseType)));
+  top.errors <-
+    if null(n.valueLocalLookup) && containsBy(nameEq, n, top.refVariables)
+    then [err(n.location, s"Unification variable ${n.name} shares a name with a variable referenced in another goal")]
+    else [];
 }
 
 abstract production wildcardLogicExpr

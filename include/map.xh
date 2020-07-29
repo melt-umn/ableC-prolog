@@ -102,4 +102,15 @@ map<k, v, cmp> ?mapDelete(void *(*alloc)(size_t), map<k, v, cmp> ?m, k key) {
        }););
 }
 
+template<typename k, typename v, int (*cmp)(k, k)>
+void mapForeach(map<k, v, cmp> ?m, closure<(k, v) -> void> fn) {
+  match (m) {
+    ?&Node(?&k, ?&v, l, r) -> {
+      mapForeach(l, fn);
+      fn(k, v);
+      mapForeach(r, fn);
+    }
+  }
+}
+
 #endif
