@@ -421,6 +421,40 @@ top::Goal ::=
     };
 }
 
+abstract production initiallyGoal
+top::Goal ::= s::Stmt
+{
+  propagate errors, defs;
+  top.pp = pp"initially ${braces(nestlines(2, s.pp))})";
+  
+  top.transform =
+    ableC_Expr {
+      ({{$Stmt{makeUnwrappedVarDecls(s.freeVariables, top.env)}
+         $Stmt{decStmt(s)}}
+        $Expr{top.transformIn};})
+    };
+  
+  s.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
+  s.returnType = nothing();
+}
+
+abstract production finallyGoal
+top::Goal ::= s::Stmt
+{
+  propagate errors, defs;
+  top.pp = pp"finally ${braces(nestlines(2, s.pp))})";
+  
+  top.transform =
+    ableC_Expr {
+      ({{$Stmt{makeUnwrappedVarDecls(s.freeVariables, top.env)}
+         push_action(_trail, lambda allocate(malloc) (void) -> void { $Stmt{decStmt(s)} }, free);}
+        $Expr{top.transformIn};})
+    };
+  
+  s.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
+  s.returnType = nothing();
+}
+
 synthesized attribute templateArgUnifyErrors::([Message] ::= Location Decorated Env) occurs on TemplateArgs, TemplateArg;
 
 aspect production consTemplateArg
