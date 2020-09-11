@@ -14,12 +14,22 @@ exports edu:umn:cs:melt:exts:ableC:templating:concretesyntax:templateArguments;
 marking terminal Prolog_t 'prolog' lexer classes {Keyword, Global};
 terminal If_t ':-';
 terminal Is_t 'is' lexer classes {Keyword};
+terminal Initially_t 'initially' lexer classes {Keyword};
+terminal Finally_t 'finally' lexer classes {Keyword};
 terminal NotGoal_t '\+' lexer classes {Operator};
 terminal NotEquals_t '\=' lexer classes {Operator};
 terminal Eq_t '=:=' lexer classes {Operator};
 terminal NotEq_t '=\=' lexer classes {Operator};
 terminal PLessThan_t '<' lexer classes {Operator};
 terminal EqualLessThan_t '=<' lexer classes {Operator};
+
+disambiguate Initially_t, Identifier_t {
+  pluck Initially_t;
+}
+
+disambiguate Finally_t, Identifier_t {
+  pluck Finally_t;
+}
 
 -- Fix ambiguity between 'a<...>(...)' and 'a < b' due to insufficient lookahead.
 -- This makes so the lhs of the '<' goal must be wrapped in parentheses
@@ -162,6 +172,14 @@ concrete productions top::Goal_c
   { top.ast = notGoal(g.ast, location=top.location); }
 | Not_t
   { top.ast = cutGoal(location=top.location); }
+| 'initially' '{' s::BlockItemList_c '}'
+  { top.ast = initiallyGoal(foldStmt(s.ast), location=top.location); }
+| 'initially' '{' '}'
+  { top.ast = initiallyGoal(nullStmt(), location=top.location); }
+| 'finally' '{' s::BlockItemList_c '}'
+  { top.ast = finallyGoal(foldStmt(s.ast), location=top.location); }
+| 'finally' '{' '}'
+  { top.ast = finallyGoal(nullStmt(), location=top.location); }
 
 closed nonterminal LogicExprs_c with location, ast<[LogicExpr]>, declaredIdents;
 

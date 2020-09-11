@@ -8,6 +8,7 @@ top::Expr ::= gs::Goals body::Stmt
   local localErrors::[Message] = gs.errors ++ body.errors;
   
   gs.env = openScopeEnv(top.env);
+  gs.refVariables = gs.freeVariables;
   
   -- Need to decorate var decls here to compute the env for body, since this may
   -- contain defs not in gs.defs
@@ -15,7 +16,7 @@ top::Expr ::= gs::Goals body::Stmt
   varDecls.env = gs.env;
   varDecls.returnType = nothing();
   
-  body.env = capturedEnv(addEnv(varDecls.defs, gs.env));
+  body.env = addEnv(body.functionDefs, capturedEnv(addEnv(varDecls.defs, gs.env)));
   body.returnType = just(builtinType(nilQualifier(), boolType()));
   
   gs.continuationTransformIn = ableC_Expr { _success_continuation };

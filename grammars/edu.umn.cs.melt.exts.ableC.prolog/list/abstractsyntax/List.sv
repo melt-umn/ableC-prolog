@@ -44,8 +44,8 @@ nonterminal ListInitializers with pps, env, returnType, maybeParamType, allocato
 abstract production consListInitializer
 top::ListInitializers ::= h::Expr t::ListInitializers
 {
+  propagate errors;
   top.pps = h.pp :: t.pps;
-  top.errors := h.errors ++ t.errors;
   
   t.maybeParamType = just(fromMaybe(h.typerep, top.maybeParamType));
   
@@ -80,8 +80,8 @@ top::ListInitializers ::= h::Expr t::ListInitializers
 abstract production tailListInitializer
 top::ListInitializers ::= e::Expr
 {
+  propagate errors;
   top.pps = [pp"| ${e.pp}"]; -- TODO: Fix this
-  top.errors := e.errors;
   top.host = decExpr(e, location=builtin);
   
   top.errors <-
@@ -121,9 +121,8 @@ autocopy attribute paramType::Type;
 abstract production listLogicExpr
 top::LogicExpr ::= l::ListLogicExprs
 {
+  propagate errors, defs;
   top.pp = pp"[${ppImplode(pp", ", l.pps)}]";
-  top.errors := l.errors;
-  top.defs := l.defs;
   top.maybeTyperep =
     case l.maybeTyperep of
     | just(t) -> just(extType(nilQualifier(), listType(t)))
@@ -144,15 +143,15 @@ top::LogicExpr ::= l::ListLogicExprs
   top.errors <- expectedType.unifyErrors(top.location, top.env);
 }
 
-nonterminal ListLogicExprs with pps, env, paramType, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:expectedType, allowUnificationTypes, allocator, errors, defs, maybeTyperep, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:transform<Expr>;
-flowtype ListLogicExprs = decorate {env, paramType, expectedType, allowUnificationTypes, allocator}, pps {}, errors {decorate}, defs {decorate}, maybeTyperep {env, allowUnificationTypes}, transform {decorate};
+nonterminal ListLogicExprs with pps, env, paramType, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:expectedType, allowUnificationTypes, allocator, refVariables, errors, defs, maybeTyperep, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:transform<Expr>;
+flowtype ListLogicExprs = decorate {env, paramType, expectedType, allowUnificationTypes, allocator, refVariables}, pps {}, errors {decorate}, defs {env, paramType, expectedType, allowUnificationTypes}, maybeTyperep {env, allowUnificationTypes}, transform {decorate};
+
+propagate errors, defs on ListLogicExprs;
 
 abstract production consListLogicExpr
 top::ListLogicExprs ::= h::LogicExpr t::ListLogicExprs
 {
   top.pps = h.pp :: t.pps;
-  top.errors := h.errors ++ t.errors;
-  top.defs := h.defs ++ t.defs;
   top.maybeTyperep = h.maybeTyperep; -- Only look at first elemet to avoid a dependency cycle
   top.transform =
     makeVarExpr(
@@ -180,8 +179,6 @@ abstract production tailListLogicExpr
 top::ListLogicExprs ::= e::LogicExpr
 {
   top.pps = [pp"| ${e.pp}"]; -- TODO: Fix this
-  top.errors := e.errors;
-  top.defs := e.defs;
   top.maybeTyperep = e.maybeTyperep;
   top.transform = e.transform;
   
@@ -193,8 +190,6 @@ abstract production nilListLogicExpr
 top::ListLogicExprs ::=
 {
   top.pps = [];
-  top.errors := [];
-  top.defs := [];
   top.maybeTyperep = nothing();
   top.transform =
     makeVarExpr(
@@ -214,11 +209,8 @@ top::ListLogicExprs ::=
 abstract production listPattern
 top::Pattern ::= l::ListPatterns
 {
+  propagate errors, defs, decls, patternDefs;
   top.pp = pp"[${ppImplode(pp", ", l.pps)}]";
-  top.errors := l.errors;
-  top.defs := l.defs;
-  top.decls = l.decls;
-  top.patternDefs := l.patternDefs;
   top.transform = l.transform;
   
   l.expectedType = listSubType(top.expectedType);
@@ -237,16 +229,14 @@ top::Pattern ::= l::ListPatterns
 inherited attribute isBoundTransformIn::Expr;
 inherited attribute valueTransformIn::Expr;
 
-nonterminal ListPatterns with pps, errors, env, returnType, defs, edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:decls, patternDefs, edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:expectedType, edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:transform<Expr>, transformIn<Expr>, isBoundTransformIn, valueTransformIn;
+nonterminal ListPatterns with pps, errors, env, returnType, defs, decls, patternDefs, edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:expectedType, edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:transform<Expr>, transformIn<Expr>, isBoundTransformIn, valueTransformIn;
+
+propagate errors, defs, decls, patternDefs on ListPatterns;
 
 abstract production consListPattern
 top::ListPatterns ::= h::Pattern t::ListPatterns
 {
   top.pps = h.pp :: t.pps;
-  top.errors := h.errors ++ t.errors;
-  top.defs := h.defs ++ t.defs;
-  top.decls = h.decls ++ t.decls;
-  top.patternDefs := h.patternDefs ++ t.patternDefs;
   
   h.expectedType = top.expectedType;
   t.expectedType = top.expectedType;
@@ -303,10 +293,6 @@ abstract production tailListPattern
 top::ListPatterns ::= p::Pattern
 {
   top.pps = [pp"| ${p.pp}"]; -- TODO: Fix this
-  top.errors := p.errors;
-  top.defs := p.defs;
-  top.decls = p.decls;
-  top.patternDefs := p.patternDefs;
   top.transform = p.transform;
   
   p.expectedType = extType(nilQualifier(), varType(extType(nilQualifier(), listType(top.expectedType))));
@@ -317,10 +303,6 @@ abstract production nilListPattern
 top::ListPatterns ::=
 {
   top.pps = [];
-  top.errors := [];
-  top.defs := [];
-  top.decls = [];
-  top.patternDefs := [];
   
   local isBound::Expr = top.isBoundTransformIn;
   isBound.env = top.env;

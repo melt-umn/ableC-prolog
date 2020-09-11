@@ -7,7 +7,7 @@ top::BaseTypeExpr ::= q::Qualifiers sub::TypeName loc::Location
 {
   top.pp = pp"${terminate(space(), q.pps)}list<${sub.pp}>";
   
-  top.inferredArgs = sub.inferredArgs;
+  top.inferredArgs := sub.inferredArgs;
   sub.argumentType =
     case top.argumentType of
     | extType(_, listType(t)) -> t
@@ -27,7 +27,7 @@ top::BaseTypeExpr ::= q::Qualifiers sub::TypeName loc::Location
          foldTemplateArg([typeTemplateArg(sub.typerep)]))]);
   
   -- Non-interfering overrides for better performance
-  top.decls = [injectGlobalDeclsDecl(globalDecls)];
+  top.decls := [injectGlobalDeclsDecl(globalDecls)];
   top.errors := localErrors;
   top.typerep =
     case sub.typerep of
@@ -63,7 +63,7 @@ top::ExtType ::= sub::Type
       | _ -> false
       end;
   
-  top.maybeRefId = just(templateMangledRefId("_list_d", foldTemplateArg([typeTemplateArg(sub)])));
+  top.maybeRefId := just(templateMangledRefId("_list_d", foldTemplateArg([typeTemplateArg(sub)])));
   
   top.unifyErrors =
     \ l::Location env::Decorated Env ->

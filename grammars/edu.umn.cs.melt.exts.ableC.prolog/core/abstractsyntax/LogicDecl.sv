@@ -26,17 +26,17 @@ synthesized attribute transform<a>::a;
 synthesized attribute ruleTransform::[Pair<String Stmt>];
 inherited attribute ruleTransformIn::[Pair<String Stmt>];
 
-synthesized attribute errorDefs::[Def] with ++;
+monoid attribute errorDefs::[Def] with [], ++;
 
 nonterminal LogicStmts with pps, errors, errorDefs, env, transform<Decls>, ruleTransform;
 flowtype LogicStmts = decorate {env}, pps {}, errors {decorate}, errorDefs {decorate}, transform {decorate}, ruleTransform {decorate};
+
+propagate errors, errorDefs on LogicStmts;
 
 abstract production consLogicStmt
 top::LogicStmts ::= h::LogicStmt t::LogicStmts
 {
   top.pps = h.pp :: t.pps;
-  top.errors := h.errors ++ t.errors;
-  top.errorDefs := h.errorDefs ++ t.errorDefs;
   top.transform = appendDecls(h.transform, t.transform);
   top.ruleTransform = h.ruleTransform ++ t.ruleTransform;
   h.ruleTransformIn = t.ruleTransform;
@@ -47,8 +47,6 @@ abstract production nilLogicStmt
 top::LogicStmts ::=
 {
   top.pps = [];
-  top.errors := [];
-  top.errorDefs := [];
   top.transform = nilDecl();
   top.ruleTransform = [];
 }
@@ -59,19 +57,21 @@ flowtype LogicStmt = decorate {env, ruleTransformIn}, pp {}, errors {decorate}, 
 abstract production ruleLogicStmt
 top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
 {
+  propagate errors;
   top.pp = pp"${n.pp}(${ppImplode(pp", ", les.pps)})${if null(gs.pps) then pp"." else pp" :- ${ppImplode(pp", ", gs.pps)}"}";
-  top.errors := les.errors ++ gs.errors;
   top.defs := [];
   top.errorDefs := [];
   
   local templateParams::TemplateParameters = n.predicateItem.templateParams;
   templateParams.templateParamEnv = globalEnv(top.env);
   les.env = addEnv([globalDefsDef(templateParams.templateParamDefs)], openScopeEnv(top.env));
+  les.refVariables = removeDefsFromNames(les.defs, gs.freeVariables);
   les.paramNamesIn = n.predicateItem.paramNames;
   les.expectedTypes = n.predicateItem.typereps;
   les.allowUnificationTypes = true;
   les.allocator = ableC_Expr { alloca };
   gs.env = addEnv(les.defs, les.env);
+  gs.refVariables = les.refVariables;
   
   top.errors <- n.predicateLocalLookupCheck;
   top.errors <-
@@ -102,10 +102,8 @@ top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
 abstract production declLogicStmt
 top::LogicStmt ::= d::PredicateDecl
 {
+  propagate errors, defs, errorDefs;
   top.pp = d.pp;
-  top.errors := d.errors;
-  top.defs := d.defs;
-  top.errorDefs := d.errorDefs;
   top.transform = d.transform;
   top.ruleTransform = [];
   d.ruleTransformIn = top.ruleTransformIn;
