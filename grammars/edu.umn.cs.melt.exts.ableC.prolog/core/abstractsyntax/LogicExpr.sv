@@ -13,16 +13,16 @@ synthesized attribute paramUnifyTransform::Expr;
 
 synthesized attribute maybeTypereps ::[Maybe<Type>];
 
-nonterminal LogicExprs with pps, env, count, expectedTypes, allowUnificationTypes, allocator, errors, defs, maybeTypereps, transform<Exprs>, paramNamesIn, paramUnifyTransform;
-flowtype LogicExprs = decorate {env, expectedTypes, allowUnificationTypes, allocator}, pps {}, count {}, errors {decorate}, defs {decorate}, maybeTypereps {env, allowUnificationTypes}, transform {decorate}, paramUnifyTransform {decorate, paramNamesIn};
+nonterminal LogicExprs with pps, env, count, expectedTypes, allowUnificationTypes, allocator, refVariables, errors, defs, maybeTypereps, transform<Exprs>, paramNamesIn, paramUnifyTransform;
+flowtype LogicExprs = decorate {env, expectedTypes, allowUnificationTypes, allocator, refVariables}, pps {}, count {}, errors {decorate}, defs {env, expectedTypes, allowUnificationTypes}, maybeTypereps {env, allowUnificationTypes}, transform {decorate}, paramUnifyTransform {decorate, paramNamesIn};
+
+propagate errors, defs on LogicExprs;
 
 abstract production consLogicExpr
 top::LogicExprs ::= h::LogicExpr t::LogicExprs
 {
   top.pps = h.pp :: t.pps;
   top.count = 1 + t.count;
-  top.errors := h.errors ++ t.errors;
-  top.defs := h.defs ++ t.defs;
   top.maybeTypereps = h.maybeTyperep :: newT.maybeTypereps;
   top.transform = consExpr(h.transform, t.transform);
   
@@ -58,8 +58,6 @@ top::LogicExprs ::=
 {
   top.pps = [];
   top.count = 0;
-  top.errors := [];
-  top.defs := [];
   top.maybeTypereps = [];
   top.transform = nilExpr();
   top.paramUnifyTransform = ableC_Expr { (_Bool)1 };
@@ -73,8 +71,8 @@ LogicExprs ::= les::[LogicExpr]
 
 inherited attribute expectedType::Type;
 
-closed nonterminal LogicExpr with location, pp, env, expectedType, allowUnificationTypes, allocator, errors, defs, maybeTyperep, transform<Expr>;
-flowtype LogicExpr = decorate {env, expectedType, allowUnificationTypes, allocator}, pp {}, errors {decorate}, defs {decorate}, maybeTyperep {env, allowUnificationTypes}, transform {decorate};
+closed nonterminal LogicExpr with location, pp, env, expectedType, allowUnificationTypes, allocator, refVariables, errors, defs, maybeTyperep, transform<Expr>;
+flowtype LogicExpr = decorate {env, expectedType, allowUnificationTypes, allocator, refVariables}, pp {}, errors {decorate}, defs {env, expectedType, allowUnificationTypes}, maybeTyperep {env, allowUnificationTypes}, transform {decorate};
 
 abstract production decLogicExpr
 top::LogicExpr ::= le::Decorated LogicExpr
@@ -130,14 +128,17 @@ top::LogicExpr ::= n::Name
       | t -> [err(n.location, s"Variable expected to unify with a variable type (got ${showType(top.expectedType)})")]
       end;
   top.errors <- n.valueRedeclarationCheck(extType(nilQualifier(), varType(baseType)));
+  top.errors <-
+    if null(n.valueLocalLookup) && containsBy(nameEq, n, top.refVariables)
+    then [err(n.location, s"Unification variable ${n.name} shares a name with a variable referenced in another goal")]
+    else [];
 }
 
 abstract production wildcardLogicExpr
 top::LogicExpr ::=
 {
+  propagate errors, defs;
   top.pp = pp"_";
-  top.errors := [];
-  top.defs := [];
   top.maybeTyperep = nothing();
   top.transform =
     freeVarExpr(
@@ -166,9 +167,8 @@ top::LogicExpr ::=
 abstract production constLogicExpr
 top::LogicExpr ::= e::Expr
 {
+  propagate errors, defs;
   top.pp = e.pp;
-  top.errors := e.errors;
-  top.defs := e.defs;
   top.maybeTyperep = just(e.typerep);
   top.transform =
     makeVarExpr(
@@ -203,6 +203,7 @@ top::LogicExpr ::= e::Expr
 abstract production constructorLogicExpr
 top::LogicExpr ::= n::Name les::LogicExprs
 {
+  propagate errors, defs;
   top.pp = cat( n.pp, parens( ppImplode(text(","), les.pps) ) );
   
   local adtType::Type =
@@ -228,7 +229,6 @@ top::LogicExpr ::= n::Name les::LogicExprs
   local constructorParamLookup::Maybe<Decorated Parameters> =
     lookupBy(stringEq, n.name, constructors);
   
-  top.errors := les.errors;
   top.errors <-
     case adtType, adtName, adtLookup, constructorParamLookup of
     | errorType(), _, _, _ -> []
@@ -244,8 +244,6 @@ top::LogicExpr ::= n::Name les::LogicExprs
       then [err(top.location, s"This expression has ${toString(les.count)} arguments, but ${toString(params.count)} were expected.")]
       else []
     end;
-  
-  top.defs := les.defs;
   
   -- Infer type for non-templated ADTs by looking up the constructor return type
   top.maybeTyperep =

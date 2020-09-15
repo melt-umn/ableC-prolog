@@ -24,6 +24,7 @@ top::Expr ::= ty::TypeName allocator::Expr le::LogicExpr
     checkUnificationHeaderTemplateDef("_var_d", top.location, top.env);
   
   le.env = addEnv(ty.defs, ty.env);
+  le.refVariables = [];
   le.expectedType = ty.typerep;
   le.allowUnificationTypes = false;
   le.allocator = allocator;
@@ -49,6 +50,7 @@ top::Expr ::= allocator::Expr le::LogicExpr
     else le.errors;
   
   le.expectedType = le.maybeTyperep.fromJust;
+  le.refVariables = [];
   le.allowUnificationTypes = false;
   le.allocator = allocator;
   

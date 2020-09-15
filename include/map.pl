@@ -4,6 +4,10 @@ mapContains(Node(K1, V, L, R), K2, V) :- (cmp(K1, K2)) =:= 0, !.
 mapContains(Node(K1, _, L, R), K2, V) :- (cmp(K1, K2)) > 0, !, mapContains(L, K2, V).
 mapContains(Node(K1, _, L, R), K2, V) :- (cmp(K1, K2)) < 0, !, mapContains(R, K2, V).
 
+mapContainsValue(Node(K, V, L, R), K, V).
+mapContainsValue(Node(_, _, L, R), K, V) :- mapContainsValue(L, K, V).
+mapContainsValue(Node(_, _, L, R), K, V) :- mapContainsValue(R, K, V).
+
 mapInsert(Empty(), K, V, Node(K, V, Empty(), Empty())) :- !.
 mapInsert(Node(K1, V1, L, R), K2, V2, Node(K1, V2, L, R)) :- (cmp(K1, K2)) =:= 0, !.
 mapInsert(Node(K1, V1, L, R), K2, V2, Node(K1, V1, M, R)) :- (cmp(K1, K2)) > 0, !, mapInsert(L, K2, V2, M).

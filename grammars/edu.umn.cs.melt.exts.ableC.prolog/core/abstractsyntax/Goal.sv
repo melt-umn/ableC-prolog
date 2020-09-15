@@ -2,18 +2,21 @@ grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 
 import core:monad;
 
+autocopy attribute refVariables::[Name];
+
 synthesized attribute continuationTransform::Expr;
 inherited attribute continuationTransformIn::Expr;
 
-nonterminal Goals with pps, env, errors, defs, transform<Expr>, continuationTransform, continuationTransformIn;
-flowtype Goals = decorate {env, continuationTransformIn}, pps {}, errors {env}, defs {env}, transform {decorate}, continuationTransform {decorate};
+nonterminal Goals with pps, env, refVariables, errors, defs, freeVariables, transform<Expr>, continuationTransform, continuationTransformIn;
+flowtype Goals = decorate {env, refVariables, continuationTransformIn}, pps {}, errors {refVariables, env}, defs {env}, freeVariables {env}, transform {decorate}, continuationTransform {decorate};
+
+propagate errors, defs on Goals;
 
 abstract production consGoal
 top::Goals ::= h::Goal t::Goals
 {
   top.pps = h.pp :: t.pps;
-  top.errors := h.errors ++ t.errors;
-  top.defs := h.defs ++ t.defs;
+  top.freeVariables := h.freeVariables ++ removeDefsFromNames(h.defs, t.freeVariables);
   
   t.env = addEnv(h.defs, h.env);
   
@@ -28,9 +31,8 @@ top::Goals ::= h::Goal t::Goals
 abstract production nilGoal
 top::Goals ::=
 {
+  propagate freeVariables;
   top.pps = [];
-  top.errors := [];
-  top.defs := [];
   top.continuationTransform = top.continuationTransformIn;
   top.transform = ableC_Expr { $Expr{top.continuationTransformIn}() };
 }
@@ -41,15 +43,16 @@ Goals ::= les::[Goal]
   return foldr(consGoal, nilGoal(), les);
 }
 
-nonterminal Goal with location, env, pp, errors, defs, transform<Expr>, transformIn<Expr>, continuationTransformIn;
-flowtype Goal = decorate {env, transformIn, continuationTransformIn}, pp {}, errors {env}, defs {env}, transform {decorate};
+nonterminal Goal with location, env, refVariables, pp, errors, defs, freeVariables, transform<Expr>, transformIn<Expr>, continuationTransformIn;
+flowtype Goal = decorate {env, refVariables, transformIn, continuationTransformIn}, pp {}, errors {refVariables, env}, defs {env}, freeVariables {env}, transform {decorate};
+
+propagate freeVariables on Goal;
 
 abstract production predicateGoal
 top::Goal ::= n::Name ts::TemplateArgNames les::LogicExprs
 {
+  propagate errors, defs;
   top.pp = pp"${n.pp}<${ppImplode(pp", ", ts.pps)}>(${ppImplode(pp", ", les.pps)})";
-  top.errors := ts.errors ++ les.errors;
-  top.defs := ts.defs ++ les.defs;
   top.transform =
     ableC_Expr {
       inst $name{s"_predicate_${n.name}"}<$TemplateArgNames{ts}>(
@@ -121,11 +124,9 @@ top::Goal ::= n::Name les::LogicExprs
   infParams.partialArgumentTypes = les.maybeTypereps;
   
   local inferredTemplateArguments::Maybe<TemplateArgs> =
-    do (bindMaybe, returnMaybe) {
-      tas::[TemplateArg] <-
-        lookupAll(infParams.partialInferredArgs, templateParams.names);
-      return foldr(consTemplateArg, nilTemplateArg(), tas);
-    };
+    mapMaybe(
+      foldr(consTemplateArg, nilTemplateArg(), _),
+      lookupAll(infParams.partialInferredArgs, templateParams.names));
   
   local ts::TemplateArgs = inferredTemplateArguments.fromJust;
   ts.edu:umn:cs:melt:exts:ableC:templating:abstractsyntax:paramNames = templateParams.names;
@@ -180,9 +181,8 @@ top::Goal ::= n::Name les::LogicExprs
 abstract production isGoal
 top::Goal ::= le::LogicExpr e::Expr
 {
+  propagate errors, defs;
   top.pp = pp"(${le.pp}) is (${e.pp})";
-  top.errors := le.errors ++ e.errors;
-  top.defs := le.defs ++ e.defs;
   top.transform =
     ableC_Expr {
       $Expr{
@@ -208,9 +208,8 @@ top::Goal ::= le::LogicExpr e::Expr
 abstract production equalsGoal
 top::Goal ::= le1::LogicExpr le2::LogicExpr
 {
+  propagate errors, defs;
   top.pp = pp"(${le1.pp}) = (${le2.pp})";
-  top.errors := le1.errors ++ le2.errors;
-  top.defs := le1.defs ++ le2.defs;
   top.transform =
     ableC_Expr {
       $Expr{
@@ -248,9 +247,8 @@ top::Goal ::= le1::LogicExpr le2::LogicExpr
 abstract production eqGoal
 top::Goal ::= e1::Expr e2::Expr
 {
+  propagate errors, defs;
   top.pp = pp"(${e1.pp}) =:= (${e2.pp})";
-  top.errors := e1.errors ++ e2.errors;
-  top.defs := e1.defs ++ e2.defs;
   top.transform =
     ableC_Expr {
       ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
@@ -273,9 +271,8 @@ top::Goal ::= e1::Expr e2::Expr
 abstract production neqGoal
 top::Goal ::= e1::Expr e2::Expr
 {
+  propagate errors, defs;
   top.pp = pp"(${e1.pp}) =\= (${e2.pp})";
-  top.errors := e1.errors ++ e2.errors;
-  top.defs := e1.defs ++ e2.defs;
   top.transform =
     ableC_Expr {
       ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
@@ -298,9 +295,8 @@ top::Goal ::= e1::Expr e2::Expr
 abstract production ltGoal
 top::Goal ::= e1::Expr e2::Expr
 {
+  propagate errors, defs;
   top.pp = pp"(${e1.pp}) < (${e2.pp})";
-  top.errors := e1.errors ++ e2.errors;
-  top.defs := e1.defs ++ e2.defs;
   top.transform =
     ableC_Expr {
       ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
@@ -323,9 +319,8 @@ top::Goal ::= e1::Expr e2::Expr
 abstract production eltGoal
 top::Goal ::= e1::Expr e2::Expr
 {
+  propagate errors, defs;
   top.pp = pp"(${e1.pp}) =< (${e2.pp})";
-  top.errors := e1.errors ++ e2.errors;
-  top.defs := e1.defs ++ e2.defs;
   top.transform =
     ableC_Expr {
       ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
@@ -348,9 +343,8 @@ top::Goal ::= e1::Expr e2::Expr
 abstract production gtGoal
 top::Goal ::= e1::Expr e2::Expr
 {
+  propagate errors, defs;
   top.pp = pp"(${e1.pp}) > (${e2.pp})";
-  top.errors := e1.errors ++ e2.errors;
-  top.defs := e1.defs ++ e2.defs;
   top.transform =
     ableC_Expr {
       ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
@@ -373,9 +367,8 @@ top::Goal ::= e1::Expr e2::Expr
 abstract production gteGoal
 top::Goal ::= e1::Expr e2::Expr
 {
+  propagate errors, defs;
   top.pp = pp"(${e1.pp}) >= (${e2.pp})";
-  top.errors := e1.errors ++ e2.errors;
-  top.defs := e1.defs ++ e2.defs;
   top.transform =
     ableC_Expr {
       ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
@@ -398,9 +391,8 @@ top::Goal ::= e1::Expr e2::Expr
 abstract production notGoal
 top::Goal ::= g::Goal
 {
+  propagate errors, defs;
   top.pp = pp"\+ (${g.pp})";
-  top.errors := g.errors;
-  top.defs := g.defs;
   
   g.transformIn = ableC_Expr { (_Bool)1 };
   g.continuationTransformIn = ableC_Expr { lambda allocate(alloca) () -> (_Bool)1 };
@@ -418,9 +410,8 @@ top::Goal ::= g::Goal
 abstract production cutGoal
 top::Goal ::=
 {
+  propagate errors, defs;
   top.pp = pp"!";
-  top.errors := [];
-  top.defs := [];
   top.transform =
     ableC_Expr {
       // If a failure occurs, longjmp out of all continuations back to the current
@@ -428,6 +419,40 @@ top::Goal ::=
       // is stack-allocated.
       $Expr{top.transformIn} || (longjmp(_cut_buffer, 1), 1)
     };
+}
+
+abstract production initiallyGoal
+top::Goal ::= s::Stmt
+{
+  propagate errors, defs;
+  top.pp = pp"initially ${braces(nestlines(2, s.pp))})";
+  
+  top.transform =
+    ableC_Expr {
+      ({{$Stmt{makeUnwrappedVarDecls(s.freeVariables, top.env)}
+         $Stmt{decStmt(s)}}
+        $Expr{top.transformIn};})
+    };
+  
+  s.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
+  s.returnType = nothing();
+}
+
+abstract production finallyGoal
+top::Goal ::= s::Stmt
+{
+  propagate errors, defs;
+  top.pp = pp"finally ${braces(nestlines(2, s.pp))})";
+  
+  top.transform =
+    ableC_Expr {
+      ({{$Stmt{makeUnwrappedVarDecls(s.freeVariables, top.env)}
+         push_action(_trail, lambda allocate(malloc) (void) -> void { $Stmt{decStmt(s)} }, free);}
+        $Expr{top.transformIn};})
+    };
+  
+  s.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
+  s.returnType = nothing();
 }
 
 synthesized attribute templateArgUnifyErrors::([Message] ::= Location Decorated Env) occurs on TemplateArgs, TemplateArg;

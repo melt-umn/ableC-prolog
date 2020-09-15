@@ -9,9 +9,8 @@ flowtype PredicateDecl = decorate {env, ruleTransformIn}, pp {}, errors {decorat
 abstract production predicateDecl
 top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parameters
 {
+  propagate errors, defs;
   top.pp = pp"${n.pp}<${ppImplode(text(", "), templateParams.pps)}>(${ppImplode(pp", ", params.pps)});";
-  top.errors := templateParams.errors ++ params.errors;
-  top.defs := params.defs;
   top.errorDefs := top.defs;
   top.paramNames = params.paramNames;
   top.typereps = params.typereps;
@@ -62,26 +61,22 @@ top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parame
     };
 }
 
-synthesized attribute templateParamDefs::[Def] occurs on TemplateParameters, TemplateParameter;
+monoid attribute templateParamDefs::[Def] with [], ++;
+attribute templateParamDefs occurs on TemplateParameters, TemplateParameter;
 autocopy attribute templateParamEnv::Decorated Env occurs on TemplateParameters, TemplateParameter;
+
+propagate templateParamDefs on TemplateParameters;
 
 aspect production consTemplateParameter
 top::TemplateParameters ::= h::TemplateParameter t::TemplateParameters
 {
-  top.templateParamDefs = h.templateParamDefs ++ t.templateParamDefs;
   h.templateParamEnv = addEnv(h.templateParamDefs, top.templateParamEnv);
-}
-
-aspect production nilTemplateParameter
-top::TemplateParameters ::=
-{
-  top.templateParamDefs = [];
 }
 
 aspect production typeTemplateParameter
 top::TemplateParameter ::= n::Name
 {
-  top.templateParamDefs =
+  top.templateParamDefs :=
     [valueDef(n.name, templateParamValueItem(extType(nilQualifier(), typeParamType(n.name)), true, top.location))];
 }
 
@@ -97,7 +92,7 @@ top::TemplateParameter ::= bty::BaseTypeExpr n::Name mty::TypeModifierExpr
   mty1.returnType = nothing();
   mty1.typeModifierIn = bty1.typeModifier;
   mty1.baseType = bty1.typerep;
-  top.templateParamDefs =
+  top.templateParamDefs :=
     valueDef(n.name, templateParamValueItem(mty1.typerep, false, top.location)) ::
     bty1.defs ++ mty1.defs;
 }
