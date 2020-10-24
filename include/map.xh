@@ -49,7 +49,7 @@ v mapGet(map<k, v, cmp> ?m, k key) {
          exit(1);
          // Unreachable, needed since pattern RHS must have type v
          v res;
-         v
+         res;
        }););
 }
 
