@@ -48,7 +48,8 @@ v mapGet(map<k, v, cmp> ?m, k key) {
          fprintf(stderr, "Key %s not in map\n", show(key).text);
          exit(1);
          // Unreachable, needed since pattern RHS must have type v
-         (v){0};
+         v res;
+         v
        }););
 }
 
@@ -75,7 +76,8 @@ k mapGetMaxKey(map<k, v, cmp> ?m) {
          fprintf(stderr, "Map is empty\n");
          exit(1);
          // Unreachable, needed since pattern RHS must have type k
-         (k){0};
+         k res;
+         res;
        }););
 }
 
@@ -98,7 +100,8 @@ map<k, v, cmp> ?mapDelete(void *(*alloc)(size_t), map<k, v, cmp> ?m, k key) {
          fprintf(stderr, "Key %s not in map\n", show(key).text);
          exit(1);
          // Unreachable, needed since pattern RHS must have type map<k, v, cmp> ?
-         (map<k, v, cmp> ?){0};
+         map<k, v, cmp> ?res;
+         res;
        }););
 }
 
