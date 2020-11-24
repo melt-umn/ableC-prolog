@@ -190,7 +190,7 @@ top::LogicExpr ::= e::Expr
   local expectedType::Type = top.expectedType;
   expectedType.otherType =
     case baseType, e.typerep of
-    | extType(_, stringType()), pointerType(_, builtinType(_, signedType(charType()))) ->
+    | extType(_, stringType()), arrayType(builtinType(_, signedType(charType())), _, _, _) ->
       extType(nilQualifier(), stringType())
     | _, _ ->
       if compatibleTypes(baseType, e.typerep, true, false)
