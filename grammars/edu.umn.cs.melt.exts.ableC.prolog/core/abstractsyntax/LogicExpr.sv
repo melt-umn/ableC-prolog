@@ -173,8 +173,8 @@ top::LogicExpr ::= e::Expr
   top.transform =
     makeVarExpr(
       top.allocator, top.allowUnificationTypes, top.expectedType,
-      case baseType, e.typerep of
-      | extType(_, stringType()), arrayType(builtinType(_, signedType(charType())), _, _, _) ->
+      case baseType, e.typerep.defaultFunctionArrayLvalueConversion of
+      | extType(_, stringType()), pointerType(_, builtinType(_, signedType(charType()))) ->
         strExpr(e, location=builtin)
       | _, _ -> ableC_Expr { ($directTypeExpr{baseType})$Expr{e} }
       end);
@@ -190,7 +190,7 @@ top::LogicExpr ::= e::Expr
   local expectedType::Type = top.expectedType;
   expectedType.otherType =
     case baseType, e.typerep.defaultFunctionArrayLvalueConversion of
-    | extType(_, stringType()), arrayType(builtinType(_, signedType(charType())), _, _, _) ->
+    | extType(_, stringType()), pointerType(_, builtinType(_, signedType(charType()))) ->
       extType(nilQualifier(), stringType())
     | _, t ->
       if compatibleTypes(baseType, t, true, true)
