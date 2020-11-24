@@ -145,7 +145,7 @@ top::Goal ::= n::Name les::LogicExprs
   
   les.expectedTypes =
     if inferredTemplateArguments.isJust
-    then map(\ t::Type -> t.canonicalType, params.typereps)
+    then map(\ t::Type -> t.canonicalType.defaultFunctionArrayLvalueConversion, params.typereps)
     else [];
   les.allowUnificationTypes = false;
   les.allocator = ableC_Expr { alloca };
@@ -480,7 +480,9 @@ top::TemplateArg ::=
 aspect production typeTemplateArg
 top::TemplateArg ::= t::Type
 {
-  top.templateArgUnifyErrors = decorate t with {otherType = t;}.unifyErrors;
+  top.templateArgUnifyErrors =
+    decorate t.defaultFunctionArrayLvalueConversion
+      with {otherType = t.defaultFunctionArrayLvalueConversion;}.unifyErrors;
 }
 
 -- Generate "unwrapped" values corresponding to any variables referenced in the expression.

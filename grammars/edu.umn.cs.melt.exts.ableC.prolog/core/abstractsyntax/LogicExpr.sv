@@ -173,7 +173,7 @@ top::LogicExpr ::= e::Expr
   top.transform =
     makeVarExpr(
       top.allocator, top.allowUnificationTypes, top.expectedType,
-      case baseType, e.typerep of
+      case baseType, e.typerep.defaultFunctionArrayLvalueConversion of
       | extType(_, stringType()), pointerType(_, builtinType(_, signedType(charType()))) ->
         strExpr(e, location=builtin)
       | _, _ -> ableC_Expr { ($directTypeExpr{baseType})$Expr{e} }
@@ -189,11 +189,11 @@ top::LogicExpr ::= e::Expr
     end;
   local expectedType::Type = top.expectedType;
   expectedType.otherType =
-    case baseType, e.typerep of
+    case baseType, e.typerep.defaultFunctionArrayLvalueConversion of
     | extType(_, stringType()), pointerType(_, builtinType(_, signedType(charType()))) ->
       extType(nilQualifier(), stringType())
-    | _, _ ->
-      if compatibleTypes(baseType, e.typerep, true, false)
+    | _, t ->
+      if compatibleTypes(baseType, t, true, true)
       then baseType -- Value is cast to expected type
       else e.typerep
     end;
@@ -256,7 +256,7 @@ top::LogicExpr ::= n::Name les::LogicExprs
   -- expected type for all the constructor parameters have already been checked as well.
   les.expectedTypes =
     case constructorParamLookup of
-    | just(params) -> map(\ t::Type -> t.canonicalType, params.typereps)
+    | just(params) -> map(\ t::Type -> t.canonicalType.defaultFunctionArrayLvalueConversion, params.typereps)
     | nothing() -> []
     end;
   les.allowUnificationTypes = false;
