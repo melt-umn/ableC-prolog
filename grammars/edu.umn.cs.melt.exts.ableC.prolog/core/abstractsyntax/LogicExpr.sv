@@ -174,7 +174,7 @@ top::LogicExpr ::= e::Expr
     makeVarExpr(
       top.allocator, top.allowUnificationTypes, top.expectedType,
       case baseType, e.typerep of
-      | extType(_, stringType()), pointerType(_, builtinType(_, signedType(charType()))) ->
+      | extType(_, stringType()), arrayType(builtinType(_, signedType(charType())), _, _, _) ->
         strExpr(e, location=builtin)
       | _, _ -> ableC_Expr { ($directTypeExpr{baseType})$Expr{e} }
       end);
