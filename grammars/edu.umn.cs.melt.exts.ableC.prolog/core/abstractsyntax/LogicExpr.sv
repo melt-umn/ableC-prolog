@@ -113,11 +113,7 @@ top::LogicExpr ::= n::Name
     | extType(_, varType(_)) -> ableC_Expr { $name{n.name} }
     | _ when top.allowUnificationTypes -> ableC_Expr { $name{n.name} }
     | _ -> ableC_Expr {
-      ({if (!inst is_bound<$directTypeExpr{baseType}>($name{n.name})) {
-          fprintf(stderr, $stringLiteralExpr{s"Value demanded of free variable at ${n.location.unparse}\n"});
-          abort();
-        }
-        inst value<$directTypeExpr{baseType}>($name{n.name});})
+        inst value_loc<$directTypeExpr{baseType}>($name{n.name}, $stringLiteralExpr{n.location.unparse})
       }
     end;
   

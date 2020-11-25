@@ -498,12 +498,8 @@ Stmt ::= freeVariables::[Name] env::Decorated Env
             | extType(_, varType(sub)) ->
               [ableC_Stmt {
                  $directTypeExpr{i.typerep} $name{"_" ++ n.name} = $Name{n};
-                 if (!inst is_bound<$directTypeExpr{sub}>($name{n.name})) {
-                   fprintf(stderr, $stringLiteralExpr{s"Value demanded of free variable at ${n.location.unparse}\n"});
-                   abort();
-                 }
                  $directTypeExpr{sub} $name{n.name} =
-                   inst value<$directTypeExpr{sub}>($name{"_" ++ n.name});
+                   inst value_loc<$directTypeExpr{sub}>($name{"_" ++ n.name}, $stringLiteralExpr{n.location.unparse});
                }]
             | _ -> []
             end
