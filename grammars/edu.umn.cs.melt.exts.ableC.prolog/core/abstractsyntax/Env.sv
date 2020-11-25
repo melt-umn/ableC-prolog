@@ -126,7 +126,7 @@ aspect default production
 top::Def ::=
 {
   top.predicateContribs = [];
-  top.canonicalDefs = [];
+  top.canonicalDefs = [top];
 }
 
 abstract production predicateDef

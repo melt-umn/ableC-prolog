@@ -96,9 +96,9 @@ prolog {
   member<typename a>(a ?item, list<a ?> ?l);
   select<typename a>(a ?item, list<a ?> ?l1, list<a ?> ?l2);
   subset<typename a>(list<a ?> ?sub, list<a ?> ?l);
-  nth<typename a>(list<a?> ?l, size_t ?n, a? item);
-  sort<typename a, int (*cmp)(k, k)>(list<a?> ?, list<a?> ?);
-  insert<typename a, int (*cmp)(k, k)>(a ?, list<a?> ?, list<a?> ?);
+  nth<typename a>(list<a?> ?l, size_t n, a? item);
+  sort<typename a, int (*cmp)(k, k)>(list<a?>, list<a?> ?);
+  insert<typename a, int (*cmp)(k, k)>(a, list<a?>, list<a?> ?);
 
   #include <list.pl>
 }

@@ -108,25 +108,27 @@ top::LogicExpr ::= n::Name
     if !null(n.valueLocalLookup)
     then just(n.valueItem.typerep)
     else nothing();
-  top.transform = ableC_Expr { $name{n.name} };
+  top.transform =
+    case top.expectedType of 
+    | extType(_, varType(_)) -> ableC_Expr { $name{n.name} }
+    | _ when top.allowUnificationTypes -> ableC_Expr { $name{n.name} }
+    | _ -> ableC_Expr {
+      ({if (!inst is_bound<$directTypeExpr{baseType}>($name{n.name})) {
+          fprintf(stderr, $stringLiteralExpr{s"Value demanded of free variable at ${n.location.unparse}\n"});
+          abort();
+        }
+        inst value<$directTypeExpr{baseType}>($name{n.name});})
+      }
+    end;
   
   local baseType::Type =
     case top.expectedType of
     | extType(_, varType(sub)) -> sub
-    | errorType() -> errorType()
     | t -> t
     end;
   local expectedType::Type = top.expectedType;
   expectedType.otherType = extType(nilQualifier(), varType(baseType));
-  top.errors <-
-    if top.allowUnificationTypes
-    then expectedType.unifyErrors(n.location, top.env)
-    else
-      case top.expectedType of
-      | extType(_, varType(_)) -> []
-      | errorType() -> []
-      | t -> [err(n.location, s"Variable expected to unify with a variable type (got ${showType(top.expectedType)})")]
-      end;
+  top.errors <- expectedType.unifyErrors(n.location, top.env);
   top.errors <- n.valueRedeclarationCheck(extType(nilQualifier(), varType(baseType)));
   top.errors <-
     if null(n.valueLocalLookup) && containsBy(nameEq, n, top.refVariables)

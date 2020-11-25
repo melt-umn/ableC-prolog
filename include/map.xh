@@ -14,13 +14,13 @@ datatype map {
 
 prolog {
   emptyMap<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1);
-  mapContains<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k ?key, v ?value);
+  mapContains<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k key, v ?value);
   mapContainsValue<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k ?key, v ?value);
-  mapInsert<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k ?key, v ?value, map<k, v, cmp> ?m2);
-  mapDelete<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k ?key, map<k, v, cmp> ?m2);
-  mapSelectMin<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k ?key, v? value, map<k, v, cmp> ?m2);
-  mapSelectMax<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k ?key, v? value, map<k, v, cmp> ?m2);
-  mapKeys<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m, list<k ?> ?keys, v? value);
+  mapInsert<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k key, v ?value, map<k, v, cmp> ?m2);
+  mapDelete<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k key, map<k, v, cmp> ?m2);
+  mapSelectMin<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k ?key, v ?value, map<k, v, cmp> ?m2);
+  mapSelectMax<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k ?key, v ?value, map<k, v, cmp> ?m2);
+  mapKeys<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m, list<k ?> ?keys, v ?value);
   #include "map.pl"
 }
 
