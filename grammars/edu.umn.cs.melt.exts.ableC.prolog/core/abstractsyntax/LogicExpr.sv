@@ -175,10 +175,10 @@ top::LogicExpr ::= e::Expr
   top.transform =
     makeVarExpr(
       top.allocator, top.allowUnificationTypes, top.expectedType,
-      case baseType, e.typerep.defaultFunctionArrayLvalueConversion of
+      case baseType.defaultFunctionArrayLvalueConversion, e.typerep.defaultFunctionArrayLvalueConversion of
       | extType(_, stringType()), pointerType(_, builtinType(_, signedType(charType()))) ->
         strExpr(e, location=builtin)
-      | _, _ -> ableC_Expr { ($directTypeExpr{baseType})$Expr{e} }
+      | t, _ -> ableC_Expr { ($directTypeExpr{t})$Expr{e} }
       end);
   
   e.returnType = nothing();
@@ -191,12 +191,12 @@ top::LogicExpr ::= e::Expr
     end;
   local expectedType::Type = top.expectedType;
   expectedType.otherType =
-    case baseType, e.typerep.defaultFunctionArrayLvalueConversion of
+    case baseType.defaultFunctionArrayLvalueConversion, e.typerep.defaultFunctionArrayLvalueConversion of
     | extType(_, stringType()), pointerType(_, builtinType(_, signedType(charType()))) ->
       extType(nilQualifier(), stringType())
-    | _, t ->
-      if compatibleTypes(baseType, t, true, true)
-      then baseType -- Value is cast to expected type
+    | t1, t2 ->
+      if compatibleTypes(t1, t2, true, true)
+      then t1 -- Value is cast to expected type
       else e.typerep
     end;
   top.errors <- expectedType.unifyErrors(top.location, top.env);
@@ -258,7 +258,7 @@ top::LogicExpr ::= n::Name les::LogicExprs
   -- expected type for all the constructor parameters have already been checked as well.
   les.expectedTypes =
     case constructorParamLookup of
-    | just(params) -> map(\ t::Type -> t.canonicalType.defaultFunctionArrayLvalueConversion, params.typereps)
+    | just(params) -> map(\ t::Type -> t.canonicalType, params.typereps)
     | nothing() -> []
     end;
   les.allowUnificationTypes = false;

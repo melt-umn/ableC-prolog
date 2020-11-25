@@ -107,8 +107,7 @@ top::Goal ::= n::Name les::LogicExprs
     else [];
   top.transform =
     ableC_Expr {
-      inst $name{s"_predicate_${n.name}"}<$TemplateArgNames{
-        inferredTemplateArguments.fromJust.argNames}>(
+      inst $name{s"_predicate_${n.name}"}<$TemplateArgNames{ts.argNames}>(
         $Exprs{les.transform}, _trail, $Expr{top.continuationTransformIn})
     };
   
@@ -145,7 +144,7 @@ top::Goal ::= n::Name les::LogicExprs
   
   les.expectedTypes =
     if inferredTemplateArguments.isJust
-    then map(\ t::Type -> t.canonicalType.defaultFunctionArrayLvalueConversion, params.typereps)
+    then map(\ t::Type -> t.canonicalType, params.typereps)
     else [];
   les.allowUnificationTypes = false;
   les.allocator = ableC_Expr { alloca };
