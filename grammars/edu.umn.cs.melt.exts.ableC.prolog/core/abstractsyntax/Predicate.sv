@@ -31,6 +31,7 @@ top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parame
   params.position = 0;
   
   top.errors <- n.predicateRedeclarationCheck;
+  top.errors <- params.predicateParamErrors;
   top.errors <- params.unifyErrors(top.location, addEnv(params.defs, params.env));
   
   top.transform =
@@ -38,6 +39,8 @@ top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parame
       proto_typedef unification_trail, size_t, jmp_buf;
       template<$TemplateParameters{templateParams}>
       _Bool $name{transName}($Parameters{params.transform}, unification_trail _trail, closure<() -> _Bool> _continuation) {
+        _pred_start:;
+
         // The initial length of the trail is the index of the first item that
         // should be undone in case of failure
         size_t _trail_index = _trail.length;
@@ -97,14 +100,31 @@ top::TemplateParameter ::= bty::BaseTypeExpr n::Name mty::TypeModifierExpr
     bty1.defs ++ mty1.defs;
 }
 
+monoid attribute predicateParamErrors::[Message] with [], ++;
+attribute predicateParamErrors occurs on Parameters;
+propagate predicateParamErrors on Parameters;
+
 synthesized attribute paramNames::[String] occurs on Parameters;
 attribute transform<Parameters> occurs on Parameters;
+
+inherited attribute tailCallArgs::Exprs occurs on Parameters;
+synthesized attribute tailCallTrans::Stmt occurs on Parameters;
 
 aspect production consParameters
 top::Parameters ::= h::ParameterDecl t::Parameters
 {
   top.transform = consParameters(h.transform, t.transform);
   top.paramNames = h.paramName :: t.paramNames;
+  top.tailCallTrans = seqStmt(h.tailCallTrans, t.tailCallTrans);
+
+  h.tailCallArg =
+    case top.tailCallArgs of
+    | consExpr(h, _) -> h
+    end;
+  t.tailCallArgs =
+    case top.tailCallArgs of
+    | consExpr(_, t) -> t
+    end;
 }
 
 aspect production nilParameters
@@ -112,14 +132,24 @@ top::Parameters ::=
 {
   top.transform = nilParameters();
   top.paramNames = [];
+  top.tailCallTrans = nullStmt();
 }
+
+attribute predicateParamErrors occurs on ParameterDecl;
 
 synthesized attribute paramName::String occurs on ParameterDecl;
 attribute transform<ParameterDecl> occurs on ParameterDecl;
 
+inherited attribute tailCallArg::Expr occurs on ParameterDecl;
+attribute tailCallTrans occurs on ParameterDecl;
+
 aspect production parameterDecl
 top::ParameterDecl ::= storage::StorageClasses  bty::BaseTypeExpr  mty::TypeModifierExpr  n::MaybeName  attrs::Attributes
 {
+  top.predicateParamErrors :=
+    if containsQualifier(constQualifier(location=builtin), top.typerep) -- top.typerep is pre-instantiated but we only care about qualifiers
+    then [err(top.sourceLocation, "Predicate parameters may not be declared const")]
+    else [];
   top.paramName =
     case n of
     | justName(n) -> "_" ++ n.name
@@ -127,4 +157,5 @@ top::ParameterDecl ::= storage::StorageClasses  bty::BaseTypeExpr  mty::TypeModi
     end;
   top.transform =
     parameterDecl(storage, bty, mty, justName(name(top.paramName, location=builtin)), attrs);
+  top.tailCallTrans = ableC_Stmt { $name{top.paramName} = $Expr{top.tailCallArg}; };
 }

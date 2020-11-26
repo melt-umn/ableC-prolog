@@ -74,12 +74,14 @@ inherited attribute expectedType::Type;
 closed nonterminal LogicExpr with location, pp, env, expectedType, allowUnificationTypes, allocator, refVariables, errors, defs, maybeTyperep, transform<Expr>;
 flowtype LogicExpr = decorate {env, expectedType, allowUnificationTypes, allocator, refVariables}, pp {}, errors {decorate}, defs {env, expectedType, allowUnificationTypes}, maybeTyperep {env, allowUnificationTypes}, transform {decorate};
 
+propagate errors, defs on LogicExpr;
+
 abstract production decLogicExpr
 top::LogicExpr ::= le::Decorated LogicExpr
 {
   top.pp = le.pp;
-  top.errors := le.errors;
-  top.defs := le.defs;
+  top.errors <- le.errors;
+  top.defs <- le.defs;
   top.maybeTyperep = le.maybeTyperep;
   top.transform = le.transform;
 }
@@ -99,8 +101,7 @@ abstract production varLogicExpr
 top::LogicExpr ::= n::Name
 {
   top.pp = n.pp;
-  top.errors := [];
-  top.defs :=
+  top.defs <-
     if null(n.valueLocalLookup)
     then [valueDef(n.name, varValueItem(extType(nilQualifier(), varType(baseType)), n.location))]
     else [];
@@ -135,7 +136,6 @@ top::LogicExpr ::= n::Name
 abstract production wildcardLogicExpr
 top::LogicExpr ::=
 {
-  propagate errors, defs;
   top.pp = pp"_";
   top.maybeTyperep = nothing();
   top.transform =
@@ -165,7 +165,6 @@ top::LogicExpr ::=
 abstract production constLogicExpr
 top::LogicExpr ::= e::Expr
 {
-  propagate errors, defs;
   top.pp = e.pp;
   top.maybeTyperep = just(e.typerep);
   top.transform =
@@ -201,7 +200,6 @@ top::LogicExpr ::= e::Expr
 abstract production constructorLogicExpr
 top::LogicExpr ::= n::Name les::LogicExprs
 {
-  propagate errors, defs;
   top.pp = cat( n.pp, parens( ppImplode(text(","), les.pps) ) );
   
   local adtType::Type =

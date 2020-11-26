@@ -51,7 +51,7 @@ top::LogicStmts ::=
   top.ruleTransform = [];
 }
 
-nonterminal LogicStmt with location, pp, errors, defs, errorDefs, env, transform<Decls>, ruleTransform, ruleTransformIn;
+nonterminal LogicStmt with location, pp, errors, defs, errorDefs, env, predicateName, transform<Decls>, ruleTransform, ruleTransformIn;
 flowtype LogicStmt = decorate {env, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, errorDefs {decorate}, transform {decorate}, ruleTransform {decorate};
 
 abstract production ruleLogicStmt
@@ -71,7 +71,10 @@ top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
   les.allowUnificationTypes = true;
   les.allocator = ableC_Expr { alloca };
   gs.env = addEnv(les.defs, les.env);
+  gs.predicateName = just(n.name);
   gs.refVariables = les.refVariables;
+  gs.isLastGoal = !lookupBy(stringEq, n.name, top.ruleTransformIn).isJust;
+  gs.tailCallPermitted = true;
   
   top.errors <- n.predicateLocalLookupCheck;
   top.errors <-

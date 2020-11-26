@@ -8,7 +8,10 @@ top::Expr ::= gs::Goals body::Stmt
   local localErrors::[Message] = gs.errors ++ body.errors;
   
   gs.env = openScopeEnv(top.env);
+  gs.predicateName = nothing();
   gs.refVariables = gs.freeVariables;
+  gs.isLastGoal = true;
+  gs.tailCallPermitted = false;
   
   -- Need to decorate var decls here to compute the env for body, since this may
   -- contain defs not in gs.defs

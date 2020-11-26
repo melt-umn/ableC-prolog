@@ -2,13 +2,17 @@ grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 
 import core:monad;
 
+autocopy attribute predicateName::Maybe<String>;
 autocopy attribute refVariables::[Name];
+inherited attribute isLastGoal::Boolean;
+synthesized attribute usesContinuation::Boolean;
+inherited attribute tailCallPermitted::Boolean;
 
 synthesized attribute continuationTransform::Expr;
 inherited attribute continuationTransformIn::Expr;
 
-nonterminal Goals with pps, env, refVariables, errors, defs, freeVariables, transform<Expr>, continuationTransform, continuationTransformIn;
-flowtype Goals = decorate {env, refVariables, continuationTransformIn}, pps {}, errors {refVariables, env}, defs {env}, freeVariables {env}, transform {decorate}, continuationTransform {decorate};
+nonterminal Goals with pps, env, predicateName, refVariables, isLastGoal, tailCallPermitted, errors, defs, freeVariables, transform<Expr>, continuationTransform, continuationTransformIn;
+flowtype Goals = decorate {env, predicateName, refVariables, isLastGoal, tailCallPermitted, continuationTransformIn}, pps {}, errors {refVariables, env}, defs {env}, freeVariables {env}, transform {decorate}, continuationTransform {decorate};
 
 propagate errors, defs on Goals;
 
@@ -19,6 +23,18 @@ top::Goals ::= h::Goal t::Goals
   top.freeVariables := h.freeVariables ++ removeDefsFromNames(h.defs, t.freeVariables);
   
   t.env = addEnv(h.defs, h.env);
+  
+  h.tailCallPermitted =
+    case t of
+    | nilGoal() -> top.isLastGoal && top.tailCallPermitted
+    | _ -> false
+    end;
+  t.isLastGoal =
+    case h of
+    | cutGoal() -> true
+    | _ -> top.isLastGoal
+    end;
+  t.tailCallPermitted = top.tailCallPermitted && !h.usesContinuation;
   
   top.continuationTransform =
     ableC_Expr { lambda allocate(alloca) () -> (_Bool)$Expr{top.transform} };
@@ -43,8 +59,8 @@ Goals ::= les::[Goal]
   return foldr(consGoal, nilGoal(), les);
 }
 
-nonterminal Goal with location, env, refVariables, pp, errors, defs, freeVariables, transform<Expr>, transformIn<Expr>, continuationTransformIn;
-flowtype Goal = decorate {env, refVariables, transformIn, continuationTransformIn}, pp {}, errors {refVariables, env}, defs {env}, freeVariables {env}, transform {decorate};
+nonterminal Goal with location, env, predicateName, refVariables, tailCallPermitted, pp, errors, defs, freeVariables, usesContinuation, transform<Expr>, transformIn<Expr>, continuationTransformIn;
+flowtype Goal = decorate {env, predicateName, refVariables, tailCallPermitted, transformIn, continuationTransformIn}, pp {}, errors {refVariables, env}, defs {env}, freeVariables {env}, usesContinuation {env}, transform {decorate};
 
 propagate freeVariables on Goal;
 
@@ -53,8 +69,15 @@ top::Goal ::= n::Name ts::TemplateArgNames les::LogicExprs
 {
   propagate errors, defs;
   top.pp = pp"${n.pp}<${ppImplode(pp", ", ts.pps)}>(${ppImplode(pp", ", les.pps)})";
+  top.usesContinuation = true;
   top.transform =
-    ableC_Expr {
+    if top.tailCallPermitted && top.predicateName.isJust && n.name == top.predicateName.fromJust
+    then ableC_Expr {
+      ({$Stmt{params.tailCallTrans}
+        goto _pred_start;
+        0;})
+    }
+    else ableC_Expr {
       inst $name{s"_predicate_${n.name}"}<$TemplateArgNames{ts}>(
         $Exprs{les.transform}, _trail, $Expr{top.continuationTransformIn})
     };
@@ -70,6 +93,7 @@ top::Goal ::= n::Name ts::TemplateArgNames les::LogicExprs
   params.env = openScopeEnv(globalEnv(addEnv(ts.defs, ts.env)));
   params.returnType = nothing();
   params.position = 0;
+  params.tailCallArgs = les.transform;
   
   top.defs <- foldr(consDefs, nilDefs(), params.defs).canonicalDefs;
   
@@ -97,6 +121,7 @@ abstract production inferredPredicateGoal
 top::Goal ::= n::Name les::LogicExprs
 {
   top.pp = pp"${n.pp}(${ppImplode(pp", ", les.pps)})";
+  top.usesContinuation = true;
   top.errors :=
     if inferredTemplateArguments.isJust && !inferredTemplateArguments.fromJust.containsErrorType
     then les.errors
@@ -106,7 +131,13 @@ top::Goal ::= n::Name les::LogicExprs
     then les.defs
     else [];
   top.transform =
-    ableC_Expr {
+    if top.tailCallPermitted && top.predicateName.isJust && n.name == top.predicateName.fromJust
+    then ableC_Expr {
+      ({$Stmt{params.tailCallTrans}
+        goto _pred_start;
+        0;})
+    }
+    else ableC_Expr {
       inst $name{s"_predicate_${n.name}"}<$TemplateArgNames{ts.argNames}>(
         $Exprs{les.transform}, _trail, $Expr{top.continuationTransformIn})
     };
@@ -136,6 +167,7 @@ top::Goal ::= n::Name les::LogicExprs
   params.env = openScopeEnv(globalEnv(top.env));
   params.returnType = nothing();
   params.position = 0;
+  params.tailCallArgs = les.transform;
   
   top.defs <-
     if inferredTemplateArguments.isJust
@@ -182,6 +214,7 @@ top::Goal ::= le::LogicExpr e::Expr
 {
   propagate errors, defs;
   top.pp = pp"(${le.pp}) is (${e.pp})";
+  top.usesContinuation = false;
   top.transform =
     ableC_Expr {
       $Expr{
@@ -209,6 +242,7 @@ top::Goal ::= le1::LogicExpr le2::LogicExpr
 {
   propagate errors, defs;
   top.pp = pp"(${le1.pp}) = (${le2.pp})";
+  top.usesContinuation = false;
   top.transform =
     ableC_Expr {
       $Expr{
@@ -248,6 +282,7 @@ top::Goal ::= e1::Expr e2::Expr
 {
   propagate errors, defs;
   top.pp = pp"(${e1.pp}) =:= (${e2.pp})";
+  top.usesContinuation = false;
   top.transform =
     ableC_Expr {
       ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
@@ -272,6 +307,7 @@ top::Goal ::= e1::Expr e2::Expr
 {
   propagate errors, defs;
   top.pp = pp"(${e1.pp}) =\= (${e2.pp})";
+  top.usesContinuation = false;
   top.transform =
     ableC_Expr {
       ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
@@ -296,6 +332,7 @@ top::Goal ::= e1::Expr e2::Expr
 {
   propagate errors, defs;
   top.pp = pp"(${e1.pp}) < (${e2.pp})";
+  top.usesContinuation = false;
   top.transform =
     ableC_Expr {
       ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
@@ -320,6 +357,7 @@ top::Goal ::= e1::Expr e2::Expr
 {
   propagate errors, defs;
   top.pp = pp"(${e1.pp}) =< (${e2.pp})";
+  top.usesContinuation = false;
   top.transform =
     ableC_Expr {
       ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
@@ -344,6 +382,7 @@ top::Goal ::= e1::Expr e2::Expr
 {
   propagate errors, defs;
   top.pp = pp"(${e1.pp}) > (${e2.pp})";
+  top.usesContinuation = false;
   top.transform =
     ableC_Expr {
       ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
@@ -368,6 +407,7 @@ top::Goal ::= e1::Expr e2::Expr
 {
   propagate errors, defs;
   top.pp = pp"(${e1.pp}) >= (${e2.pp})";
+  top.usesContinuation = false;
   top.transform =
     ableC_Expr {
       ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
@@ -392,9 +432,11 @@ top::Goal ::= g::Goal
 {
   propagate errors, defs;
   top.pp = pp"\+ (${g.pp})";
+  top.usesContinuation = false;
   
   g.transformIn = ableC_Expr { (_Bool)1 };
   g.continuationTransformIn = ableC_Expr { lambda allocate(alloca) () -> (_Bool)1 };
+  g.tailCallPermitted = false;
   top.transform =
     ableC_Expr {
       proto_typedef size_t;
@@ -411,6 +453,7 @@ top::Goal ::=
 {
   propagate errors, defs;
   top.pp = pp"!";
+  top.usesContinuation = false;
   top.transform =
     ableC_Expr {
       // If a failure occurs, longjmp out of all continuations back to the current
@@ -426,6 +469,7 @@ top::Goal ::= s::Stmt
   propagate errors, defs;
   top.pp = pp"initially ${braces(nestlines(2, s.pp))})";
   
+  top.usesContinuation = false;
   top.transform =
     ableC_Expr {
       ({{$Stmt{makeUnwrappedVarDecls(s.freeVariables, top.env)}
@@ -443,6 +487,7 @@ top::Goal ::= s::Stmt
   propagate errors, defs;
   top.pp = pp"finally ${braces(nestlines(2, s.pp))})";
   
+  top.usesContinuation = false;
   top.transform =
     ableC_Expr {
       ({{$Stmt{makeUnwrappedVarDecls(s.freeVariables, top.env)}
