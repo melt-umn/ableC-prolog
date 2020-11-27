@@ -8,7 +8,7 @@ prolog {
 }
 
 int main() {
-  if (!query foo(100) { return 1; }) {
+  if (!query foo(100) {}) {
     return 1;
   }
 }

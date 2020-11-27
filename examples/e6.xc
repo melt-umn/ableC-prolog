@@ -28,7 +28,6 @@ bool solve(int n, bool board[n][n]) {
         }
       }
     }
-    return true;
   };
 }
 

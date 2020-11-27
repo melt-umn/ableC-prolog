@@ -12,22 +12,22 @@ prolog {
 }
 
 int main() {
-  if (!query f(a, a, a) { return 1; }) {
+  if (!query f(a, a, a) {}) {
     return 1;
   }
-  if (!query f(b, b, b) { return 1; }) {
+  if (!query f(b, b, b) {}) {
     return 2;
   }
-  if (!query f(b, a, a) { return 1; }) {
+  if (!query f(b, a, a) {}) {
     return 3;
   }
-  if (query f(b, a, b) { return 1; }) {
+  if (query f(b, a, b) {}) {
     return 4;
   }
-  if (!query f(b, X, X) { return 1; }) {
+  if (!query f(b, X, X) {}) {
     return 5;
   }
-  if (!query f(X, Y, Y), X =\= Y { return 1; }) {
+  if (!query f(X, Y, Y), X =\= Y {}) {
     return 6;
   }
 }

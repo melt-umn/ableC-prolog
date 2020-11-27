@@ -29,7 +29,10 @@ top::Expr ::= gs::Goals body::Stmt
       ({unification_trail _trail = new_trail();
         $Stmt{decStmt(varDecls)}
         closure<() -> _Bool> _success_continuation =
-          lambda allocate(alloca) () -> _Bool { $Stmt{decStmt(body)} };
+          lambda allocate(alloca) () -> _Bool {
+            $Stmt{decStmt(body)}
+            return 1;
+          };
         
         // If a failure after cut occurs, control is returned to this point with longjmp
         jmp_buf _cut_buffer;
