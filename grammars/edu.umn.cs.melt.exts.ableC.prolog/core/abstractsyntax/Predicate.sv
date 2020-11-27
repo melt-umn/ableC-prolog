@@ -3,8 +3,8 @@ grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 synthesized attribute templateParams::TemplateParameters;
 synthesized attribute params::Parameters;
 
-nonterminal PredicateDecl with location, env, pp, errors, defs, errorDefs, paramNames, typereps, templateParams, params, transform<Decls>, ruleTransformIn;
-flowtype PredicateDecl = decorate {env, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, typereps {decorate}, templateParams {decorate}, params {decorate}, transform {decorate};
+nonterminal PredicateDecl with location, env, pp, errors, defs, errorDefs, paramNames, typereps, templateParams, params, predicateGoalCondParamsIn, transform<Decls>, ruleTransformIn;
+flowtype PredicateDecl = decorate {env, predicateGoalCondParamsIn, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, typereps {decorate}, templateParams {decorate}, params {decorate}, transform {decorate};
 
 abstract production predicateDecl
 top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parameters
@@ -36,10 +36,19 @@ top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parame
   
   top.transform =
     ableC_Decls {
+      // Parser context declarations
       proto_typedef unification_trail, size_t, jmp_buf;
+      template<typename a> _Bool is_bound();
+      
       template<$TemplateParameters{templateParams}>
       _Bool $name{transName}($Parameters{params.transform}, unification_trail _trail, closure<() -> _Bool> _continuation) {
         _pred_start:;
+
+        $Stmt{
+          foldStmt(
+            map(
+              \ p::String -> ableC_Stmt { _Bool $name{s"_${p}_bound"} = is_bound($name{p}); },
+              unionsBy(stringEq, lookupAllBy(stringEq, n.name, top.predicateGoalCondParamsIn))))}
 
         // The initial length of the trail is the index of the first item that
         // should be undone in case of failure

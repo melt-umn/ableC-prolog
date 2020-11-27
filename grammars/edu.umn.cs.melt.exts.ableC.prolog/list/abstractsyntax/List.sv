@@ -141,6 +141,21 @@ top::LogicExpr ::= l::ListLogicExprs
   local expectedType::Type = top.expectedType;
   expectedType.otherType = extType(nilQualifier(), listType(l.paramType));
   top.errors <- expectedType.unifyErrors(top.location, top.env);
+
+  top.isExcludable =
+    case l, decorate top.isExcludableBy with {env = top.env;} of
+    | consListLogicExpr(_, _), listLogicExpr(nilListLogicExpr()) ->
+      case top.expectedType of
+      | extType(_, varType(_)) -> [[top.paramNameIn]]
+      | _ -> []
+      end
+    | nilListLogicExpr(), listLogicExpr(consListLogicExpr(_, _)) ->
+      case top.expectedType of
+      | extType(_, varType(_)) -> [[top.paramNameIn]]
+      | _ -> []
+      end
+    | _, _ -> [[]]
+    end;
 }
 
 nonterminal ListLogicExprs with pps, env, paramType, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:expectedType, allowUnificationTypes, allocator, refVariables, errors, defs, maybeTyperep, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:transform<Expr>;

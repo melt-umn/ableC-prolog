@@ -8,13 +8,16 @@ autocopy attribute allowUnificationTypes::Boolean;
 
 autocopy attribute allocator::Expr;
 
+inherited attribute isExcludableBy<a>::a;
+synthesized attribute isExcludable::[[String]]; -- "product of sums" of parameter boundness -- with [], unionBy(\ e1::[String] e2::[String] -> all(zipWith(stringEq, e1, e2)), _, _);
+
 inherited attribute paramNamesIn::[String];
 synthesized attribute paramUnifyTransform::Expr;
 
-synthesized attribute maybeTypereps ::[Maybe<Type>];
+synthesized attribute maybeTypereps::[Maybe<Type>];
 
-nonterminal LogicExprs with pps, env, count, expectedTypes, allowUnificationTypes, allocator, refVariables, errors, defs, maybeTypereps, transform<Exprs>, paramNamesIn, paramUnifyTransform;
-flowtype LogicExprs = decorate {env, expectedTypes, allowUnificationTypes, allocator, refVariables}, pps {}, count {}, errors {decorate}, defs {env, expectedTypes, allowUnificationTypes}, maybeTypereps {env, allowUnificationTypes}, transform {decorate}, paramUnifyTransform {decorate, paramNamesIn};
+nonterminal LogicExprs with pps, env, count, expectedTypes, allowUnificationTypes, allocator, refVariables, isExcludable, isExcludableBy<LogicExprs>, errors, defs, maybeTypereps, transform<Exprs>, paramNamesIn, paramUnifyTransform;
+flowtype LogicExprs = decorate {env, expectedTypes, allowUnificationTypes, allocator, refVariables}, pps {}, count {}, isExcludable {env, expectedTypes, allowUnificationTypes, isExcludableBy, paramNamesIn}, errors {decorate}, defs {env, expectedTypes, allowUnificationTypes}, maybeTypereps {env, allowUnificationTypes}, transform {decorate}, paramUnifyTransform {decorate, paramNamesIn};
 
 propagate errors, defs on LogicExprs;
 
@@ -31,11 +34,12 @@ top::LogicExprs ::= h::LogicExpr t::LogicExprs
   newT.env = top.env;
   newT.allowUnificationTypes = top.allowUnificationTypes;
   
+  h.paramNameIn = head(top.paramNamesIn);
   t.paramNamesIn = tail(top.paramNamesIn);
   top.paramUnifyTransform =
     andExpr(
       unifyExpr(
-        ableC_Expr { $name{head(top.paramNamesIn)} },
+        ableC_Expr { $name{h.paramNameIn} },
         h.transform,
         justExpr(ableC_Expr { _trail }),
         location=builtin),
@@ -51,6 +55,21 @@ top::LogicExprs ::= h::LogicExpr t::LogicExprs
     end;
   h.expectedType = splitTypes.fst;
   t.expectedTypes = splitTypes.snd;
+  
+  h.isExcludableBy =
+    case top.isExcludableBy of
+    | consLogicExpr(h, t) -> h
+    end;
+  t.isExcludableBy =
+    case top.isExcludableBy of
+    | consLogicExpr(h, t) -> t
+    end;
+  top.isExcludable =
+    case h.isExcludable, t.isExcludable of
+    | [], e -> []
+    | e, [] -> []
+    | [e1], [e2] -> [e1 ++ e2]
+    end;
 }
 
 abstract production nilLogicExpr
@@ -61,6 +80,7 @@ top::LogicExprs ::=
   top.maybeTypereps = [];
   top.transform = nilExpr();
   top.paramUnifyTransform = ableC_Expr { (_Bool)1 };
+  top.isExcludable = [[]];
 }
 
 function foldLogicExpr
@@ -69,10 +89,11 @@ LogicExprs ::= les::[LogicExpr]
   return foldr(consLogicExpr, nilLogicExpr(), les);
 }
 
+inherited attribute paramNameIn::String;
 inherited attribute expectedType::Type;
 
-closed nonterminal LogicExpr with location, pp, env, expectedType, allowUnificationTypes, allocator, refVariables, errors, defs, maybeTyperep, transform<Expr>;
-flowtype LogicExpr = decorate {env, expectedType, allowUnificationTypes, allocator, refVariables}, pp {}, errors {decorate}, defs {env, expectedType, allowUnificationTypes}, maybeTyperep {env, allowUnificationTypes}, transform {decorate};
+closed nonterminal LogicExpr with location, pp, env, expectedType, allowUnificationTypes, allocator, refVariables, paramNameIn, isExcludable, isExcludableBy<LogicExpr>, errors, defs, maybeTyperep, transform<Expr>;
+flowtype LogicExpr = decorate {env, expectedType, allowUnificationTypes, allocator, refVariables}, pp {}, isExcludable {env, expectedType, isExcludableBy, paramNameIn}, errors {decorate}, defs {env, expectedType, allowUnificationTypes}, maybeTyperep {env, allowUnificationTypes}, transform {decorate};
 
 propagate errors, defs on LogicExpr;
 
@@ -80,10 +101,12 @@ abstract production decLogicExpr
 top::LogicExpr ::= le::Decorated LogicExpr
 {
   top.pp = le.pp;
-  top.errors <- le.errors;
-  top.defs <- le.defs;
+  top.errors := le.errors;
+  top.defs := le.defs;
   top.maybeTyperep = le.maybeTyperep;
   top.transform = le.transform;
+
+  forwards to new(le);
 }
 
 abstract production nameLogicExpr
@@ -131,6 +154,8 @@ top::LogicExpr ::= n::Name
     if null(n.valueLocalLookup) && containsBy(nameEq, n, top.refVariables)
     then [err(n.location, s"Unification variable ${n.name} shares a name with a variable referenced in another goal")]
     else [];
+  
+  top.isExcludable = [[]];
 }
 
 abstract production wildcardLogicExpr
@@ -160,6 +185,7 @@ top::LogicExpr ::=
       | errorType() -> []
       | t -> [err(top.location, s"Wildcard expected to unify with a variable type (got ${showType(top.expectedType)})")]
       end;
+  top.isExcludable = [[]];
 }
 
 abstract production constLogicExpr
@@ -195,6 +221,25 @@ top::LogicExpr ::= e::Expr
       else e.typerep
     end;
   top.errors <- expectedType.unifyErrors(top.location, top.env);
+
+  top.isExcludable =
+    case e, decorate top.isExcludableBy with {env = top.env;} of
+    | stringLiteral(s1), constLogicExpr(stringLiteral(s2)) when s1 != s2 ->
+      case top.expectedType of
+      | extType(_, varType(_)) -> [[top.paramNameIn]]
+      | _ -> []
+      end
+    | e1, constLogicExpr(e2)
+      when case e1.integerConstantValue, e2.integerConstantValue of
+        | just(i1), just(i2) -> i1 != i2
+        | _, _ -> false
+        end ->
+      case top.expectedType of
+      | extType(_, varType(_)) -> [[top.paramNameIn]]
+      | _ -> []
+      end
+    | _, _ -> [[]]
+    end;
 }
 
 abstract production constructorLogicExpr
@@ -272,6 +317,16 @@ top::LogicExpr ::= n::Name les::LogicExprs
         }
       | _ -> ableC_Expr { $name{n.name}($Exprs{les.transform}) }
       end);
+
+  top.isExcludable =
+    case decorate top.isExcludableBy with {env = top.env;} of
+    | constructorLogicExpr(n2, _) when n.name != n2.name ->
+      case top.expectedType of
+      | extType(_, varType(_)) -> [[top.paramNameIn]]
+      | _ -> []
+      end
+    | _ -> [[]]
+    end;
 }
 
 -- Ensure that an expression is a unification variable of some sort

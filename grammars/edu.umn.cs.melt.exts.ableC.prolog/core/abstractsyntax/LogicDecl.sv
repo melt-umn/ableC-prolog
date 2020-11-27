@@ -22,14 +22,20 @@ top::Decl ::= lss::LogicStmts loc::Location
       else lss.transform);
 }
 
+monoid attribute errorDefs::[Def] with [], ++;
+
+synthesized attribute coveredPatterns::[Pair<String LogicExprs>];
+inherited attribute coveredPatternsIn::[Pair<String LogicExprs>];
+
+synthesized attribute predicateGoalCondParams::[Pair<String [String]>];
+inherited attribute predicateGoalCondParamsIn::[Pair<String [String]>];
+
 synthesized attribute transform<a>::a;
 synthesized attribute ruleTransform::[Pair<String Stmt>];
 inherited attribute ruleTransformIn::[Pair<String Stmt>];
 
-monoid attribute errorDefs::[Def] with [], ++;
-
-nonterminal LogicStmts with pps, errors, errorDefs, env, transform<Decls>, ruleTransform;
-flowtype LogicStmts = decorate {env}, pps {}, errors {decorate}, errorDefs {decorate}, transform {decorate}, ruleTransform {decorate};
+nonterminal LogicStmts with pps, errors, errorDefs, env, coveredPatterns, predicateGoalCondParams, transform<Decls>, ruleTransform;
+flowtype LogicStmts = decorate {env}, pps {}, errors {decorate}, errorDefs {decorate}, coveredPatterns {decorate}, predicateGoalCondParams {decorate}, transform {decorate}, ruleTransform {decorate};
 
 propagate errors, errorDefs on LogicStmts;
 
@@ -37,6 +43,12 @@ abstract production consLogicStmt
 top::LogicStmts ::= h::LogicStmt t::LogicStmts
 {
   top.pps = h.pp :: t.pps;
+  top.coveredPatterns = h.coveredPatterns ++ t.coveredPatterns;
+  h.coveredPatternsIn = t.coveredPatterns;
+  
+  top.predicateGoalCondParams = h.predicateGoalCondParams ++ t.predicateGoalCondParams;
+  h.predicateGoalCondParamsIn = t.predicateGoalCondParams;
+  
   top.transform = appendDecls(h.transform, t.transform);
   top.ruleTransform = h.ruleTransform ++ t.ruleTransform;
   h.ruleTransformIn = t.ruleTransform;
@@ -47,12 +59,14 @@ abstract production nilLogicStmt
 top::LogicStmts ::=
 {
   top.pps = [];
+  top.coveredPatterns = [];
+  top.predicateGoalCondParams = [];
   top.transform = nilDecl();
   top.ruleTransform = [];
 }
 
-nonterminal LogicStmt with location, pp, errors, defs, errorDefs, env, predicateName, transform<Decls>, ruleTransform, ruleTransformIn;
-flowtype LogicStmt = decorate {env, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, errorDefs {decorate}, transform {decorate}, ruleTransform {decorate};
+nonterminal LogicStmt with location, pp, errors, defs, errorDefs, env, coveredPatterns, coveredPatternsIn, predicateGoalCondParams, predicateGoalCondParamsIn, transform<Decls>, ruleTransform, ruleTransformIn;
+flowtype LogicStmt = decorate {env, coveredPatternsIn, predicateGoalCondParamsIn, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, errorDefs {decorate}, coveredPatterns {decorate}, predicateGoalCondParams {decorate}, transform {decorate}, ruleTransform {decorate};
 
 abstract production ruleLogicStmt
 top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
@@ -73,7 +87,14 @@ top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
   gs.env = addEnv(les.defs, les.env);
   gs.predicateName = just(n.name);
   gs.refVariables = les.refVariables;
-  gs.isLastGoal = !lookupBy(stringEq, n.name, top.ruleTransformIn).isJust;
+  gs.lastGoalCond =
+    unionsBy(
+      \ e1::[String] e2::[String] -> all(zipWith(stringEq, e1, e2)),
+      map(
+        \ les1::LogicExprs -> decorate les1 with {
+            env = les.env; expectedTypes = les.expectedTypes; allowUnificationTypes = true;
+            isExcludableBy = les; paramNamesIn = les.paramNamesIn;}.isExcludable,
+        lookupAllBy(stringEq, n.name, top.coveredPatternsIn)));
   gs.tailCallPermitted = true;
   
   top.errors <- n.predicateLocalLookupCheck;
@@ -81,6 +102,9 @@ top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
     if null(n.predicateLookupCheck) && les.count != length(les.expectedTypes)
     then [err(top.location, s"Wrong number of arguments to predicate ${n.name} (expected ${toString(length(les.expectedTypes))}, got ${toString(les.count)})")]
     else [];
+  
+  top.coveredPatterns = [pair(n.name, les)];
+  top.predicateGoalCondParams = [pair(n.name, gs.goalCondParams)];
   
   top.transform = nilDecl();
   top.ruleTransform =
@@ -108,6 +132,9 @@ top::LogicStmt ::= d::PredicateDecl
   propagate errors, defs, errorDefs;
   top.pp = d.pp;
   top.transform = d.transform;
+  top.coveredPatterns = [];
+  top.predicateGoalCondParams = [];
+  d.predicateGoalCondParamsIn = top.predicateGoalCondParamsIn;
   top.ruleTransform = [];
   d.ruleTransformIn = top.ruleTransformIn;
 }

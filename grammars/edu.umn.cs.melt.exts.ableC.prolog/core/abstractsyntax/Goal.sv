@@ -4,17 +4,18 @@ import core:monad;
 
 autocopy attribute predicateName::Maybe<String>;
 autocopy attribute refVariables::[Name];
-inherited attribute isLastGoal::Boolean;
+inherited attribute lastGoalCond::[[String]];
+monoid attribute goalCondParams::[String] with [], unionBy(stringEq, _ , _);
 synthesized attribute usesContinuation::Boolean;
 inherited attribute tailCallPermitted::Boolean;
 
 synthesized attribute continuationTransform::Expr;
 inherited attribute continuationTransformIn::Expr;
 
-nonterminal Goals with pps, env, predicateName, refVariables, isLastGoal, tailCallPermitted, errors, defs, freeVariables, transform<Expr>, continuationTransform, continuationTransformIn;
-flowtype Goals = decorate {env, predicateName, refVariables, isLastGoal, tailCallPermitted, continuationTransformIn}, pps {}, errors {refVariables, env}, defs {env}, freeVariables {env}, transform {decorate}, continuationTransform {decorate};
+nonterminal Goals with pps, env, predicateName, refVariables, lastGoalCond, tailCallPermitted, errors, defs, freeVariables, goalCondParams, transform<Expr>, continuationTransform, continuationTransformIn;
+flowtype Goals = decorate {env, predicateName, refVariables, lastGoalCond, tailCallPermitted, continuationTransformIn}, pps {}, errors {refVariables, env}, defs {env}, freeVariables {env}, goalCondParams {decorate}, transform {decorate}, continuationTransform {decorate};
 
-propagate errors, defs on Goals;
+propagate errors, defs, goalCondParams on Goals;
 
 abstract production consGoal
 top::Goals ::= h::Goal t::Goals
@@ -24,15 +25,15 @@ top::Goals ::= h::Goal t::Goals
   
   t.env = addEnv(h.defs, h.env);
   
-  h.tailCallPermitted =
+  h.lastGoalCond =
     case t of
-    | nilGoal() -> top.isLastGoal && top.tailCallPermitted
-    | _ -> false
+    | nilGoal() when top.tailCallPermitted -> top.lastGoalCond
+    | _ -> [[]]
     end;
-  t.isLastGoal =
+  t.lastGoalCond =
     case h of
-    | cutGoal() -> true
-    | _ -> top.isLastGoal
+    | cutGoal() -> [[]]
+    | _ -> top.lastGoalCond
     end;
   t.tailCallPermitted = top.tailCallPermitted && !h.usesContinuation;
   
@@ -59,10 +60,18 @@ Goals ::= les::[Goal]
   return foldr(consGoal, nilGoal(), les);
 }
 
-nonterminal Goal with location, env, predicateName, refVariables, tailCallPermitted, pp, errors, defs, freeVariables, usesContinuation, transform<Expr>, transformIn<Expr>, continuationTransformIn;
-flowtype Goal = decorate {env, predicateName, refVariables, tailCallPermitted, transformIn, continuationTransformIn}, pp {}, errors {refVariables, env}, defs {env}, freeVariables {env}, usesContinuation {env}, transform {decorate};
+nonterminal Goal with location, env, predicateName, refVariables, lastGoalCond, pp, errors, defs, freeVariables, usesContinuation, goalCondParams, transform<Expr>, transformIn<Expr>, continuationTransformIn;
+flowtype Goal = decorate {env, predicateName, refVariables, lastGoalCond, transformIn, continuationTransformIn}, pp {}, errors {refVariables, env}, defs {env}, freeVariables {env}, usesContinuation {env}, goalCondParams {decorate}, transform {decorate};
 
+propagate errors, defs on Goal excluding predicateGoal, inferredPredicateGoal;
+propagate goalCondParams on Goal excluding notGoal;
 propagate freeVariables on Goal;
+
+aspect default production
+top::Goal ::=
+{
+  top.usesContinuation = false;
+}
 
 abstract production predicateGoal
 top::Goal ::= n::Name ts::TemplateArgNames les::LogicExprs
@@ -70,17 +79,43 @@ top::Goal ::= n::Name ts::TemplateArgNames les::LogicExprs
   propagate errors, defs;
   top.pp = pp"${n.pp}<${ppImplode(pp", ", ts.pps)}>(${ppImplode(pp", ", les.pps)})";
   top.usesContinuation = true;
-  top.transform =
-    if top.tailCallPermitted && top.predicateName.isJust && n.name == top.predicateName.fromJust
-    then ableC_Expr {
+  
+  local tailCallTrans::Expr =
+    ableC_Expr {
       ({$Stmt{params.tailCallTrans}
         goto _pred_start;
         0;})
-    }
-    else ableC_Expr {
+    };
+  local regularTrans::Expr =
+    ableC_Expr {
       inst $name{s"_predicate_${n.name}"}<$TemplateArgNames{ts}>(
         $Exprs{les.transform}, _trail, $Expr{top.continuationTransformIn})
     };
+  top.transform =
+    case top.predicateName of
+    | just(n1) when n1 == n.name ->
+      case top.lastGoalCond of
+      | [] -> tailCallTrans
+      | [[]] -> regularTrans
+      | lgc ->
+        conditionalExpr(
+          foldr1(
+            andExpr(_, _, location=builtin),
+            map(
+              foldr1(orExpr(_, _, location=builtin), _),
+              map(
+                map(\ p::String -> ableC_Expr { $name{s"_${p}_bound"} }, _),
+                lgc))),
+          tailCallTrans, regularTrans,
+          location=builtin)
+      end
+    | _ -> regularTrans
+    end;
+  top.goalCondParams <-
+    case top.predicateName of
+    | just(n1) when n1 == n.name -> unionsBy(stringEq, top.lastGoalCond)
+    | _ -> []
+    end;
   
   local templateParams::TemplateParameters = n.predicateItem.templateParams;
   
@@ -123,24 +158,51 @@ top::Goal ::= n::Name les::LogicExprs
   top.pp = pp"${n.pp}(${ppImplode(pp", ", les.pps)})";
   top.usesContinuation = true;
   top.errors :=
-    if inferredTemplateArguments.isJust && !inferredTemplateArguments.fromJust.containsErrorType
-    then les.errors
-    else [];
+    case inferredTemplateArguments of
+    | just(ts) when !ts.containsErrorType -> les.errors
+    | _ -> []
+    end;
   top.defs :=
     if inferredTemplateArguments.isJust
     then les.defs
     else [];
-  top.transform =
-    if top.tailCallPermitted && top.predicateName.isJust && n.name == top.predicateName.fromJust
-    then ableC_Expr {
+  
+  local tailCallTrans::Expr =
+    ableC_Expr {
       ({$Stmt{params.tailCallTrans}
         goto _pred_start;
         0;})
-    }
-    else ableC_Expr {
+    };
+  local regularTrans::Expr =
+    ableC_Expr {
       inst $name{s"_predicate_${n.name}"}<$TemplateArgNames{ts.argNames}>(
         $Exprs{les.transform}, _trail, $Expr{top.continuationTransformIn})
     };
+  top.transform =
+    case top.predicateName of
+    | just(n1) when n1 == n.name ->
+      case top.lastGoalCond of
+      | [] -> tailCallTrans
+      | [[]] -> regularTrans
+      | lgc ->
+        conditionalExpr(
+          foldr1(
+            andExpr(_, _, location=builtin),
+            map(
+              foldr1(orExpr(_, _, location=builtin), _),
+              map(
+                map(\ p::String -> ableC_Expr { $name{s"_${p}_bound"} }, _),
+                lgc))),
+          tailCallTrans, regularTrans,
+          location=builtin)
+      end
+    | _ -> regularTrans
+    end;
+  top.goalCondParams <-
+    case top.predicateName of
+    | just(n1) when n1 == n.name -> unionsBy(stringEq, top.lastGoalCond)
+    | _ -> []
+    end;
   
   local templateParams::TemplateParameters = n.predicateItem.templateParams;
   templateParams.templateParamEnv = globalEnv(top.env);
@@ -212,9 +274,7 @@ top::Goal ::= n::Name les::LogicExprs
 abstract production isGoal
 top::Goal ::= le::LogicExpr e::Expr
 {
-  propagate errors, defs;
   top.pp = pp"(${le.pp}) is (${e.pp})";
-  top.usesContinuation = false;
   top.transform =
     ableC_Expr {
       $Expr{
@@ -240,9 +300,7 @@ top::Goal ::= le::LogicExpr e::Expr
 abstract production equalsGoal
 top::Goal ::= le1::LogicExpr le2::LogicExpr
 {
-  propagate errors, defs;
   top.pp = pp"(${le1.pp}) = (${le2.pp})";
-  top.usesContinuation = false;
   top.transform =
     ableC_Expr {
       $Expr{
@@ -280,9 +338,7 @@ top::Goal ::= le1::LogicExpr le2::LogicExpr
 abstract production eqGoal
 top::Goal ::= e1::Expr e2::Expr
 {
-  propagate errors, defs;
   top.pp = pp"(${e1.pp}) =:= (${e2.pp})";
-  top.usesContinuation = false;
   top.transform =
     ableC_Expr {
       ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
@@ -305,9 +361,7 @@ top::Goal ::= e1::Expr e2::Expr
 abstract production neqGoal
 top::Goal ::= e1::Expr e2::Expr
 {
-  propagate errors, defs;
   top.pp = pp"(${e1.pp}) =\= (${e2.pp})";
-  top.usesContinuation = false;
   top.transform =
     ableC_Expr {
       ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
@@ -330,9 +384,7 @@ top::Goal ::= e1::Expr e2::Expr
 abstract production ltGoal
 top::Goal ::= e1::Expr e2::Expr
 {
-  propagate errors, defs;
   top.pp = pp"(${e1.pp}) < (${e2.pp})";
-  top.usesContinuation = false;
   top.transform =
     ableC_Expr {
       ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
@@ -355,9 +407,7 @@ top::Goal ::= e1::Expr e2::Expr
 abstract production eltGoal
 top::Goal ::= e1::Expr e2::Expr
 {
-  propagate errors, defs;
   top.pp = pp"(${e1.pp}) =< (${e2.pp})";
-  top.usesContinuation = false;
   top.transform =
     ableC_Expr {
       ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
@@ -380,9 +430,7 @@ top::Goal ::= e1::Expr e2::Expr
 abstract production gtGoal
 top::Goal ::= e1::Expr e2::Expr
 {
-  propagate errors, defs;
   top.pp = pp"(${e1.pp}) > (${e2.pp})";
-  top.usesContinuation = false;
   top.transform =
     ableC_Expr {
       ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
@@ -405,9 +453,7 @@ top::Goal ::= e1::Expr e2::Expr
 abstract production gteGoal
 top::Goal ::= e1::Expr e2::Expr
 {
-  propagate errors, defs;
   top.pp = pp"(${e1.pp}) >= (${e2.pp})";
-  top.usesContinuation = false;
   top.transform =
     ableC_Expr {
       ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
@@ -430,13 +476,12 @@ top::Goal ::= e1::Expr e2::Expr
 abstract production notGoal
 top::Goal ::= g::Goal
 {
-  propagate errors, defs;
   top.pp = pp"\+ (${g.pp})";
-  top.usesContinuation = false;
+  top.goalCondParams := [];
   
   g.transformIn = ableC_Expr { (_Bool)1 };
   g.continuationTransformIn = ableC_Expr { lambda allocate(alloca) () -> (_Bool)1 };
-  g.tailCallPermitted = false;
+  g.lastGoalCond = [[]];
   top.transform =
     ableC_Expr {
       proto_typedef size_t;
@@ -451,9 +496,7 @@ top::Goal ::= g::Goal
 abstract production cutGoal
 top::Goal ::=
 {
-  propagate errors, defs;
   top.pp = pp"!";
-  top.usesContinuation = false;
   top.transform =
     ableC_Expr {
       // If a failure occurs, longjmp out of all continuations back to the current
@@ -466,10 +509,7 @@ top::Goal ::=
 abstract production initiallyGoal
 top::Goal ::= s::Stmt
 {
-  propagate errors, defs;
   top.pp = pp"initially ${braces(nestlines(2, s.pp))})";
-  
-  top.usesContinuation = false;
   top.transform =
     ableC_Expr {
       ({{$Stmt{makeUnwrappedVarDecls(s.freeVariables, top.env)}
@@ -484,10 +524,7 @@ top::Goal ::= s::Stmt
 abstract production finallyGoal
 top::Goal ::= s::Stmt
 {
-  propagate errors, defs;
   top.pp = pp"finally ${braces(nestlines(2, s.pp))})";
-  
-  top.usesContinuation = false;
   top.transform =
     ableC_Expr {
       ({{$Stmt{makeUnwrappedVarDecls(s.freeVariables, top.env)}
