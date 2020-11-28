@@ -287,6 +287,13 @@ top::LogicExpr ::= n::Name les::LogicExprs
       else []
     end;
   
+  top.errors <-
+    case lookupValue(n.name, top.env) of
+    -- Check that this constructor isn't otherwise shadowed
+    | parameterValueItem(item) :: _ -> [err(n.location, s"Constructor ${n.name} is shadowed by a predicate parameter (declared at ${item.sourceLocation.unparse})")]
+    | _ -> []
+    end;
+  
   -- Infer type for non-templated ADTs by looking up the constructor return type
   top.maybeTyperep =
     case n.valueItem.typerep of

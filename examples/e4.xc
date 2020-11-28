@@ -52,7 +52,7 @@ prolog {
   power(int, int, int ?);
   simplified(Expr e1, Expr ?e2);
   constant(Expr ?e1, string ?var);
-  d(Expr e, string ?var, Expr ?res);
+  d(Expr e1, string ?var, Expr ?res);
 # include "e4.pl"
 }
 
