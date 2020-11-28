@@ -14,6 +14,12 @@ prolog {
   betweenU(unsigned, unsigned, unsigned ?);
   betweenU(L, H, L).
   betweenU(L, H, N) :- L1 is (L + 1), L1 =< H, betweenU(L1, H, N).
+
+  var<typename a>(a ?v);
+  var(_) :- (is_bound(v)) =:= 0 .
+
+  nonvar<typename a>(a ?v);
+  nonvar(_) :- (is_bound(v)) =:= 1 .
 }
 
 #endif

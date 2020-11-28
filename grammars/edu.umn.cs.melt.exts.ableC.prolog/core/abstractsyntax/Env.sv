@@ -51,7 +51,7 @@ function makeUnwrappedVarDefs
       tm:toList(head(env.values)));
 }
 
-closed nonterminal PredicateItem with paramNames, typereps, templateParams, params, sourceLocation;
+closed nonterminal PredicateItem with paramNames, typereps, templateParams, params, functionDefs, sourceLocation;
 
 abstract production predicateItem
 top::PredicateItem ::= d::Decorated PredicateDecl
@@ -60,6 +60,7 @@ top::PredicateItem ::= d::Decorated PredicateDecl
   top.typereps = d.typereps;
   top.templateParams = d.templateParams;
   top.params = d.params;
+  top.functionDefs := d.functionDefs;
   top.sourceLocation = d.location;
 }
 
@@ -70,6 +71,7 @@ top::PredicateItem ::=
   top.typereps = [];
   top.templateParams = nilTemplateParameter();
   top.params = nilParameters();
+  top.functionDefs := [];
   top.sourceLocation = loc("nowhere", -1, -1, -1, -1, -1, -1);
 }
 

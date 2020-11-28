@@ -116,6 +116,7 @@ top::LogicExpr ::= n::Name
   forwards to
     case n.valueItem of
     | enumValueItem(_) -> constLogicExpr(declRefExpr(n, location=builtin), location=top.location)
+    | parameterValueItem(_) -> constLogicExpr(declRefExpr(n, location=builtin), location=top.location)
     | _ -> varLogicExpr(n, location=top.location)
     end;
 }

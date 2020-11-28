@@ -3,8 +3,8 @@ grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 synthesized attribute templateParams::TemplateParameters;
 synthesized attribute params::Parameters;
 
-nonterminal PredicateDecl with location, env, pp, errors, defs, errorDefs, paramNames, typereps, templateParams, params, predicateGoalCondParamsIn, transform<Decls>, ruleTransformIn;
-flowtype PredicateDecl = decorate {env, predicateGoalCondParamsIn, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, typereps {decorate}, templateParams {decorate}, params {decorate}, transform {decorate};
+nonterminal PredicateDecl with location, env, pp, errors, defs, functionDefs, errorDefs, paramNames, typereps, templateParams, params, predicateGoalCondParamsIn, transform<Decls>, ruleTransformIn;
+flowtype PredicateDecl = decorate {env, predicateGoalCondParamsIn, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, functionDefs {decorate}, typereps {decorate}, templateParams {decorate}, params {decorate}, transform {decorate};
 
 abstract production predicateDecl
 top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parameters
@@ -29,6 +29,8 @@ top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parame
   params.env = addEnv([globalDefsDef(templateParams.templateParamDefs)], openScopeEnv(top.env));
   params.returnType = nothing();
   params.position = 0;
+  
+  top.functionDefs := params.functionDefs;
   
   top.errors <- n.predicateRedeclarationCheck;
   top.errors <- params.predicateParamErrors;
@@ -161,7 +163,7 @@ top::ParameterDecl ::= storage::StorageClasses  bty::BaseTypeExpr  mty::TypeModi
     else [];
   top.paramName =
     case n of
-    | justName(n) -> "_" ++ n.name
+    | justName(n) -> n.name
     | nothingName() -> "_p" ++ toString(top.position)
     end;
   top.transform =
