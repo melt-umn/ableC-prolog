@@ -37,14 +37,18 @@ top::LogicExprs ::= h::LogicExpr t::LogicExprs
   h.paramNameIn = head(top.paramNamesIn);
   t.paramNamesIn = tail(top.paramNamesIn);
   top.paramUnifyTransform =
-    andExpr(
-      unifyExpr(
-        ableC_Expr { $name{h.paramNameIn} },
-        h.transform,
-        justExpr(ableC_Expr { _trail }),
-        location=builtin),
-      t.paramUnifyTransform,
-      location=builtin);
+    case h of
+    | wildcardLogicExpr() -> t.paramUnifyTransform
+    | _ ->
+      andExpr(
+        unifyExpr(
+          ableC_Expr { $name{h.paramNameIn} },
+          h.transform,
+          justExpr(ableC_Expr { _trail }),
+          location=builtin),
+        t.paramUnifyTransform,
+        location=builtin)
+    end;
   
   t.env = addEnv(h.defs, h.env);
   
