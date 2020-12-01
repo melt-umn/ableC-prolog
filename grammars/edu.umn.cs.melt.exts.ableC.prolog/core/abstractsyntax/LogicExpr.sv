@@ -159,6 +159,14 @@ top::LogicExpr ::= n::Name
     if null(n.valueLocalLookup) && containsBy(nameEq, n, top.refVariables)
     then [err(n.location, s"Unification variable ${n.name} shares a name with a variable referenced in another goal")]
     else [];
+  top.errors <-
+    case top.expectedType of
+    | extType(_, varType(_)) -> []
+    | errorType() -> []
+    | _ when null(n.valueLocalLookup) && !top.allowUnificationTypes ->
+      [wrn(n.location, s"First occurence of variable ${n.name} is in a non-variable term position (got ${showType(top.expectedType)})")]
+    | _ -> []
+    end;
   
   top.isExcludable = [[]];
 }

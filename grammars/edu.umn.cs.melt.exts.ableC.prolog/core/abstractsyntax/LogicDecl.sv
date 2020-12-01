@@ -18,7 +18,11 @@ top::Decl ::= lss::LogicStmts loc::Location
   forwards to
     decls(
       if !null(localErrors)
-      then foldDecl([warnDecl(localErrors), defsDecl(lss.errorDefs)])
+      then consDecl(
+        warnDecl(localErrors),
+        if containsErrors(localErrors, false)
+        then foldDecl([defsDecl(lss.errorDefs)])
+        else lss.transform)
       else lss.transform);
 }
 
