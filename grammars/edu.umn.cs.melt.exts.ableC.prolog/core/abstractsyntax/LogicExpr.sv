@@ -164,7 +164,7 @@ top::LogicExpr ::= n::Name
     | extType(_, varType(_)) -> []
     | errorType() -> []
     | _ when null(n.valueLocalLookup) && !top.allowUnificationTypes ->
-      [wrn(n.location, s"First occurence of variable ${n.name} is in a non-variable term position (got ${showType(top.expectedType)})")]
+      [wrn(n.location, s"First occurence of variable ${n.name} is in a non-variable position (expected ${showType(top.expectedType)})")]
     | _ -> []
     end;
   

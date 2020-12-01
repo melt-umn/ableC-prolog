@@ -3,8 +3,8 @@ grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 synthesized attribute templateParams::TemplateParameters;
 synthesized attribute params::Parameters;
 
-nonterminal PredicateDecl with location, env, pp, errors, defs, functionDefs, errorDefs, paramNames, typereps, templateParams, params, predicateGoalCondParamsIn, transform<Decls>, ruleTransformIn;
-flowtype PredicateDecl = decorate {env, predicateGoalCondParamsIn, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, functionDefs {decorate}, typereps {decorate}, templateParams {decorate}, params {decorate}, transform {decorate};
+nonterminal PredicateDecl with location, env, pp, errors, defs, functionDefs, errorDefs, paramNames, typereps, templateParams, params, predicateGoalCondParamsIn, cutPredicatesIn, transform<Decls>, ruleTransformIn;
+flowtype PredicateDecl = decorate {env, predicateGoalCondParamsIn, cutPredicatesIn, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, functionDefs {decorate}, typereps {decorate}, templateParams {decorate}, params {decorate}, transform {decorate};
 
 abstract production predicateDecl
 top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parameters
@@ -56,10 +56,16 @@ top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parame
         // should be undone in case of failure
         size_t _trail_index = _trail.length;
         
-        // If a failure after cut occurs, control is returned to this point with longjmp
-        jmp_buf _cut_buffer;
-        if (setjmp(_cut_buffer)) {
-          return 0;
+        $Stmt{
+          if containsBy(stringEq, n.name, top.cutPredicatesIn)
+          then ableC_Stmt {
+            // If a failure after cut occurs, control is returned to this point with longjmp
+            jmp_buf _cut_buffer;
+            if (setjmp(_cut_buffer)) {
+              return 0;
+            }
+          }
+          else nullStmt()
         }
         
         $Stmt{

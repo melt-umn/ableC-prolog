@@ -34,16 +34,21 @@ top::Expr ::= gs::Goals body::Stmt
             return 1;
           };
         
-        // If a failure after cut occurs, control is returned to this point with longjmp
-        jmp_buf _cut_buffer;
-        setjmp(_cut_buffer)?
-         ({undo_trail(_trail, 0);
-           delete _trail;
-           0;}) :
-         ({_Bool _result = $Expr{gs.transform};
-           undo_trail(_trail, 0);
-           delete _trail;
-           _result;});})
+        $Stmt{
+          if gs.containsCut
+          then ableC_Stmt {
+            jmp_buf _cut_buffer;
+            // If a failure after cut occurs, control is returned to this point with longjmp
+            _Bool _result = setjmp(_cut_buffer)? 0 : $Expr{gs.transform};
+          }
+          else ableC_Stmt {
+            _Bool _result = $Expr{gs.transform};
+          }
+        }
+        
+        undo_trail(_trail, 0);
+        delete _trail;
+        _result;})
     };
   
   forwards to mkErrorCheck(localErrors, fwrd);

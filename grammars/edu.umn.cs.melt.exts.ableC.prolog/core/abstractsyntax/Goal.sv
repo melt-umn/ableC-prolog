@@ -8,14 +8,15 @@ inherited attribute lastGoalCond::[[String]];
 monoid attribute goalCondParams::[String] with [], unionBy(stringEq, _ , _);
 synthesized attribute usesContinuation::Boolean;
 inherited attribute tailCallPermitted::Boolean;
+monoid attribute containsCut::Boolean with false, ||;
 
 synthesized attribute continuationTransform::Expr;
 inherited attribute continuationTransformIn::Expr;
 
-nonterminal Goals with pps, env, predicateName, refVariables, lastGoalCond, tailCallPermitted, errors, defs, freeVariables, goalCondParams, transform<Expr>, continuationTransform, continuationTransformIn;
-flowtype Goals = decorate {env, predicateName, refVariables, lastGoalCond, tailCallPermitted, continuationTransformIn}, pps {}, errors {refVariables, env}, defs {env}, freeVariables {env}, goalCondParams {decorate}, transform {decorate}, continuationTransform {decorate};
+nonterminal Goals with pps, env, predicateName, refVariables, lastGoalCond, tailCallPermitted, errors, defs, freeVariables, goalCondParams, containsCut, transform<Expr>, continuationTransform, continuationTransformIn;
+flowtype Goals = decorate {env, predicateName, refVariables, lastGoalCond, tailCallPermitted, continuationTransformIn}, pps {}, errors {refVariables, env}, defs {env}, freeVariables {env}, containsCut {env}, goalCondParams {decorate}, transform {decorate}, continuationTransform {decorate};
 
-propagate errors, defs, goalCondParams on Goals;
+propagate errors, defs, goalCondParams, containsCut on Goals;
 
 abstract production consGoal
 top::Goals ::= h::Goal t::Goals
@@ -60,11 +61,11 @@ Goals ::= les::[Goal]
   return foldr(consGoal, nilGoal(), les);
 }
 
-nonterminal Goal with location, env, predicateName, refVariables, lastGoalCond, pp, errors, defs, freeVariables, usesContinuation, goalCondParams, transform<Expr>, transformIn<Expr>, continuationTransformIn;
-flowtype Goal = decorate {env, predicateName, refVariables, lastGoalCond, transformIn, continuationTransformIn}, pp {}, errors {refVariables, env}, defs {env}, freeVariables {env}, usesContinuation {env}, goalCondParams {decorate}, transform {decorate};
+nonterminal Goal with location, env, predicateName, refVariables, lastGoalCond, pp, errors, defs, freeVariables, usesContinuation, goalCondParams, containsCut, transform<Expr>, transformIn<Expr>, continuationTransformIn;
+flowtype Goal = decorate {env, predicateName, refVariables, lastGoalCond, transformIn, continuationTransformIn}, pp {}, errors {refVariables, env}, defs {env}, freeVariables {env}, usesContinuation {env}, containsCut {env}, goalCondParams {decorate}, transform {decorate};
 
 propagate errors, defs on Goal excluding predicateGoal, inferredPredicateGoal;
-propagate goalCondParams on Goal excluding notGoal;
+propagate goalCondParams, containsCut on Goal excluding notGoal;
 propagate freeVariables on Goal;
 
 aspect default production
@@ -478,6 +479,11 @@ top::Goal ::= g::Goal
 {
   top.pp = pp"\+ (${g.pp})";
   top.goalCondParams := [];
+  top.containsCut := false;
+  top.errors <-
+    if g.containsCut
+    then [err(g.location, "Cuts are not permitted within \\+")]
+    else [];
   
   g.transformIn = ableC_Expr { (_Bool)1 };
   g.continuationTransformIn = ableC_Expr { lambda allocate(alloca) () -> (_Bool)1 };
@@ -497,6 +503,7 @@ abstract production cutGoal
 top::Goal ::=
 {
   top.pp = pp"!";
+  top.containsCut <- true;
   top.transform =
     ableC_Expr {
       // If a failure occurs, longjmp out of all continuations back to the current

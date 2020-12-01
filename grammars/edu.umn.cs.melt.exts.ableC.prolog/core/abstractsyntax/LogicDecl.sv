@@ -34,11 +34,14 @@ inherited attribute coveredPatternsIn::[Pair<String LogicExprs>];
 synthesized attribute predicateGoalCondParams::[Pair<String [String]>];
 inherited attribute predicateGoalCondParamsIn::[Pair<String [String]>];
 
+synthesized attribute cutPredicates::[String];
+inherited attribute cutPredicatesIn::[String];
+
 synthesized attribute transform<a>::a;
 synthesized attribute ruleTransform::[Pair<String Stmt>];
 inherited attribute ruleTransformIn::[Pair<String Stmt>];
 
-nonterminal LogicStmts with pps, errors, errorDefs, env, coveredPatterns, predicateGoalCondParams, transform<Decls>, ruleTransform;
+nonterminal LogicStmts with pps, errors, errorDefs, env, coveredPatterns, predicateGoalCondParams, cutPredicates, transform<Decls>, ruleTransform;
 flowtype LogicStmts = decorate {env}, pps {}, errors {decorate}, errorDefs {decorate}, coveredPatterns {decorate}, predicateGoalCondParams {decorate}, transform {decorate}, ruleTransform {decorate};
 
 propagate errors, errorDefs on LogicStmts;
@@ -53,6 +56,9 @@ top::LogicStmts ::= h::LogicStmt t::LogicStmts
   top.predicateGoalCondParams = h.predicateGoalCondParams ++ t.predicateGoalCondParams;
   h.predicateGoalCondParamsIn = t.predicateGoalCondParams;
   
+  top.cutPredicates = unionBy(stringEq, h.cutPredicates, t.cutPredicates);
+  h.cutPredicatesIn = t.cutPredicates;
+  
   top.transform = appendDecls(h.transform, t.transform);
   top.ruleTransform = h.ruleTransform ++ t.ruleTransform;
   h.ruleTransformIn = t.ruleTransform;
@@ -65,12 +71,13 @@ top::LogicStmts ::=
   top.pps = [];
   top.coveredPatterns = [];
   top.predicateGoalCondParams = [];
+  top.cutPredicates = [];
   top.transform = nilDecl();
   top.ruleTransform = [];
 }
 
-nonterminal LogicStmt with location, pp, errors, defs, errorDefs, env, coveredPatterns, coveredPatternsIn, predicateGoalCondParams, predicateGoalCondParamsIn, transform<Decls>, ruleTransform, ruleTransformIn;
-flowtype LogicStmt = decorate {env, coveredPatternsIn, predicateGoalCondParamsIn, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, errorDefs {decorate}, coveredPatterns {decorate}, predicateGoalCondParams {decorate}, transform {decorate}, ruleTransform {decorate};
+nonterminal LogicStmt with location, pp, errors, defs, errorDefs, env, coveredPatterns, coveredPatternsIn, predicateGoalCondParams, predicateGoalCondParamsIn, cutPredicates, cutPredicatesIn, transform<Decls>, ruleTransform, ruleTransformIn;
+flowtype LogicStmt = decorate {env, coveredPatternsIn, predicateGoalCondParamsIn, cutPredicatesIn, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, errorDefs {decorate}, coveredPatterns {decorate}, predicateGoalCondParams {decorate}, transform {decorate}, ruleTransform {decorate};
 
 abstract production ruleLogicStmt
 top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
@@ -109,6 +116,7 @@ top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
   
   top.coveredPatterns = [pair(n.name, les)];
   top.predicateGoalCondParams = [pair(n.name, gs.goalCondParams)];
+  top.cutPredicates = if gs.containsCut then [n.name] else [];
   
   top.transform = nilDecl();
   top.ruleTransform =
@@ -139,6 +147,8 @@ top::LogicStmt ::= d::PredicateDecl
   top.coveredPatterns = [];
   top.predicateGoalCondParams = [];
   d.predicateGoalCondParamsIn = top.predicateGoalCondParamsIn;
+  top.cutPredicates = [];
+  d.cutPredicatesIn = top.cutPredicatesIn;
   top.ruleTransform = [];
   d.ruleTransformIn = top.ruleTransformIn;
 }
