@@ -18,7 +18,7 @@ subset([H | T1], [H | T2]) :- subset(T1, T2).
 subset(T1, [_ | T2]) :- subset(T1, T2).
 
 nth([X | _], 0, X).
-nth([_ | T], N, X) :- nth(T, N1, X), N1 is (N - 1u).
+nth([_ | T], N, X) :- N1 is (N - 1u), nth(T, N1, X).
 
 sort([X | L1], L3) :- sort<a, cmp>(L1, L2), insert<a, cmp>(X, L2, L3).
 sort([], []).
