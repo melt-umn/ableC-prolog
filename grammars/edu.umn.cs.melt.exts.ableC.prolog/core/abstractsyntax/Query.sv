@@ -25,7 +25,7 @@ top::Expr ::= gs::Goals body::Stmt
   gs.continuationTransformIn = ableC_Expr { _success_continuation };
   local fwrd::Expr =
     ableC_Expr {
-      proto_typedef unification_trail, jmp_buf;
+      proto_typedef unification_trail, jmp_buf, size_t;
       ({unification_trail _trail = new_trail();
         $Stmt{decStmt(varDecls)}
         closure<() -> _Bool> _success_continuation =
@@ -37,6 +37,7 @@ top::Expr ::= gs::Goals body::Stmt
         $Stmt{
           if gs.containsCut
           then ableC_Stmt {
+            size_t _initial_trail_index = 0;
             jmp_buf _cut_buffer;
             // If a failure after cut occurs, control is returned to this point with longjmp
             _Bool _result = setjmp(_cut_buffer)? 0 : $Expr{gs.transform};

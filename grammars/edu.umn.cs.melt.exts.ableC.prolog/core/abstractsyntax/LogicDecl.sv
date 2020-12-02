@@ -131,6 +131,7 @@ top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
            // If successful, evaluate the RHS
            if ($Expr{les.paramUnifyTransform} && $Expr{gs.transform}) {
              // Search has succeeded, so we are done immediately
+             undo_trail(_trail, _initial_trail_index);
              return 1;
            }
          }

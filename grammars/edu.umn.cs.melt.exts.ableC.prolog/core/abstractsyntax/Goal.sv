@@ -509,7 +509,8 @@ top::Goal ::=
       // If a failure occurs, longjmp out of all continuations back to the current
       // predicate function, which fails immediately.  This is OK because all data
       // is stack-allocated.
-      $Expr{top.transformIn} || (longjmp(_cut_buffer, 1), 1)
+      $Expr{top.transformIn} ||
+      (undo_trail(_trail, _initial_trail_index), longjmp(_cut_buffer, 1), 1)
     };
 }
 

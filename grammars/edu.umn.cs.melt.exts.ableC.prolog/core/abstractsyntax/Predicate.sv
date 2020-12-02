@@ -44,17 +44,23 @@ top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parame
       
       template<$TemplateParameters{templateParams}>
       _Bool $name{transName}($Parameters{params.transform}, unification_trail _trail, closure<() -> _Bool> _continuation) {
+        // The initial length of the trail is the index of the first item that
+        // should be undone in case of failure of the predicate
+        size_t _initial_trail_index = _trail.length;
+        
+        // Tail-call optimization returns control to this point
         _pred_start:;
+        
+        // The first index of the trail that should be undone after a rule
+        // fails, which can differ from _initial_trail_index following a tail-
+        // recursive call
+        size_t _trail_index = _trail.length;
 
         $Stmt{
           foldStmt(
             map(
               \ p::String -> ableC_Stmt { _Bool $name{s"_${p}_bound"} = is_bound($name{p}); },
               unionsBy(stringEq, lookupAllBy(stringEq, n.name, top.predicateGoalCondParamsIn))))}
-
-        // The initial length of the trail is the index of the first item that
-        // should be undone in case of failure
-        size_t _trail_index = _trail.length;
         
         $Stmt{
           if containsBy(stringEq, n.name, top.cutPredicatesIn)
@@ -62,6 +68,7 @@ top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parame
             // If a failure after cut occurs, control is returned to this point with longjmp
             jmp_buf _cut_buffer;
             if (setjmp(_cut_buffer)) {
+              // Trail has already been undone before the longjmp
               return 0;
             }
           }
@@ -75,6 +82,7 @@ top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parame
               ableC_Stmt { undo_trail(_trail, _trail_index); },
               lookupAllBy(stringEq, n.name, top.ruleTransformIn)))}
         
+        undo_trail(_trail, _initial_trail_index);
         return 0;
       }
       $Decl{defsDecl(predicateDefs)}
