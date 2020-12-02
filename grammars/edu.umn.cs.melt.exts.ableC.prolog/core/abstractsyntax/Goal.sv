@@ -26,14 +26,10 @@ top::Goals ::= h::Goal t::Goals
   
   t.env = addEnv(h.defs, h.env);
   
-  h.lastGoalCond =
-    case t of
-    | nilGoal() when top.tailCallPermitted -> top.lastGoalCond
-    | _ -> [[]]
-    end;
+  h.lastGoalCond = if top.tailCallPermitted then top.lastGoalCond else [[]];
   t.lastGoalCond =
     case h of
-    | cutGoal() -> [[]]
+    | cutGoal() -> []
     | _ -> top.lastGoalCond
     end;
   t.tailCallPermitted = top.tailCallPermitted && !h.usesContinuation;
@@ -84,6 +80,7 @@ top::Goal ::= n::Name ts::TemplateArgNames les::LogicExprs
   local tailCallTrans::Expr =
     ableC_Expr {
       ({$Stmt{params.tailCallTrans}
+        _continuation = $Expr{top.continuationTransformIn};
         goto _pred_start;
         0;})
     };
@@ -171,6 +168,7 @@ top::Goal ::= n::Name les::LogicExprs
   local tailCallTrans::Expr =
     ableC_Expr {
       ({$Stmt{params.tailCallTrans}
+        _continuation = $Expr{top.continuationTransformIn};
         goto _pred_start;
         0;})
     };

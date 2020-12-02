@@ -48,6 +48,19 @@ top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parame
         // should be undone in case of failure of the predicate
         size_t _initial_trail_index = _trail.length;
         
+        $Stmt{
+          if containsBy(stringEq, n.name, top.cutPredicatesIn)
+          then ableC_Stmt {
+            // If a failure after cut occurs, control is returned to this point with longjmp
+            jmp_buf _cut_buffer;
+            if (setjmp(_cut_buffer)) {
+              // Trail has already been undone before the longjmp
+              return 0;
+            }
+          }
+          else nullStmt()
+        }
+        
         // Tail-call optimization returns control to this point
         _pred_start:;
         
@@ -61,19 +74,6 @@ top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parame
             map(
               \ p::String -> ableC_Stmt { _Bool $name{s"_${p}_bound"} = is_bound($name{p}); },
               unionsBy(stringEq, lookupAllBy(stringEq, n.name, top.predicateGoalCondParamsIn))))}
-        
-        $Stmt{
-          if containsBy(stringEq, n.name, top.cutPredicatesIn)
-          then ableC_Stmt {
-            // If a failure after cut occurs, control is returned to this point with longjmp
-            jmp_buf _cut_buffer;
-            if (setjmp(_cut_buffer)) {
-              // Trail has already been undone before the longjmp
-              return 0;
-            }
-          }
-          else nullStmt()
-        }
         
         $Stmt{
           foldStmt(
