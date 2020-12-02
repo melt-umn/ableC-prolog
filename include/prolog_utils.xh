@@ -3,6 +3,12 @@
 #ifndef _PROLOG_UTILS_H
 #define _PROLOG_UTILS_H
 
+template<typename a>
+datatype maybe {
+  nothing();
+  just(a);
+};
+
 #define mod(a, b) ((a) % (b))
 
 // Non-list utility predicates
