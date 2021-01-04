@@ -1,7 +1,5 @@
 grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 
-import core:monad;
-
 autocopy attribute predicateName::Maybe<String>;
 autocopy attribute refVariables::[Name];
 inherited attribute lastGoalCond::[[String]];
