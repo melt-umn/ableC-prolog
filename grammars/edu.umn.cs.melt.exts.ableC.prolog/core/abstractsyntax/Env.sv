@@ -1,6 +1,6 @@
 grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 
-import silver:util:raw:treemap as tm;
+import silver:util:treemap as tm;
 
 -- Represents a type parameter
 abstract production templateParamValueItem
