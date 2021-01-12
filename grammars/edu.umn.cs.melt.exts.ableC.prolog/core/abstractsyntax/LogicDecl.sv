@@ -99,8 +99,7 @@ top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
   gs.predicateName = just(n.name);
   gs.refVariables = les.refVariables;
   gs.lastGoalCond =
-    unionsBy(
-      \ e1::[String] e2::[String] -> all(zipWith(stringEq, e1, e2)),
+    unions(
       map(
         \ les1::LogicExprs -> decorate les1 with {
             env = les.env; expectedTypes = les.expectedTypes; allowUnificationTypes = true;
