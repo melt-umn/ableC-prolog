@@ -121,7 +121,7 @@ concrete productions top::Head_c
   { top.ast = pair(id.ast, foldLogicExpr(le.ast)); }
   action {
     local templateParams::[Pair<String TerminalId>] =
-      fromMaybe([], lookupBy(stringEq, id.ast.name, predicateTemplateParams));
+      fromMaybe([], lookup(id.ast.name, predicateTemplateParams));
     -- Open a new scope containing templateParams
     context = (templateParams ++ head(context)) :: context;
     context = addIdentsToScope(le.declaredIdents, Identifier_t, context);

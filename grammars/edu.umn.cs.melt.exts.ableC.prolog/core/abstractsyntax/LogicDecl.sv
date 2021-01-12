@@ -56,7 +56,7 @@ top::LogicStmts ::= h::LogicStmt t::LogicStmts
   top.predicateGoalCondParams = h.predicateGoalCondParams ++ t.predicateGoalCondParams;
   h.predicateGoalCondParamsIn = t.predicateGoalCondParams;
   
-  top.cutPredicates = unionBy(stringEq, h.cutPredicates, t.cutPredicates);
+  top.cutPredicates = union(h.cutPredicates, t.cutPredicates);
   h.cutPredicatesIn = t.cutPredicates;
   
   top.transform = appendDecls(h.transform, t.transform);
@@ -105,7 +105,7 @@ top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
         \ les1::LogicExprs -> decorate les1 with {
             env = les.env; expectedTypes = les.expectedTypes; allowUnificationTypes = true;
             isExcludableBy = les; paramNamesIn = les.paramNamesIn;}.isExcludable,
-        lookupAllBy(stringEq, n.name, top.coveredPatternsIn)));
+        lookupAll(n.name, top.coveredPatternsIn)));
   gs.tailCallPermitted = true;
   
   top.errors <- n.predicateLocalLookupCheck;
