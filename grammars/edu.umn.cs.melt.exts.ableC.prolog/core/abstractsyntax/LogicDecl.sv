@@ -1,5 +1,7 @@
 grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 
+import silver:util:treeset as ts;
+
 abstract production logicDecl
 top::Decl ::= lss::LogicStmts loc::Location
 {
@@ -98,13 +100,20 @@ top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
   gs.env = addEnv(les.defs, openScopeEnv(les.env));
   gs.predicateName = just(n.name);
   gs.refVariables = les.refVariables;
-  gs.lastGoalCond =
-    unions(
-      map(
-        \ les1::LogicExprs -> decorate les1 with {
+  local lastGoalConds::[ts:Set<String>] =
+    nub(
+      flatMap(
+        \ les1::LogicExprs -> map(
+          ts:add(_, ts:empty()),
+          decorate les1 with {
             env = les.env; expectedTypes = les.expectedTypes; allowUnificationTypes = true;
-            isExcludableBy = les; paramNamesIn = les.paramNamesIn;}.isExcludable,
+            isExcludableBy = les; paramNamesIn = les.paramNamesIn;}.isExcludable),
         lookupAll(n.name, top.coveredPatternsIn)));
+  gs.lastGoalCond =
+    map(ts:toList,
+      removeAllBy(
+        \ c1::ts:Set<String> c2::ts:Set<String> -> ts:subset(c2, c1) && !ts:subset(c1, c2),
+        lastGoalConds, lastGoalConds));
   gs.tailCallPermitted = true;
   
   top.errors <- n.predicateLocalLookupCheck;
