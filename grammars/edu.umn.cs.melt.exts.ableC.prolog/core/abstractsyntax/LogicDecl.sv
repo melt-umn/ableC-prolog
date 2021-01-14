@@ -1,5 +1,7 @@
 grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 
+import silver:util:treeset as ts;
+
 abstract production logicDecl
 top::Decl ::= lss::LogicStmts loc::Location
 {
@@ -56,7 +58,7 @@ top::LogicStmts ::= h::LogicStmt t::LogicStmts
   top.predicateGoalCondParams = h.predicateGoalCondParams ++ t.predicateGoalCondParams;
   h.predicateGoalCondParamsIn = t.predicateGoalCondParams;
   
-  top.cutPredicates = unionBy(stringEq, h.cutPredicates, t.cutPredicates);
+  top.cutPredicates = union(h.cutPredicates, t.cutPredicates);
   h.cutPredicatesIn = t.cutPredicates;
   
   top.transform = appendDecls(h.transform, t.transform);
@@ -98,14 +100,20 @@ top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
   gs.env = addEnv(les.defs, openScopeEnv(les.env));
   gs.predicateName = just(n.name);
   gs.refVariables = les.refVariables;
-  gs.lastGoalCond =
-    unionsBy(
-      \ e1::[String] e2::[String] -> all(zipWith(stringEq, e1, e2)),
-      map(
-        \ les1::LogicExprs -> decorate les1 with {
+  local lastGoalConds::[ts:Set<String>] =
+    nub(
+      flatMap(
+        \ les1::LogicExprs -> map(
+          ts:add(_, ts:empty()),
+          decorate les1 with {
             env = les.env; expectedTypes = les.expectedTypes; allowUnificationTypes = true;
-            isExcludableBy = les; paramNamesIn = les.paramNamesIn;}.isExcludable,
-        lookupAllBy(stringEq, n.name, top.coveredPatternsIn)));
+            isExcludableBy = les; paramNamesIn = les.paramNamesIn;}.isExcludable),
+        lookupAll(n.name, top.coveredPatternsIn)));
+  gs.lastGoalCond =
+    map(ts:toList,
+      removeAllBy(
+        \ c1::ts:Set<String> c2::ts:Set<String> -> ts:subset(c2, c1) && !ts:subset(c1, c2),
+        lastGoalConds, lastGoalConds));
   gs.tailCallPermitted = true;
   
   top.errors <- n.predicateLocalLookupCheck;

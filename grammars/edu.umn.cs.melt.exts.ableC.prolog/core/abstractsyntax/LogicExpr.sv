@@ -9,7 +9,7 @@ autocopy attribute allowUnificationTypes::Boolean;
 autocopy attribute allocator::Expr;
 
 inherited attribute isExcludableBy<a>::a;
-synthesized attribute isExcludable::[[String]]; -- "product of sums" of parameter boundness -- with [], unionBy(\ e1::[String] e2::[String] -> all(zipWith(stringEq, e1, e2)), _, _);
+synthesized attribute isExcludable::[[String]]; -- "product of sums" of parameter boundness
 
 inherited attribute paramNamesIn::[String];
 synthesized attribute paramUnifyTransform::Expr;
@@ -156,7 +156,7 @@ top::LogicExpr ::= n::Name
   top.errors <- expectedType.unifyErrors(n.location, top.env);
   top.errors <- n.valueRedeclarationCheck(extType(nilQualifier(), varType(baseType)));
   top.errors <-
-    if null(n.valueLocalLookup) && containsBy(nameEq, n, top.refVariables)
+    if null(n.valueLocalLookup) && contains(n, top.refVariables)
     then [err(n.location, s"Unification variable ${n.name} shares a name with a variable referenced in another goal")]
     else [];
   top.errors <-
@@ -281,7 +281,7 @@ top::LogicExpr ::= n::Name les::LogicExprs
     end;
   
   local constructorParamLookup::Maybe<Decorated Parameters> =
-    lookupBy(stringEq, n.name, constructors);
+    lookup(n.name, constructors);
   
   top.errors <-
     case adtType, adtName, adtLookup, constructorParamLookup of

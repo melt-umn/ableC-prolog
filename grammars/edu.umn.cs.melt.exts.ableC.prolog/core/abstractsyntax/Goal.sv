@@ -3,7 +3,7 @@ grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 autocopy attribute predicateName::Maybe<String>;
 autocopy attribute refVariables::[Name];
 inherited attribute lastGoalCond::[[String]];
-monoid attribute goalCondParams::[String] with [], unionBy(stringEq, _ , _);
+monoid attribute goalCondParams::[String] with [], union;
 synthesized attribute usesContinuation::Boolean;
 inherited attribute tailCallPermitted::Boolean;
 monoid attribute containsCut::Boolean with false, ||;
@@ -109,7 +109,7 @@ top::Goal ::= n::Name ts::TemplateArgNames les::LogicExprs
     end;
   top.goalCondParams <-
     case top.predicateName of
-    | just(n1) when n1 == n.name -> unionsBy(stringEq, top.lastGoalCond)
+    | just(n1) when n1 == n.name -> unions(top.lastGoalCond)
     | _ -> []
     end;
   
@@ -197,7 +197,7 @@ top::Goal ::= n::Name les::LogicExprs
     end;
   top.goalCondParams <-
     case top.predicateName of
-    | just(n1) when n1 == n.name -> unionsBy(stringEq, top.lastGoalCond)
+    | just(n1) when n1 == n.name -> unions(top.lastGoalCond)
     | _ -> []
     end;
   
@@ -215,7 +215,7 @@ top::Goal ::= n::Name les::LogicExprs
   local inferredTemplateArguments::Maybe<TemplateArgs> =
     mapMaybe(
       foldr(consTemplateArg, nilTemplateArg(), _),
-      lookupAll(infParams.partialInferredArgs, templateParams.names));
+      lookupAllItems(infParams.partialInferredArgs, templateParams.names));
   
   local ts::TemplateArgs = inferredTemplateArguments.fromJust;
   ts.edu:umn:cs:melt:exts:ableC:templating:abstractsyntax:paramNames = templateParams.names;
@@ -591,5 +591,5 @@ Stmt ::= freeVariables::[Name] env::Decorated Env
             end
           | _ -> []
           end,
-        nubBy(nameEq, freeVariables)));
+        nub(freeVariables)));
 }

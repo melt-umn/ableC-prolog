@@ -49,7 +49,7 @@ top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parame
         size_t _initial_trail_index = _trail.length;
         
         $Stmt{
-          if containsBy(stringEq, n.name, top.cutPredicatesIn)
+          if contains(n.name, top.cutPredicatesIn)
           then ableC_Stmt {
             // If a failure after cut occurs, control is returned to this point with longjmp
             jmp_buf _cut_buffer;
@@ -73,14 +73,14 @@ top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parame
           foldStmt(
             map(
               \ p::String -> ableC_Stmt { _Bool $name{s"_${p}_bound"} = is_bound($name{p}); },
-              unionsBy(stringEq, lookupAllBy(stringEq, n.name, top.predicateGoalCondParamsIn))))}
+              unions(lookupAll(n.name, top.predicateGoalCondParamsIn))))}
         
         $Stmt{
           foldStmt(
             intersperse(
               -- Undo unification effects from the previous (failed) branch
               ableC_Stmt { undo_trail(_trail, _trail_index); },
-              lookupAllBy(stringEq, n.name, top.ruleTransformIn)))}
+              lookupAll(n.name, top.ruleTransformIn)))}
         
         undo_trail(_trail, _initial_trail_index);
         return 0;
