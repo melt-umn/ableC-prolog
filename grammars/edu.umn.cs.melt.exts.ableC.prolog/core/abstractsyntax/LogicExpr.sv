@@ -9,7 +9,7 @@ autocopy attribute allowUnificationTypes::Boolean;
 autocopy attribute allocator::Expr;
 
 inherited attribute isExcludableBy<a>::a;
-synthesized attribute isExcludable::[[String]]; -- "product of sums" of parameter boundness -- with [], unionBy(\ e1::[String] e2::[String] -> all(zipWith(stringEq, e1, e2)), _, _);
+synthesized attribute isExcludable::[[String]]; -- "product of sums" of parameter boundness
 
 inherited attribute paramNamesIn::[String];
 synthesized attribute paramUnifyTransform::Expr;
