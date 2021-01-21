@@ -213,7 +213,7 @@ top::Goal ::= n::Name les::LogicExprs
   infParams.partialArgumentTypes = les.maybeTypereps;
   
   local inferredTemplateArguments::Maybe<TemplateArgs> =
-    mapMaybe(
+    map(
       foldr(consTemplateArg, nilTemplateArg(), _),
       lookupAllItems(infParams.partialInferredArgs, templateParams.names));
   
