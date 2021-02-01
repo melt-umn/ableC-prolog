@@ -119,7 +119,7 @@ top::Goal ::= n::Name ts::TemplateArgNames les::LogicExprs
   ts.paramKinds = templateParams.kinds;
   ts.substEnv = s:fail();
   
-  local params::Parameters = rewriteWith(topDownSubs(ts.substDefs), n.predicateItem.params).fromJust;
+  local params::Parameters = s:rewriteWith(topDownSubs(ts.substDefs), n.predicateItem.params).fromJust;
   -- NOT the env at the declaration site, but this is equivalent (and more efficient.)
   params.env = openScopeEnv(globalEnv(addEnv(ts.defs, ts.env)));
   params.returnType = nothing();
