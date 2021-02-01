@@ -215,7 +215,7 @@ top::Goal ::= n::Name les::LogicExprs
   local inferredTemplateArguments::Maybe<TemplateArgs> =
     map(
       foldr(consTemplateArg, nilTemplateArg(), _),
-      lookupAllItems(infParams.partialInferredArgs, templateParams.names));
+      traverseA(lookup(_, infParams.partialInferredArgs), templateParams.names));
   
   local ts::TemplateArgs = inferredTemplateArguments.fromJust;
   ts.edu:umn:cs:melt:exts:ableC:templating:abstractsyntax:paramNames = templateParams.names;
