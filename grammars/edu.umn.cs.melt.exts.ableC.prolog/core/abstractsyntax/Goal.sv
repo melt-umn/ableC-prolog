@@ -221,7 +221,7 @@ top::Goal ::= n::Name les::LogicExprs
   ts.edu:umn:cs:melt:exts:ableC:templating:abstractsyntax:paramNames = templateParams.names;
   
   -- ... then re-decorate the substituted parameters to compute the expected types.
-  local params::Parameters = rewriteWith(topDownSubs(ts.substDefs), n.predicateItem.params).fromJust;
+  local params::Parameters = s:rewriteWith(topDownSubs(ts.substDefs), n.predicateItem.params).fromJust;
   -- NOT the env at the declaration site, but this is equivalent (and more efficient.)
   params.env = openScopeEnv(globalEnv(top.env));
   params.returnType = nothing();
