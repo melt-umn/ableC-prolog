@@ -18,9 +18,13 @@ top::Expr ::= gs::Goals body::Stmt
   local varDecls::Stmt = makeVarDecls(gs.defs);
   varDecls.env = gs.env;
   varDecls.returnType = nothing();
+  varDecls.breakValid = false;
+  varDecls.continueValid = false;
   
   body.env = addEnv(body.functionDefs, capturedEnv(addEnv(varDecls.defs, gs.env)));
   body.returnType = just(builtinType(nilQualifier(), boolType()));
+  body.breakValid = false;
+  body.continueValid = false;
   
   gs.continuationTransformIn = ableC_Expr { _success_continuation };
   local fwrd::Expr =

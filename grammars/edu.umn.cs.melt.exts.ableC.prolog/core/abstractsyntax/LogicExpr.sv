@@ -216,6 +216,8 @@ top::LogicExpr ::= e::Expr
       end);
   
   e.returnType = nothing();
+  e.breakValid = false;
+  e.continueValid = false;
   
   local baseType::Type =
     case top.expectedType of

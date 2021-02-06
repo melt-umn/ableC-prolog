@@ -39,7 +39,8 @@ top::Expr ::= allocate::Expr init::ListInitializers
 
 autocopy attribute maybeParamType::Maybe<Type>;
 
-nonterminal ListInitializers with pps, env, returnType, maybeParamType, allocator, errors, host<Expr>;
+nonterminal ListInitializers with pps, env, returnType, maybeParamType, allocator, 
+  errors, host<Expr>, breakValid, continueValid;
 
 abstract production consListInitializer
 top::ListInitializers ::= h::Expr t::ListInitializers
@@ -55,6 +56,8 @@ top::ListInitializers ::= h::Expr t::ListInitializers
     };
   cons.env = top.env;
   cons.returnType = nothing();
+  cons.breakValid = false;
+  cons.continueValid = false;
   
   -- Avoid rececorating h unless we are using it to infer the parameter type
   h.env = if top.maybeParamType.isJust then addEnv(cons.defs, cons.env) else top.env;
@@ -244,7 +247,10 @@ top::Pattern ::= l::ListPatterns
 inherited attribute isBoundTransformIn::Expr;
 inherited attribute valueTransformIn::Expr;
 
-nonterminal ListPatterns with pps, errors, env, returnType, defs, decls, patternDefs, edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:expectedType, edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:transform<Expr>, transformIn<Expr>, isBoundTransformIn, valueTransformIn;
+nonterminal ListPatterns with pps, errors, env, returnType, defs, decls, patternDefs,
+  edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:expectedType,
+  edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:transform<Expr>,
+  transformIn<Expr>, isBoundTransformIn, valueTransformIn, breakValid, continueValid;
 
 propagate errors, defs, decls, patternDefs on ListPatterns;
 
@@ -259,6 +265,8 @@ top::ListPatterns ::= h::Pattern t::ListPatterns
   local isBound::Expr = top.isBoundTransformIn;
   isBound.env = top.env;
   isBound.returnType = nothing();
+  isBound.breakValid = false;
+  isBound.continueValid = false;
   top.defs <- isBound.defs;
   
   local valueDecl::Stmt =
@@ -269,6 +277,8 @@ top::ListPatterns ::= h::Pattern t::ListPatterns
     };
   valueDecl.env = addEnv(isBound.defs, openScopeEnv(isBound.env));
   valueDecl.returnType = nothing();
+  valueDecl.breakValid = false;
+  valueDecl.continueValid = false;
   top.defs <- valueDecl.defs;
   
   h.env = addEnv(valueDecl.defs, valueDecl.env);
@@ -322,6 +332,8 @@ top::ListPatterns ::=
   local isBound::Expr = top.isBoundTransformIn;
   isBound.env = top.env;
   isBound.returnType = nothing();
+  isBound.breakValid = false;
+  isBound.continueValid = false;
   top.defs <- isBound.defs;
   
   top.transform =

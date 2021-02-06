@@ -123,6 +123,8 @@ top::Goal ::= n::Name ts::TemplateArgNames les::LogicExprs
   -- NOT the env at the declaration site, but this is equivalent (and more efficient.)
   params.env = openScopeEnv(globalEnv(addEnv(ts.defs, ts.env)));
   params.returnType = nothing();
+  params.breakValid = false;
+  params.continueValid = false;
   params.position = 0;
   params.tailCallArgs = les.transform;
   
@@ -209,6 +211,8 @@ top::Goal ::= n::Name les::LogicExprs
   -- NOT the env at the declaration site, but this is equivalent (and more efficient.)
   infParams.env = openScopeEnv(globalEnv(top.env));
   infParams.returnType = nothing();
+  infParams.breakValid = false;
+  infParams.continueValid = false;
   infParams.position = 0;
   infParams.partialArgumentTypes = les.maybeTypereps;
   
@@ -225,6 +229,8 @@ top::Goal ::= n::Name les::LogicExprs
   -- NOT the env at the declaration site, but this is equivalent (and more efficient.)
   params.env = openScopeEnv(globalEnv(top.env));
   params.returnType = nothing();
+  params.breakValid = false;
+  params.continueValid = false;
   params.position = 0;
   params.tailCallArgs = les.transform;
   
@@ -292,6 +298,8 @@ top::Goal ::= le::LogicExpr e::Expr
   -- Don't add le.defs to e's env here, since decorating le requires e's typerep
   e.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
   e.returnType = nothing();
+  e.breakValid = false;
+  e.continueValid = false;
 }
 
 abstract production equalsGoal
@@ -351,8 +359,12 @@ top::Goal ::= e1::Expr e2::Expr
   
   e1.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
   e1.returnType = nothing();
+  e1.breakValid = false;
+  e1.continueValid = false;
   e2.env = addEnv(e1.defs, e1.env);
   e2.returnType = nothing();
+  e2.breakValid = false;
+  e2.continueValid = false;
 }
 
 abstract production neqGoal
@@ -374,8 +386,12 @@ top::Goal ::= e1::Expr e2::Expr
   
   e1.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
   e1.returnType = nothing();
+  e1.breakValid = false;
+  e1.continueValid = false;
   e2.env = addEnv(e1.defs, e1.env);
   e2.returnType = nothing();
+  e2.breakValid = false;
+  e2.continueValid = false;
 }
 
 abstract production ltGoal
@@ -397,8 +413,12 @@ top::Goal ::= e1::Expr e2::Expr
   
   e1.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
   e1.returnType = nothing();
+  e1.breakValid = false;
+  e1.continueValid = false;
   e2.env = addEnv(e1.defs, e1.env);
   e2.returnType = nothing();
+  e2.breakValid = false;
+  e2.continueValid = false;
 }
 
 abstract production eltGoal
@@ -420,8 +440,12 @@ top::Goal ::= e1::Expr e2::Expr
   
   e1.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
   e1.returnType = nothing();
+  e1.breakValid = false;
+  e1.continueValid = false;
   e2.env = addEnv(e1.defs, e1.env);
   e2.returnType = nothing();
+  e2.breakValid = false;
+  e2.continueValid = false;
 }
 
 abstract production gtGoal
@@ -443,8 +467,12 @@ top::Goal ::= e1::Expr e2::Expr
   
   e1.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
   e1.returnType = nothing();
+  e1.breakValid = false;
+  e1.continueValid = false;
   e2.env = addEnv(e1.defs, e1.env);
   e2.returnType = nothing();
+  e2.breakValid = false;
+  e2.continueValid = false;
 }
 
 abstract production gteGoal
@@ -466,8 +494,12 @@ top::Goal ::= e1::Expr e2::Expr
   
   e1.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
   e1.returnType = nothing();
+  e1.breakValid = false;
+  e1.continueValid = false;
   e2.env = addEnv(e1.defs, e1.env);
   e2.returnType = nothing();
+  e2.breakValid = false;
+  e2.continueValid = false;
 }
 
 abstract production notGoal
@@ -523,6 +555,8 @@ top::Goal ::= s::Stmt
   
   s.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
   s.returnType = nothing();
+  s.breakValid = false;
+  s.continueValid = false;
 }
 
 abstract production finallyGoal
@@ -538,6 +572,8 @@ top::Goal ::= s::Stmt
   
   s.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
   s.returnType = nothing();
+  s.breakValid = false;
+  s.continueValid = false;
 }
 
 synthesized attribute templateArgUnifyErrors::([Message] ::= Location Decorated Env) occurs on TemplateArgs, TemplateArg;

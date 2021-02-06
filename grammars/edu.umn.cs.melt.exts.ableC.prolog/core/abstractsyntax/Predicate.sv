@@ -28,6 +28,8 @@ top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parame
   -- Add type params to global scope so that they are visible within the template instantiation
   params.env = addEnv([globalDefsDef(templateParams.templateParamDefs)], openScopeEnv(top.env));
   params.returnType = nothing();
+  params.breakValid = false;
+  params.continueValid = false;
   params.position = 0;
   
   top.functionDefs := params.functionDefs;
@@ -114,10 +116,14 @@ top::TemplateParameter ::= bty::BaseTypeExpr n::Name mty::TypeModifierExpr
   local bty1::BaseTypeExpr = bty;
   bty1.env = top.templateParamEnv;
   bty1.returnType = nothing();
+  bty1.breakValid = false;
+  bty1.continueValid = false;
   bty1.givenRefId = nothing();
   local mty1::TypeModifierExpr = mty;
   mty1.env = top.templateParamEnv;
   mty1.returnType = nothing();
+  mty1.breakValid = false;
+  mty1.continueValid = false;
   mty1.typeModifierIn = bty1.typeModifier;
   mty1.baseType = bty1.typerep;
   top.templateParamDefs :=

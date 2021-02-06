@@ -35,7 +35,8 @@ concrete productions top::ListInitializerList_c
 | e::AssignExpr_c
     { top.ast =
         -- Semantic workaround for parsing ambiguity with |
-        case decorate e.ast with { returnType = nothing(); env = emptyEnv(); } of
+        case decorate e.ast with { returnType = nothing(); env = emptyEnv(); 
+            breakValid = false; continueValid = false;} of
         | ovrld:orBitExpr(h, t) -> consListInitializer(h, tailListInitializer(t))
         | _ -> consListInitializer(e.ast, nilListInitializer(top.location))
         end;
