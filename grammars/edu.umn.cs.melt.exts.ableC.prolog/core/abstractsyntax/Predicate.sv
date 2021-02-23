@@ -151,10 +151,12 @@ top::Parameters ::= h::ParameterDecl t::Parameters
   h.tailCallArg =
     case top.tailCallArgs of
     | consExpr(h, _) -> h
+    | _ -> error("Too few LogicExprs provided for tailCallArg")
     end;
   t.tailCallArgs =
     case top.tailCallArgs of
     | consExpr(_, t) -> t
+    | _ -> error("Too few LogicExprs provided for tailCallArg")
     end;
 }
 

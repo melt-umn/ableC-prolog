@@ -63,10 +63,12 @@ top::LogicExprs ::= h::LogicExpr t::LogicExprs
   h.isExcludableBy =
     case top.isExcludableBy of
     | consLogicExpr(h, t) -> h
+    | _ -> error("Too few LogicExprs provided for isExcludableBy")
     end;
   t.isExcludableBy =
     case top.isExcludableBy of
     | consLogicExpr(h, t) -> t
+    | _ -> error("Too few LogicExprs provided for isExcludableBy")
     end;
   top.isExcludable =
     case h.isExcludable, t.isExcludable of
