@@ -75,6 +75,7 @@ top::LogicExprs ::= h::LogicExpr t::LogicExprs
     | [], e -> []
     | e, [] -> []
     | [e1], [e2] -> [e1 ++ e2]
+    | _, _ -> error("LogicExpr isExcludable should have 0 or 1 clauses")
     end;
 }
 
