@@ -38,6 +38,8 @@ disambiguate LessThan_t, PLessThan_t {
 }
 
 terminal PrologComment_t /%.*/ lexer classes {Comment};
+disambiguate PrologComment_t, Mod_t { pluck Mod_t; }
+disambiguate PrologComment_t, ModAssign_t { pluck ModAssign_t; }
 
 -- Used to seed follow sets for MDA
 terminal LogicExprNEVER_t 'LogicExprNEVER_t123456789!!!never';
@@ -66,13 +68,7 @@ concrete productions top::LogicStmts_c
 |
   { top.ast = nilLogicStmt(); }
 
-closed nonterminal LogicStmt_c
-  layout {
-    -- Only C's layout terminals
-    LineComment_t, BlockComment_t,
-    NewLine_t, Spaces_t,  CPP_Location_Tag_t
-  }
-  with location, ast<LogicStmt>;
+closed nonterminal LogicStmt_c with location, ast<LogicStmt>;
 
 concrete productions top::LogicStmt_c
 | id::Identifier_c LessThan_t templateParams::TemplateParameters_c '>' LParen_t params::ParameterTypeList_c ')' ';'
@@ -135,7 +131,12 @@ concrete productions top::Body_c
 | h::Goal_c
   { top.ast = [h.ast]; }
 
-closed nonterminal Goal_c with location, ast<Goal>;
+closed nonterminal Goal_c
+  layout {
+    -- Only C's layout terminals
+    LineComment_t, BlockComment_t,
+    NewLine_t, Spaces_t,  CPP_Location_Tag_t
+  } with location, ast<Goal>;
 
 concrete productions top::Goal_c
 | id::Identifier_c LessThan_t tas::TemplateArguments_c '>' LParen_t les::LogicExprs_c ')'
