@@ -217,10 +217,8 @@ top::LogicExpr ::= e::Expr
         strExpr(e, location=builtin)
       | t, _ -> ableC_Expr { ($directTypeExpr{t})$Expr{e} }
       end);
-  
-  e.returnType = nothing();
-  e.breakValid = false;
-  e.continueValid = false;
+ 
+  e.controlStmtContext = initialControlStmtContext;
   
   local baseType::Type =
     case top.expectedType of

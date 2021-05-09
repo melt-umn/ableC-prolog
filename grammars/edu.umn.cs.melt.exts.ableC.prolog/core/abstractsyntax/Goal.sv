@@ -122,9 +122,7 @@ top::Goal ::= n::Name ts::TemplateArgNames les::LogicExprs
   local params::Parameters = s:rewriteWith(topDownSubs(ts.substDefs), n.predicateItem.params).fromJust;
   -- NOT the env at the declaration site, but this is equivalent (and more efficient.)
   params.env = openScopeEnv(globalEnv(addEnv(ts.defs, ts.env)));
-  params.returnType = nothing();
-  params.breakValid = false;
-  params.continueValid = false;
+  params.controlStmtContext = initialControlStmtContext;
   params.position = 0;
   params.tailCallArgs = les.transform;
   
@@ -210,9 +208,7 @@ top::Goal ::= n::Name les::LogicExprs
   local infParams::Parameters = n.predicateItem.params;
   -- NOT the env at the declaration site, but this is equivalent (and more efficient.)
   infParams.env = openScopeEnv(globalEnv(top.env));
-  infParams.returnType = nothing();
-  infParams.breakValid = false;
-  infParams.continueValid = false;
+  infParams.controlStmtContext = initialControlStmtContext;
   infParams.position = 0;
   infParams.partialArgumentTypes = les.maybeTypereps;
   
@@ -228,9 +224,7 @@ top::Goal ::= n::Name les::LogicExprs
   local params::Parameters = s:rewriteWith(topDownSubs(ts.substDefs), n.predicateItem.params).fromJust;
   -- NOT the env at the declaration site, but this is equivalent (and more efficient.)
   params.env = openScopeEnv(globalEnv(top.env));
-  params.returnType = nothing();
-  params.breakValid = false;
-  params.continueValid = false;
+  params.controlStmtContext = initialControlStmtContext;
   params.position = 0;
   params.tailCallArgs = les.transform;
   
@@ -297,9 +291,7 @@ top::Goal ::= le::LogicExpr e::Expr
   le.allocator = ableC_Expr { alloca };
   -- Don't add le.defs to e's env here, since decorating le requires e's typerep
   e.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
-  e.returnType = nothing();
-  e.breakValid = false;
-  e.continueValid = false;
+  e.controlStmtContext = initialControlStmtContext;
 }
 
 abstract production equalsGoal
@@ -358,13 +350,9 @@ top::Goal ::= e1::Expr e2::Expr
     else [err(top.location, s"Types to =:= goal must match (got ${showType(e1.typerep)}, ${showType(e2.typerep)})")];
   
   e1.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
-  e1.returnType = nothing();
-  e1.breakValid = false;
-  e1.continueValid = false;
+  e1.controlStmtContext = initialControlStmtContext;
   e2.env = addEnv(e1.defs, e1.env);
-  e2.returnType = nothing();
-  e2.breakValid = false;
-  e2.continueValid = false;
+  e2.controlStmtContext = initialControlStmtContext;
 }
 
 abstract production neqGoal
@@ -385,13 +373,9 @@ top::Goal ::= e1::Expr e2::Expr
     else [err(top.location, s"Types to =/= goal must match (got ${showType(e1.typerep)}, ${showType(e2.typerep)})")];
   
   e1.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
-  e1.returnType = nothing();
-  e1.breakValid = false;
-  e1.continueValid = false;
+  e1.controlStmtContext = initialControlStmtContext;
   e2.env = addEnv(e1.defs, e1.env);
-  e2.returnType = nothing();
-  e2.breakValid = false;
-  e2.continueValid = false;
+  e2.controlStmtContext = initialControlStmtContext;
 }
 
 abstract production ltGoal
@@ -412,13 +396,9 @@ top::Goal ::= e1::Expr e2::Expr
     else [err(top.location, s"Types to < goal must match (got ${showType(e1.typerep)}, ${showType(e2.typerep)})")];
   
   e1.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
-  e1.returnType = nothing();
-  e1.breakValid = false;
-  e1.continueValid = false;
+  e1.controlStmtContext = initialControlStmtContext;
   e2.env = addEnv(e1.defs, e1.env);
-  e2.returnType = nothing();
-  e2.breakValid = false;
-  e2.continueValid = false;
+  e2.controlStmtContext = initialControlStmtContext;
 }
 
 abstract production eltGoal
@@ -439,13 +419,9 @@ top::Goal ::= e1::Expr e2::Expr
     else [err(top.location, s"Types to =< goal must match (got ${showType(e1.typerep)}, ${showType(e2.typerep)})")];
   
   e1.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
-  e1.returnType = nothing();
-  e1.breakValid = false;
-  e1.continueValid = false;
+  e1.controlStmtContext = initialControlStmtContext;
   e2.env = addEnv(e1.defs, e1.env);
-  e2.returnType = nothing();
-  e2.breakValid = false;
-  e2.continueValid = false;
+  e2.controlStmtContext = initialControlStmtContext;
 }
 
 abstract production gtGoal
@@ -466,13 +442,9 @@ top::Goal ::= e1::Expr e2::Expr
     else [err(top.location, s"Types to > goal must match (got ${showType(e1.typerep)}, ${showType(e2.typerep)})")];
   
   e1.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
-  e1.returnType = nothing();
-  e1.breakValid = false;
-  e1.continueValid = false;
+  e1.controlStmtContext = initialControlStmtContext;
   e2.env = addEnv(e1.defs, e1.env);
-  e2.returnType = nothing();
-  e2.breakValid = false;
-  e2.continueValid = false;
+  e2.controlStmtContext = initialControlStmtContext;
 }
 
 abstract production gteGoal
@@ -493,13 +465,9 @@ top::Goal ::= e1::Expr e2::Expr
     else [err(top.location, s"Types to >= goal must match (got ${showType(e1.typerep)}, ${showType(e2.typerep)})")];
   
   e1.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
-  e1.returnType = nothing();
-  e1.breakValid = false;
-  e1.continueValid = false;
+  e1.controlStmtContext = initialControlStmtContext;
   e2.env = addEnv(e1.defs, e1.env);
-  e2.returnType = nothing();
-  e2.breakValid = false;
-  e2.continueValid = false;
+  e2.controlStmtContext = initialControlStmtContext;
 }
 
 abstract production notGoal
@@ -554,9 +522,7 @@ top::Goal ::= s::Stmt
     };
   
   s.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
-  s.returnType = nothing();
-  s.breakValid = false;
-  s.continueValid = false;
+  s.controlStmtContext = initialControlStmtContext;
 }
 
 abstract production finallyGoal
@@ -571,9 +537,7 @@ top::Goal ::= s::Stmt
     };
   
   s.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
-  s.returnType = nothing();
-  s.breakValid = false;
-  s.continueValid = false;
+  s.controlStmtContext = initialControlStmtContext;
 }
 
 synthesized attribute templateArgUnifyErrors::([Message] ::= Location Decorated Env) occurs on TemplateArgs, TemplateArg;
