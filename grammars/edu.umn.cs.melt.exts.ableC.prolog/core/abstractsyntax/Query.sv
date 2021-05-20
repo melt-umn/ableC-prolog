@@ -22,7 +22,8 @@ top::Expr ::= gs::Goals body::Stmt
   body.env = addEnv(body.functionDefs, capturedEnv(addEnv(varDecls.defs, gs.env)));
   body.controlStmtContext = controlStmtContext(
                               just(builtinType(nilQualifier(), boolType())),
-                              false, false);
+                              false, false,
+                              tm:add(body.labelDefs, tm:empty()));
   
   gs.continuationTransformIn = ableC_Expr { _success_continuation };
   local fwrd::Expr =
