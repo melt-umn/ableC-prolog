@@ -3,8 +3,8 @@ grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 synthesized attribute templateParams::TemplateParameters;
 synthesized attribute params::Parameters;
 
-nonterminal PredicateDecl with location, env, pp, errors, defs, functionDefs, errorDefs, paramNames, typereps, templateParams, params, predicateGoalCondParamsIn, cutPredicatesIn, transform<Decls>, ruleTransformIn;
-flowtype PredicateDecl = decorate {env, predicateGoalCondParamsIn, cutPredicatesIn, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, functionDefs {decorate}, typereps {decorate}, templateParams {decorate}, params {decorate}, transform {decorate};
+nonterminal PredicateDecl with location, env, pp, errors, defs, functionDefs, errorDefs, paramNames, typereps, templateParams, params, predicateGoalCondParamsIn, cutPredicatesIn, transform<Decls>, ruleTransformIn, labelDefs;
+flowtype PredicateDecl = decorate {env, predicateGoalCondParamsIn, cutPredicatesIn, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, functionDefs {decorate}, labelDefs {decorate}, typereps {decorate}, templateParams {decorate}, params {decorate}, transform {decorate};
 
 abstract production predicateDecl
 top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parameters
@@ -27,12 +27,11 @@ top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parame
   
   -- Add type params to global scope so that they are visible within the template instantiation
   params.env = addEnv([globalDefsDef(templateParams.templateParamDefs)], openScopeEnv(top.env));
-  params.returnType = nothing();
-  params.breakValid = false;
-  params.continueValid = false;
+  params.controlStmtContext = initialControlStmtContext;
   params.position = 0;
   
   top.functionDefs := params.functionDefs;
+  top.labelDefs := params.labelDefs;
   
   top.errors <- n.predicateRedeclarationCheck;
   top.errors <- params.predicateParamErrors;
@@ -115,15 +114,11 @@ top::TemplateParameter ::= bty::BaseTypeExpr n::Name mty::TypeModifierExpr
 {
   local bty1::BaseTypeExpr = bty;
   bty1.env = top.templateParamEnv;
-  bty1.returnType = nothing();
-  bty1.breakValid = false;
-  bty1.continueValid = false;
+  bty1.controlStmtContext = initialControlStmtContext;
   bty1.givenRefId = nothing();
   local mty1::TypeModifierExpr = mty;
   mty1.env = top.templateParamEnv;
-  mty1.returnType = nothing();
-  mty1.breakValid = false;
-  mty1.continueValid = false;
+  mty1.controlStmtContext = initialControlStmtContext;
   mty1.typeModifierIn = bty1.typeModifier;
   mty1.baseType = bty1.typerep;
   top.templateParamDefs :=

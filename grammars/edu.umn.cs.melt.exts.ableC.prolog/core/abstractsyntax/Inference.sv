@@ -15,9 +15,7 @@ top::Parameters ::= h::ParameterDecl  t::Parameters
 
   local newH::ParameterDecl = h;
   newH.env = h.env;
-  newH.returnType = h.returnType;
-  newH.breakValid = h.breakValid;
-  newH.continueValid = h.continueValid;
+  newH.controlStmtContext = h.controlStmtContext;
   newH.position = h.position;
   newH.argumentType =
     case h.typerep, head(top.partialArgumentTypes).fromJust of

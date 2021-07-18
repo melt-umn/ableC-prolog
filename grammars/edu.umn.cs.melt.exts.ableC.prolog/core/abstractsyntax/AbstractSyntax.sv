@@ -3,6 +3,7 @@ grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 imports silver:langutil; 
 imports silver:langutil:pp;
 imports silver:rewrite as s;
+imports silver:util:treemap as tm;
 
 imports edu:umn:cs:melt:ableC:abstractsyntax:host;
 imports edu:umn:cs:melt:ableC:abstractsyntax:overloadable;

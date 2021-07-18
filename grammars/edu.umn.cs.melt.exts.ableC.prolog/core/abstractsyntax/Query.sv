@@ -17,14 +17,13 @@ top::Expr ::= gs::Goals body::Stmt
   -- contain defs not in gs.defs
   local varDecls::Stmt = makeVarDecls(gs.defs);
   varDecls.env = gs.env;
-  varDecls.returnType = nothing();
-  varDecls.breakValid = false;
-  varDecls.continueValid = false;
+  varDecls.controlStmtContext = initialControlStmtContext;
   
   body.env = addEnv(body.functionDefs, capturedEnv(addEnv(varDecls.defs, gs.env)));
-  body.returnType = just(builtinType(nilQualifier(), boolType()));
-  body.breakValid = false;
-  body.continueValid = false;
+  body.controlStmtContext = controlStmtContext(
+                              just(builtinType(nilQualifier(), boolType())),
+                              false, false,
+                              tm:add(body.labelDefs, tm:empty()));
   
   gs.continuationTransformIn = ableC_Expr { _success_continuation };
   local fwrd::Expr =
