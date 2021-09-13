@@ -13,6 +13,10 @@ datatype maybe {
 
 // Non-list utility predicates
 prolog {
+  repeat();
+  repeat().
+  repeat() :- repeat().
+  
   between(int, int, int ?);
   between(L, H, L).
   between(L, H, N) :- L1 is (L + 1), L1 =< H, between(L1, H, N).
