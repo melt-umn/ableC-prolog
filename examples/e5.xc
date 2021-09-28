@@ -50,7 +50,7 @@ prolog {
 }
 
 void test(Expr ?e) {
-  printf("%s: %d\n", showExpr(e).text, query E is e, sat(E) { return true; });
+  printf("%s: %d\n", showExpr(e).text, query E is e, sat(E) {});
 }
 
 Expr ?randTerm(unsigned depth, unsigned numVars) {

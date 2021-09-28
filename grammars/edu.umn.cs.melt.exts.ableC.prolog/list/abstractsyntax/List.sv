@@ -39,7 +39,8 @@ top::Expr ::= allocate::Expr init::ListInitializers
 
 autocopy attribute maybeParamType::Maybe<Type>;
 
-nonterminal ListInitializers with pps, env, returnType, maybeParamType, allocator, errors, host<Expr>;
+nonterminal ListInitializers with pps, env, maybeParamType, allocator, 
+  errors, host<Expr>, controlStmtContext;
 
 abstract production consListInitializer
 top::ListInitializers ::= h::Expr t::ListInitializers
@@ -54,7 +55,7 @@ top::ListInitializers ::= h::Expr t::ListInitializers
       inst cons<$directTypeExpr{t.maybeParamType.fromJust}>
     };
   cons.env = top.env;
-  cons.returnType = nothing();
+  cons.controlStmtContext = initialControlStmtContext;
   
   -- Avoid rececorating h unless we are using it to infer the parameter type
   h.env = if top.maybeParamType.isJust then addEnv(cons.defs, cons.env) else top.env;
@@ -141,6 +142,21 @@ top::LogicExpr ::= l::ListLogicExprs
   local expectedType::Type = top.expectedType;
   expectedType.otherType = extType(nilQualifier(), listType(l.paramType));
   top.errors <- expectedType.unifyErrors(top.location, top.env);
+
+  top.isExcludable =
+    case l, decorate top.isExcludableBy with {env = top.env;} of
+    | consListLogicExpr(_, _), listLogicExpr(nilListLogicExpr()) ->
+      case top.expectedType of
+      | extType(_, varType(_)) -> [[top.paramNameIn]]
+      | _ -> []
+      end
+    | nilListLogicExpr(), listLogicExpr(consListLogicExpr(_, _)) ->
+      case top.expectedType of
+      | extType(_, varType(_)) -> [[top.paramNameIn]]
+      | _ -> []
+      end
+    | _, _ -> [[]]
+    end;
 }
 
 nonterminal ListLogicExprs with pps, env, paramType, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:expectedType, allowUnificationTypes, allocator, refVariables, errors, defs, maybeTyperep, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:transform<Expr>;
@@ -229,7 +245,10 @@ top::Pattern ::= l::ListPatterns
 inherited attribute isBoundTransformIn::Expr;
 inherited attribute valueTransformIn::Expr;
 
-nonterminal ListPatterns with pps, errors, env, returnType, defs, decls, patternDefs, edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:expectedType, edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:transform<Expr>, transformIn<Expr>, isBoundTransformIn, valueTransformIn;
+nonterminal ListPatterns with pps, errors, env, defs, decls, patternDefs,
+  edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:expectedType,
+  edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:transform<Expr>,
+  transformIn<Expr>, isBoundTransformIn, valueTransformIn, controlStmtContext;
 
 propagate errors, defs, decls, patternDefs on ListPatterns;
 
@@ -243,7 +262,7 @@ top::ListPatterns ::= h::Pattern t::ListPatterns
   
   local isBound::Expr = top.isBoundTransformIn;
   isBound.env = top.env;
-  isBound.returnType = nothing();
+  isBound.controlStmtContext = initialControlStmtContext;
   top.defs <- isBound.defs;
   
   local valueDecl::Stmt =
@@ -253,7 +272,7 @@ top::ListPatterns ::= h::Pattern t::ListPatterns
         (inst _list_d<$directTypeExpr{top.expectedType}>)$Expr{top.valueTransformIn};
     };
   valueDecl.env = addEnv(isBound.defs, openScopeEnv(isBound.env));
-  valueDecl.returnType = nothing();
+  valueDecl.controlStmtContext = initialControlStmtContext;
   top.defs <- valueDecl.defs;
   
   h.env = addEnv(valueDecl.defs, valueDecl.env);
@@ -306,7 +325,7 @@ top::ListPatterns ::=
   
   local isBound::Expr = top.isBoundTransformIn;
   isBound.env = top.env;
-  isBound.returnType = nothing();
+  isBound.controlStmtContext = initialControlStmtContext;
   top.defs <- isBound.defs;
   
   top.transform =

@@ -6,9 +6,9 @@
 #include <stdbool.h>
 
 prolog {
-  nqueens(int ?n, list<int?> ?board);
-  nqueens_partial(int ?width, int ?height, list<int?> ?board);
-  safe(int ?column, int ?row, list<int?> ?board);
+  nqueens(int n, list<int?> ?board);
+  nqueens_partial(int width, int height, list<int?> ?board);
+  safe(int column, int row, list<int?> board);
 # include "e6.pl"
 }
 
@@ -28,7 +28,6 @@ bool solve(int n, bool board[n][n]) {
         }
       }
     }
-    return true;
   };
 }
 

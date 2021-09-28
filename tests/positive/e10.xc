@@ -1,6 +1,6 @@
 #include <unification.xh>
 
-// Performance test
+// Compiler performance test
 prolog {
   foo(int?);
 }

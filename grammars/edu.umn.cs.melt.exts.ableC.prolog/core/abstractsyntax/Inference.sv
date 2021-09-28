@@ -12,12 +12,17 @@ top::Parameters ::= h::ParameterDecl  t::Parameters
     | just(_) :: _ -> newH.inferredArgs ++ t.partialInferredArgs
     | nothing() :: _ -> t.partialInferredArgs
     end;
-    
+
   local newH::ParameterDecl = h;
   newH.env = h.env;
-  newH.returnType = h.returnType;
+  newH.controlStmtContext = h.controlStmtContext;
   newH.position = h.position;
-  newH.argumentType = head(top.partialArgumentTypes).fromJust;
+  newH.argumentType =
+    case h.typerep, head(top.partialArgumentTypes).fromJust of
+    | extType(_, varType(_)), t -> t
+    | _, extType(_, varType(t)) -> t
+    | _, t -> t
+    end;
   t.partialArgumentTypes = tail(top.partialArgumentTypes);
 }
 
