@@ -278,7 +278,7 @@ top::ListPatterns ::= h::Pattern t::ListPatterns
   h.env = addEnv(valueDecl.defs, valueDecl.env);
   t.env = addEnv(h.defs, h.env);
   
-  local tmpName::String = "_tmp_list_" ++ toString(genInt());
+  local tmpName::String = "_tmp_list_" ++ toString(genIntT());
   top.transform =
     ableC_Expr {
       $Expr{decExpr(isBound, location=builtin)} &&
