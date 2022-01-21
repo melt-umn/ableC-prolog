@@ -356,7 +356,7 @@ top::LogicExpr ::= n::Name les::LogicExprs
 function makeVarExpr
 Expr ::= allocator::Expr allowUnificationTypes::Boolean t::Type e::Expr
 {
-  local tmpName::String = s"_tmp_var_${toString(genIntT())}";
+  local tmpName::String = s"_tmp_var_${toString(genInt())}";
   return
     case allowUnificationTypes, t of
     | false, extType(_, varType(_)) -> boundVarExpr(allocator, e, location=builtin)
