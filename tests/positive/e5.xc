@@ -3,7 +3,7 @@
 #include <stdbool.h>
 
 prolog {
-  less<typename a, int (*cmp)(a, a)>(a ?x, a ?y);
+  less<typename a, int (*cmp)(a, a)>(a x, a y);
   less(X, Y) :- (cmp(X, Y)) < 0 .
 }
 

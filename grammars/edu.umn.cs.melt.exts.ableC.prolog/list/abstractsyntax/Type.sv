@@ -84,7 +84,7 @@ top::ExtType ::= sub::Type
     case top.otherType of
     | extType(_, listType(_)) -> listUnifyExpr(_, _, _, location=_)
     | extType(_, varType(_)) -> valVarUnifyExpr(_, _, _, location=_)
-    | errorType() -> \ Expr Expr Expr l::Location -> errorExpr([], location=l)
+    | _ -> \ Expr Expr Expr l::Location -> errorExpr([], location=l)
     end;
   
   top.showErrors =

@@ -1,6 +1,6 @@
 grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 
-import silver:util:raw:treemap as tm;
+import silver:util:treemap as tm;
 
 -- Represents a type parameter
 abstract production templateParamValueItem
@@ -51,7 +51,7 @@ function makeUnwrappedVarDefs
       tm:toList(head(env.values)));
 }
 
-closed nonterminal PredicateItem with paramNames, typereps, templateParams, params, sourceLocation;
+closed nonterminal PredicateItem with paramNames, typereps, templateParams, params, functionDefs, sourceLocation, labelDefs;
 
 abstract production predicateItem
 top::PredicateItem ::= d::Decorated PredicateDecl
@@ -60,6 +60,8 @@ top::PredicateItem ::= d::Decorated PredicateDecl
   top.typereps = d.typereps;
   top.templateParams = d.templateParams;
   top.params = d.params;
+  top.functionDefs := d.functionDefs;
+  top.labelDefs := d.labelDefs;
   top.sourceLocation = d.location;
 }
 
@@ -70,6 +72,8 @@ top::PredicateItem ::=
   top.typereps = [];
   top.templateParams = nilTemplateParameter();
   top.params = nilParameters();
+  top.functionDefs := [];
+  top.labelDefs := [];
   top.sourceLocation = loc("nowhere", -1, -1, -1, -1, -1, -1);
 }
 
@@ -126,7 +130,7 @@ aspect default production
 top::Def ::=
 {
   top.predicateContribs = [];
-  top.canonicalDefs = [];
+  top.canonicalDefs = [top];
 }
 
 abstract production predicateDef

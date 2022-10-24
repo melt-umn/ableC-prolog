@@ -1,5 +1,7 @@
 grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 
+import silver:util:treeset as ts;
+
 abstract production logicDecl
 top::Decl ::= lss::LogicStmts loc::Location
 {
@@ -18,18 +20,31 @@ top::Decl ::= lss::LogicStmts loc::Location
   forwards to
     decls(
       if !null(localErrors)
-      then foldDecl([warnDecl(localErrors), defsDecl(lss.errorDefs)])
+      then consDecl(
+        warnDecl(localErrors),
+        if containsErrors(localErrors, false)
+        then foldDecl([defsDecl(lss.errorDefs)])
+        else lss.transform)
       else lss.transform);
 }
+
+monoid attribute errorDefs::[Def] with [], ++;
+
+synthesized attribute coveredPatterns::[Pair<String LogicExprs>];
+inherited attribute coveredPatternsIn::[Pair<String LogicExprs>];
+
+synthesized attribute predicateGoalCondParams::[Pair<String [String]>];
+inherited attribute predicateGoalCondParamsIn::[Pair<String [String]>];
+
+synthesized attribute cutPredicates::[String];
+inherited attribute cutPredicatesIn::[String];
 
 synthesized attribute transform<a>::a;
 synthesized attribute ruleTransform::[Pair<String Stmt>];
 inherited attribute ruleTransformIn::[Pair<String Stmt>];
 
-monoid attribute errorDefs::[Def] with [], ++;
-
-nonterminal LogicStmts with pps, errors, errorDefs, env, transform<Decls>, ruleTransform;
-flowtype LogicStmts = decorate {env}, pps {}, errors {decorate}, errorDefs {decorate}, transform {decorate}, ruleTransform {decorate};
+nonterminal LogicStmts with pps, errors, errorDefs, env, coveredPatterns, predicateGoalCondParams, cutPredicates, transform<Decls>, ruleTransform;
+flowtype LogicStmts = decorate {env}, pps {}, errors {decorate}, errorDefs {decorate}, coveredPatterns {decorate}, predicateGoalCondParams {decorate}, transform {decorate}, ruleTransform {decorate};
 
 propagate errors, errorDefs on LogicStmts;
 
@@ -37,6 +52,15 @@ abstract production consLogicStmt
 top::LogicStmts ::= h::LogicStmt t::LogicStmts
 {
   top.pps = h.pp :: t.pps;
+  top.coveredPatterns = h.coveredPatterns ++ t.coveredPatterns;
+  h.coveredPatternsIn = t.coveredPatterns;
+  
+  top.predicateGoalCondParams = h.predicateGoalCondParams ++ t.predicateGoalCondParams;
+  h.predicateGoalCondParamsIn = t.predicateGoalCondParams;
+  
+  top.cutPredicates = union(h.cutPredicates, t.cutPredicates);
+  h.cutPredicatesIn = t.cutPredicates;
+  
   top.transform = appendDecls(h.transform, t.transform);
   top.ruleTransform = h.ruleTransform ++ t.ruleTransform;
   h.ruleTransformIn = t.ruleTransform;
@@ -47,12 +71,15 @@ abstract production nilLogicStmt
 top::LogicStmts ::=
 {
   top.pps = [];
+  top.coveredPatterns = [];
+  top.predicateGoalCondParams = [];
+  top.cutPredicates = [];
   top.transform = nilDecl();
   top.ruleTransform = [];
 }
 
-nonterminal LogicStmt with location, pp, errors, defs, errorDefs, env, transform<Decls>, ruleTransform, ruleTransformIn;
-flowtype LogicStmt = decorate {env, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, errorDefs {decorate}, transform {decorate}, ruleTransform {decorate};
+nonterminal LogicStmt with location, pp, errors, defs, errorDefs, env, coveredPatterns, coveredPatternsIn, predicateGoalCondParams, predicateGoalCondParamsIn, cutPredicates, cutPredicatesIn, transform<Decls>, ruleTransform, ruleTransformIn;
+flowtype LogicStmt = decorate {env, coveredPatternsIn, predicateGoalCondParamsIn, cutPredicatesIn, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, errorDefs {decorate}, coveredPatterns {decorate}, predicateGoalCondParams {decorate}, transform {decorate}, ruleTransform {decorate};
 
 abstract production ruleLogicStmt
 top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
@@ -64,20 +91,40 @@ top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
   
   local templateParams::TemplateParameters = n.predicateItem.templateParams;
   templateParams.templateParamEnv = globalEnv(top.env);
-  les.env = addEnv([globalDefsDef(templateParams.templateParamDefs)], openScopeEnv(top.env));
+  les.env = addEnv(globalDefsDef(templateParams.templateParamDefs) :: n.predicateItem.functionDefs, openScopeEnv(top.env));
   les.refVariables = removeDefsFromNames(les.defs, gs.freeVariables);
   les.paramNamesIn = n.predicateItem.paramNames;
   les.expectedTypes = n.predicateItem.typereps;
   les.allowUnificationTypes = true;
   les.allocator = ableC_Expr { alloca };
-  gs.env = addEnv(les.defs, les.env);
+  gs.env = addEnv(les.defs, openScopeEnv(les.env));
+  gs.predicateName = just(n.name);
   gs.refVariables = les.refVariables;
+  local lastGoalConds::[ts:Set<String>] =
+    nub(
+      flatMap(
+        \ les1::LogicExprs -> map(
+          ts:add(_, ts:empty()),
+          decorate les1 with {
+            env = les.env; expectedTypes = les.expectedTypes; allowUnificationTypes = true;
+            isExcludableBy = les; paramNamesIn = les.paramNamesIn;}.isExcludable),
+        lookupAll(n.name, top.coveredPatternsIn)));
+  gs.lastGoalCond =
+    map(ts:toList,
+      removeAllBy(
+        \ c1::ts:Set<String> c2::ts:Set<String> -> ts:subset(c2, c1) && !ts:subset(c1, c2),
+        lastGoalConds, lastGoalConds));
+  gs.tailCallPermitted = true;
   
   top.errors <- n.predicateLocalLookupCheck;
   top.errors <-
     if null(n.predicateLookupCheck) && les.count != length(les.expectedTypes)
     then [err(top.location, s"Wrong number of arguments to predicate ${n.name} (expected ${toString(length(les.expectedTypes))}, got ${toString(les.count)})")]
     else [];
+  
+  top.coveredPatterns = [pair(n.name, les)];
+  top.predicateGoalCondParams = [pair(n.name, gs.goalCondParams)];
+  top.cutPredicates = if gs.containsCut then [n.name] else [];
   
   top.transform = nilDecl();
   top.ruleTransform =
@@ -92,6 +139,7 @@ top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
            // If successful, evaluate the RHS
            if ($Expr{les.paramUnifyTransform} && $Expr{gs.transform}) {
              // Search has succeeded, so we are done immediately
+             undo_trail(_trail, _initial_trail_index);
              return 1;
            }
          }
@@ -105,6 +153,11 @@ top::LogicStmt ::= d::PredicateDecl
   propagate errors, defs, errorDefs;
   top.pp = d.pp;
   top.transform = d.transform;
+  top.coveredPatterns = [];
+  top.predicateGoalCondParams = [];
+  d.predicateGoalCondParamsIn = top.predicateGoalCondParamsIn;
+  top.cutPredicates = [];
+  d.cutPredicatesIn = top.cutPredicatesIn;
   top.ruleTransform = [];
   d.ruleTransformIn = top.ruleTransformIn;
 }

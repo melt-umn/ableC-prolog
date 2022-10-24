@@ -34,6 +34,12 @@ int main() {
     printf("\n");
     return false;
   };
+  
+  query reverse([1, 2, 3, 4], L) {
+    printf("L: %s\n", show(L).text);
+    printf("\n");
+    return false;
+  };
 
   query between(1, 10, N) {
     printf("%s\n", show(N).text);

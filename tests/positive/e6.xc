@@ -20,7 +20,6 @@ int main() {
         printf("%s\n", show(E).text);
         printf("%s\n", show(F).text);
         printf("%s\n", show(G).text);
-        return true;
       };
 }
 
