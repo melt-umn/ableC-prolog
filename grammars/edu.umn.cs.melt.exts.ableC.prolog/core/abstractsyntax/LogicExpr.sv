@@ -4,9 +4,9 @@ inherited attribute expectedTypes::[Type];
 
 -- If true, transform.typerep must be unifiable with expectedType
 -- If false, transform.typerep must exactly match expectedType
-autocopy attribute allowUnificationTypes::Boolean;
+inherited attribute allowUnificationTypes::Boolean;
 
-autocopy attribute allocator::Expr;
+inherited attribute allocator::Expr;
 
 inherited attribute isExcludableBy<a>::a;
 synthesized attribute isExcludable::[[String]]; -- "product of sums" of parameter boundness
@@ -19,7 +19,7 @@ synthesized attribute maybeTypereps::[Maybe<Type>];
 nonterminal LogicExprs with pps, env, count, expectedTypes, allowUnificationTypes, allocator, refVariables, isExcludable, isExcludableBy<LogicExprs>, errors, defs, maybeTypereps, transform<Exprs>, paramNamesIn, paramUnifyTransform;
 flowtype LogicExprs = decorate {env, expectedTypes, allowUnificationTypes, allocator, refVariables}, pps {}, count {}, isExcludable {env, expectedTypes, allowUnificationTypes, isExcludableBy, paramNamesIn}, errors {decorate}, defs {env, expectedTypes, allowUnificationTypes}, maybeTypereps {env, allowUnificationTypes}, transform {decorate}, paramUnifyTransform {decorate, paramNamesIn};
 
-propagate errors, defs on LogicExprs;
+propagate allowUnificationTypes, allocator, refVariables, errors, defs on LogicExprs;
 
 abstract production consLogicExpr
 top::LogicExprs ::= h::LogicExpr t::LogicExprs
@@ -49,7 +49,8 @@ top::LogicExprs ::= h::LogicExpr t::LogicExprs
         t.paramUnifyTransform,
         location=builtin)
     end;
-  
+
+  h.env = top.env;
   t.env = addEnv(h.defs, h.env);
   
   local splitTypes :: Pair<Type [Type]> =
@@ -102,7 +103,8 @@ inherited attribute expectedType::Type;
 closed nonterminal LogicExpr with location, pp, env, expectedType, allowUnificationTypes, allocator, refVariables, paramNameIn, isExcludable, isExcludableBy<LogicExpr>, errors, defs, maybeTyperep, transform<Expr>;
 flowtype LogicExpr = decorate {env, expectedType, allowUnificationTypes, allocator, refVariables}, pp {}, isExcludable {env, expectedType, isExcludableBy, paramNameIn}, errors {decorate}, defs {env, expectedType, allowUnificationTypes}, maybeTyperep {env, allowUnificationTypes}, transform {decorate};
 
-propagate errors, defs on LogicExpr;
+propagate env, allocator, refVariables, errors, defs on LogicExpr;
+propagate allowUnificationTypes on LogicExpr excluding constructorLogicExpr;
 
 abstract production decLogicExpr
 top::LogicExpr ::= le::Decorated LogicExpr
@@ -120,6 +122,7 @@ abstract production nameLogicExpr
 top::LogicExpr ::= n::Name
 {
   top.pp = n.pp;
+  propagate env;
   forwards to
     case n.valueItem of
     | enumValueItem(_) -> constLogicExpr(declRefExpr(n, location=builtin), location=top.location)

@@ -1,7 +1,7 @@
 grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 
-autocopy attribute predicateName::Maybe<String>;
-autocopy attribute refVariables::[Name];
+inherited attribute predicateName::Maybe<String>;
+inherited attribute refVariables::[Name];
 inherited attribute lastGoalCond::[[String]];
 monoid attribute goalCondParams::[String] with [], union;
 synthesized attribute usesContinuation::Boolean;
@@ -14,7 +14,7 @@ inherited attribute continuationTransformIn::Expr;
 nonterminal Goals with pps, env, predicateName, refVariables, lastGoalCond, tailCallPermitted, errors, defs, freeVariables, goalCondParams, containsCut, transform<Expr>, continuationTransform, continuationTransformIn;
 flowtype Goals = decorate {env, predicateName, refVariables, lastGoalCond, tailCallPermitted, continuationTransformIn}, pps {}, errors {refVariables, env}, defs {env}, freeVariables {env}, containsCut {env}, goalCondParams {decorate}, transform {decorate}, continuationTransform {decorate};
 
-propagate errors, defs, goalCondParams, containsCut on Goals;
+propagate predicateName, refVariables, errors, defs, goalCondParams, containsCut on Goals;
 
 abstract production consGoal
 top::Goals ::= h::Goal t::Goals
@@ -22,6 +22,7 @@ top::Goals ::= h::Goal t::Goals
   top.pps = h.pp :: t.pps;
   top.freeVariables := h.freeVariables ++ removeDefsFromNames(h.defs, t.freeVariables);
   
+  h.env = top.env;
   t.env = addEnv(h.defs, h.env);
   
   h.lastGoalCond = if top.tailCallPermitted then top.lastGoalCond else [[]];
@@ -58,9 +59,9 @@ Goals ::= les::[Goal]
 nonterminal Goal with location, env, predicateName, refVariables, lastGoalCond, pp, errors, defs, freeVariables, usesContinuation, goalCondParams, containsCut, transform<Expr>, transformIn<Expr>, continuationTransformIn;
 flowtype Goal = decorate {env, predicateName, refVariables, lastGoalCond, transformIn, continuationTransformIn}, pp {}, errors {refVariables, env}, defs {env}, freeVariables {env}, usesContinuation {env}, containsCut {env}, goalCondParams {decorate}, transform {decorate};
 
-propagate errors, defs on Goal excluding predicateGoal, inferredPredicateGoal;
+propagate errors, defs on Goal excluding inferredPredicateGoal;
 propagate goalCondParams, containsCut on Goal excluding notGoal;
-propagate freeVariables on Goal;
+propagate predicateName, refVariables, freeVariables on Goal;
 
 aspect default production
 top::Goal ::=
@@ -71,7 +72,6 @@ top::Goal ::=
 abstract production predicateGoal
 top::Goal ::= n::Name ts::TemplateArgNames les::LogicExprs
 {
-  propagate errors, defs;
   top.pp = pp"${n.pp}<${ppImplode(pp", ", ts.pps)}>(${ppImplode(pp", ", les.pps)})";
   top.usesContinuation = true;
   
@@ -113,8 +113,11 @@ top::Goal ::= n::Name ts::TemplateArgNames les::LogicExprs
     | _ -> []
     end;
   
+  n.env = top.env;
+
   local templateParams::TemplateParameters = n.predicateItem.templateParams;
   
+  ts.env = top.env;
   ts.edu:umn:cs:melt:exts:ableC:templating:abstractsyntax:paramNames = templateParams.names;
   ts.paramKinds = templateParams.kinds;
   ts.substEnv = s:fail();
@@ -151,6 +154,8 @@ top::Goal ::= n::Name ts::TemplateArgNames les::LogicExprs
 abstract production inferredPredicateGoal
 top::Goal ::= n::Name les::LogicExprs
 {
+  propagate env;
+
   top.pp = pp"${n.pp}(${ppImplode(pp", ", les.pps)})";
   top.usesContinuation = true;
   top.errors :=
@@ -285,7 +290,8 @@ top::Goal ::= le::LogicExpr e::Expr
           location=builtin)} &&
       $Expr{top.transformIn}
     };
-  
+
+  le.env = top.env;
   le.expectedType = e.typerep;
   le.allowUnificationTypes = true;
   le.allocator = ableC_Expr { alloca };
@@ -318,6 +324,7 @@ top::Goal ::= le1::LogicExpr le2::LogicExpr
   le1.expectedType = expectedType;
   le1.allowUnificationTypes = true;
   le1.allocator = ableC_Expr { alloca };
+  le1.env = top.env;
   le2.expectedType = expectedType;
   le2.allowUnificationTypes = true;
   le2.allocator = ableC_Expr { alloca };
@@ -473,6 +480,7 @@ top::Goal ::= e1::Expr e2::Expr
 abstract production notGoal
 top::Goal ::= g::Goal
 {
+  propagate env;
   top.pp = pp"\+ (${g.pp})";
   top.goalCondParams := [];
   top.containsCut := false;

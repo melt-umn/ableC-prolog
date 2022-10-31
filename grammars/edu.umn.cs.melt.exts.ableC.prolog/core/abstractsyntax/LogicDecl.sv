@@ -64,6 +64,7 @@ top::LogicStmts ::= h::LogicStmt t::LogicStmts
   top.transform = appendDecls(h.transform, t.transform);
   top.ruleTransform = h.ruleTransform ++ t.ruleTransform;
   h.ruleTransformIn = t.ruleTransform;
+  h.env = top.env;
   t.env = addEnv(h.defs, h.env);
 }
 
@@ -81,13 +82,16 @@ top::LogicStmts ::=
 nonterminal LogicStmt with location, pp, errors, defs, errorDefs, env, coveredPatterns, coveredPatternsIn, predicateGoalCondParams, predicateGoalCondParamsIn, cutPredicates, cutPredicatesIn, transform<Decls>, ruleTransform, ruleTransformIn;
 flowtype LogicStmt = decorate {env, coveredPatternsIn, predicateGoalCondParamsIn, cutPredicatesIn, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, errorDefs {decorate}, coveredPatterns {decorate}, predicateGoalCondParams {decorate}, transform {decorate}, ruleTransform {decorate};
 
+propagate errors on LogicStmt;
+
 abstract production ruleLogicStmt
 top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
 {
-  propagate errors;
   top.pp = pp"${n.pp}(${ppImplode(pp", ", les.pps)})${if null(gs.pps) then pp"." else pp" :- ${ppImplode(pp", ", gs.pps)}"}";
   top.defs := [];
   top.errorDefs := [];
+
+  n.env = top.env;
   
   local templateParams::TemplateParameters = n.predicateItem.templateParams;
   templateParams.templateParamEnv = globalEnv(top.env);
@@ -150,7 +154,7 @@ top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
 abstract production declLogicStmt
 top::LogicStmt ::= d::PredicateDecl
 {
-  propagate errors, defs, errorDefs;
+  propagate env, defs, errorDefs;
   top.pp = d.pp;
   top.transform = d.transform;
   top.coveredPatterns = [];

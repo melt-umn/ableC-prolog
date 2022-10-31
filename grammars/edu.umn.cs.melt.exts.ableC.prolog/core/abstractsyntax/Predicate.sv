@@ -22,6 +22,8 @@ top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parame
   
   local transName::String = s"_predicate_${n.name}";
   top.errorDefs <- [templateDef(transName, errorTemplateItem())];
+
+  n.env = top.env;
   
   templateParams.templateParamEnv = globalEnv(top.env);
   
@@ -92,14 +94,15 @@ top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parame
 
 monoid attribute templateParamDefs::[Def] with [], ++;
 attribute templateParamDefs occurs on TemplateParameters, TemplateParameter;
-autocopy attribute templateParamEnv::Decorated Env occurs on TemplateParameters, TemplateParameter;
+inherited attribute templateParamEnv::Decorated Env occurs on TemplateParameters, TemplateParameter;
 
 propagate templateParamDefs on TemplateParameters;
 
 aspect production consTemplateParameter
 top::TemplateParameters ::= h::TemplateParameter t::TemplateParameters
 {
-  h.templateParamEnv = addEnv(h.templateParamDefs, top.templateParamEnv);
+  h.templateParamEnv = top.templateParamEnv;
+  t.templateParamEnv = addEnv(h.templateParamDefs, top.templateParamEnv);
 }
 
 aspect production typeTemplateParameter
