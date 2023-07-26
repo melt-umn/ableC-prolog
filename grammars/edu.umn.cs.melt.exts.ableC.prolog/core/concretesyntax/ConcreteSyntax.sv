@@ -80,8 +80,7 @@ concrete productions top::LogicStmt_c
   action {
     context = closeScope(context); -- Opened by TemplateParameters_c
     predicateTemplateParams =
-      pair(
-        id.ast.name,
+      ( id.ast.name,
         zipWith(
           pair, templateParams.ast.names,
           map(
@@ -94,8 +93,7 @@ concrete productions top::LogicStmt_c
   action {
     context = closeScope(context); -- Opened by TemplateParameters_c
     predicateTemplateParams =
-      pair(
-        id.ast.name,
+      ( id.ast.name,
         zipWith(
           pair, templateParams.ast.names,
           map(
@@ -118,7 +116,7 @@ closed nonterminal Head_c with location, ast<Pair<Name LogicExprs>>;
 
 concrete productions top::Head_c
 | id::Identifier_c LParen_t le::LogicExprs_c ')'
-  { top.ast = pair(id.ast, foldLogicExpr(le.ast)); }
+  { top.ast = (id.ast, foldLogicExpr(le.ast)); }
   action {
     local templateParams::[Pair<String TerminalId>] =
       fromMaybe([], lookup(id.ast.name, predicateTemplateParams));
@@ -127,7 +125,7 @@ concrete productions top::Head_c
     context = addIdentsToScope(le.declaredIdents, Identifier_t, context);
   }
 | id::Identifier_c LParen_t ')'
-  { top.ast = pair(id.ast, nilLogicExpr()); }
+  { top.ast = (id.ast, nilLogicExpr()); }
   action {
     local templateParams::[Pair<String TerminalId>] =
       fromMaybe([], lookup(id.ast.name, predicateTemplateParams));
