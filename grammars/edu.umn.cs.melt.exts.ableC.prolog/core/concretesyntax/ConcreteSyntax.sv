@@ -81,8 +81,8 @@ concrete productions top::LogicStmt_c
     context = closeScope(context); -- Opened by TemplateParameters_c
     predicateTemplateParams =
       ( id.ast.name,
-        zipWith(
-          pair, templateParams.ast.names,
+        zip(
+          templateParams.ast.names,
           map(
             \ k::Maybe<TypeName> -> if k.isJust then Identifier_t else TypeName_t,
             templateParams.ast.kinds))) ::
@@ -94,8 +94,8 @@ concrete productions top::LogicStmt_c
     context = closeScope(context); -- Opened by TemplateParameters_c
     predicateTemplateParams =
       ( id.ast.name,
-        zipWith(
-          pair, templateParams.ast.names,
+        zip(
+          templateParams.ast.names,
           map(
             \ k::Maybe<TypeName> -> if k.isJust then Identifier_t else TypeName_t,
             templateParams.ast.kinds))) ::
