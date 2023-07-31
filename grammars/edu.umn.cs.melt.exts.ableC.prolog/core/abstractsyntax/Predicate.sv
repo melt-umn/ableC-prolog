@@ -3,7 +3,7 @@ grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 synthesized attribute templateParams::TemplateParameters;
 synthesized attribute params::Parameters;
 
-nonterminal PredicateDecl with location, env, pp, errors, defs, functionDefs, errorDefs, paramNames, typereps, templateParams, params, predicateGoalCondParamsIn, cutPredicatesIn, transform<Decls>, ruleTransformIn, labelDefs;
+tracked nonterminal PredicateDecl with env, pp, errors, defs, functionDefs, errorDefs, paramNames, typereps, templateParams, params, predicateGoalCondParamsIn, cutPredicatesIn, transform<Decls>, ruleTransformIn, labelDefs;
 flowtype PredicateDecl = decorate {env, predicateGoalCondParamsIn, cutPredicatesIn, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, functionDefs {decorate}, labelDefs {decorate}, typereps {decorate}, templateParams {decorate}, params {decorate}, transform {decorate};
 
 abstract production predicateDecl
@@ -178,7 +178,7 @@ aspect production parameterDecl
 top::ParameterDecl ::= storage::StorageClasses  bty::BaseTypeExpr  mty::TypeModifierExpr  n::MaybeName  attrs::Attributes
 {
   top.predicateParamErrors :=
-    if containsQualifier(constQualifier(location=builtin), top.typerep) -- top.typerep is pre-instantiated but we only care about qualifiers
+    if containsQualifier(constQualifier(), top.typerep) -- top.typerep is pre-instantiated but we only care about qualifiers
     then [err(top.sourceLocation, "Predicate parameters may not be declared const")]
     else [];
   top.paramName =
@@ -187,6 +187,6 @@ top::ParameterDecl ::= storage::StorageClasses  bty::BaseTypeExpr  mty::TypeModi
     | nothingName() -> "_p" ++ toString(top.position)
     end;
   top.transform =
-    parameterDecl(storage, bty, mty, justName(name(top.paramName, location=builtin)), attrs);
+    parameterDecl(storage, bty, mty, justName(name(top.paramName)), attrs);
   top.tailCallTrans = ableC_Stmt { $name{top.paramName} = $Expr{top.tailCallArg}; };
 }

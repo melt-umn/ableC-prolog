@@ -24,7 +24,7 @@ top::BaseTypeExpr ::= q::Qualifiers sub::TypeName loc::Location
     foldDecl(
       sub.decls ++
       [templateTypeExprInstDecl(
-         q, name("_list_d", location=builtin),
+         q, name("_list_d"),
          foldTemplateArg([typeTemplateArg(sub.typerep)]))]);
   
   -- Non-interfering overrides for better performance
@@ -83,9 +83,9 @@ top::ExtType ::= sub::Type
       checkListHeaderDef("unify_list", l, env);
   top.unifyProd =
     case top.otherType of
-    | extType(_, listType(_)) -> listUnifyExpr(_, _, _, location=_)
-    | extType(_, varType(_)) -> valVarUnifyExpr(_, _, _, location=_)
-    | _ -> \ Expr Expr Expr l::Location -> errorExpr([], location=l)
+    | extType(_, listType(_)) -> listUnifyExpr
+    | extType(_, varType(_)) -> valVarUnifyExpr
+    | _ -> \ Expr Expr Expr l::Location -> errorExpr([])
     end;
   
   top.showErrors =

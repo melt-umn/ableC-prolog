@@ -11,7 +11,7 @@ monoid attribute containsCut::Boolean with false, ||;
 synthesized attribute continuationTransform::Expr;
 inherited attribute continuationTransformIn::Expr;
 
-nonterminal Goals with pps, env, predicateName, refVariables, lastGoalCond, tailCallPermitted, errors, defs, freeVariables, goalCondParams, containsCut, transform<Expr>, continuationTransform, continuationTransformIn;
+tracked nonterminal Goals with pps, env, predicateName, refVariables, lastGoalCond, tailCallPermitted, errors, defs, freeVariables, goalCondParams, containsCut, transform<Expr>, continuationTransform, continuationTransformIn;
 flowtype Goals = decorate {env, predicateName, refVariables, lastGoalCond, tailCallPermitted, continuationTransformIn}, pps {}, errors {refVariables, env}, defs {env}, freeVariables {env}, containsCut {env}, goalCondParams {decorate}, transform {decorate}, continuationTransform {decorate};
 
 propagate predicateName, refVariables, errors, defs, goalCondParams, containsCut on Goals;
@@ -56,7 +56,7 @@ Goals ::= les::[Goal]
   return foldr(consGoal, nilGoal(), les);
 }
 
-nonterminal Goal with location, env, predicateName, refVariables, lastGoalCond, pp, errors, defs, freeVariables, usesContinuation, goalCondParams, containsCut, transform<Expr>, transformIn<Expr>, continuationTransformIn;
+tracked nonterminal Goal with env, predicateName, refVariables, lastGoalCond, pp, errors, defs, freeVariables, usesContinuation, goalCondParams, containsCut, transform<Expr>, transformIn<Expr>, continuationTransformIn;
 flowtype Goal = decorate {env, predicateName, refVariables, lastGoalCond, transformIn, continuationTransformIn}, pp {}, errors {refVariables, env}, defs {env}, freeVariables {env}, usesContinuation {env}, containsCut {env}, goalCondParams {decorate}, transform {decorate};
 
 propagate errors, defs on Goal excluding inferredPredicateGoal;
@@ -96,14 +96,13 @@ top::Goal ::= n::Name ts::TemplateArgNames les::LogicExprs
       | lgc ->
         conditionalExpr(
           foldr1(
-            andExpr(_, _, location=builtin),
+            andExpr,
             map(
-              foldr1(orExpr(_, _, location=builtin), _),
+              foldr1(orExpr, _),
               map(
                 map(\ p::String -> ableC_Expr { $name{s"_${p}_bound"} }, _),
                 lgc))),
-          tailCallTrans, regularTrans,
-          location=builtin)
+          tailCallTrans, regularTrans)
       end
     | _ -> regularTrans
     end;
@@ -139,14 +138,12 @@ top::Goal ::= n::Name ts::TemplateArgNames les::LogicExprs
   top.errors <- n.predicateLookupCheck;
   top.errors <-
     if null(n.predicateLookupCheck) && ts.count != templateParams.count
-    then [err(
-            n.location,
-            s"Wrong number of type arguments for ${n.name}, " ++
+    then [errFromOrigin(n, s"Wrong number of type arguments for ${n.name}, " ++
             s"expected ${toString(templateParams.count)} but got ${toString(ts.count)}")]
     else [];
   top.errors <-
     if null(n.predicateLookupCheck) && les.count != params.count
-    then [err(top.location, s"Wrong number of arguments to predicate ${n.name} (expected ${toString(params.count)}, got ${toString(les.count)})")]
+    then [errFromOrigin(top, s"Wrong number of arguments to predicate ${n.name} (expected ${toString(params.count)}, got ${toString(les.count)})")]
     else [];
   top.errors <- ts.argreps.templateArgUnifyErrors(n.location, top.env);
 }
@@ -189,14 +186,13 @@ top::Goal ::= n::Name les::LogicExprs
       | lgc ->
         conditionalExpr(
           foldr1(
-            andExpr(_, _, location=builtin),
+            andExpr,
             map(
-              foldr1(orExpr(_, _, location=builtin), _),
+              foldr1(orExpr, _),
               map(
                 map(\ p::String -> ableC_Expr { $name{s"_${p}_bound"} }, _),
                 lgc))),
-          tailCallTrans, regularTrans,
-          location=builtin)
+          tailCallTrans, regularTrans)
       end
     | _ -> regularTrans
     end;
@@ -249,9 +245,7 @@ top::Goal ::= n::Name les::LogicExprs
   top.errors <-
     if null(n.predicateLookupCheck) && (!inferredTemplateArguments.isJust || inferredTemplateArguments.fromJust.containsErrorType)
     then 
-      [err(
-         top.location,
-         s"Type argument inference failed for ${n.name}(${
+      [errFromOrigin(top, s"Type argument inference failed for ${n.name}(${
            implode(
              ", ",
              map(
@@ -264,11 +258,11 @@ top::Goal ::= n::Name les::LogicExprs
     else [];
   top.errors <-
     if null(n.predicateLookupCheck) && les.count != infParams.count
-    then [err(top.location, s"Wrong number of arguments to predicate ${n.name} (expected ${toString(infParams.count)}, got ${toString(les.count)})")]
+    then [errFromOrigin(top, s"Wrong number of arguments to predicate ${n.name} (expected ${toString(infParams.count)}, got ${toString(les.count)})")]
     else [];
   top.errors <-
     case inferredTemplateArguments of
-    | just(ts) -> ts.templateArgUnifyErrors(n.location, top.env)
+    | just(ts) -> ts.templateArgUnifyErrors(top.env)
     | nothing() -> []
     end;
 }
@@ -284,10 +278,9 @@ top::Goal ::= le::LogicExpr e::Expr
           le.transform,
           ableC_Expr {
             ({$Stmt{makeUnwrappedVarDecls(e.freeVariables, top.env)}
-              $Expr{decExpr(e, location=builtin)};})
+              $Expr{decExpr(e)};})
           },
-          justExpr(ableC_Expr { _trail }),
-          location=builtin)} &&
+          justExpr(ableC_Expr { _trail }))} &&
       $Expr{top.transformIn}
     };
 
@@ -310,14 +303,13 @@ top::Goal ::= le1::LogicExpr le2::LogicExpr
         unifyExpr(
           le1.transform,
           le2.transform,
-          justExpr(ableC_Expr { _trail }),
-          location=builtin)} &&
+          justExpr(ableC_Expr { _trail }))} &&
       $Expr{top.transformIn}
     };
   
   top.errors <-
     if !le1.maybeTyperep.isJust
-    then [err(le1.location, "Could not infer a type for lhs of goal")]
+    then [errFromOrigin(le1, "Could not infer a type for lhs of goal")]
     else [];
   
   local expectedType::Type = fromMaybe(errorType(), le1.maybeTyperep);
@@ -336,7 +328,7 @@ top::Goal ::= le1::LogicExpr le2::LogicExpr
 {
   top.pp = pp"(${le1.pp}) \= (${le2.pp})";
   
-  forwards to notGoal(equalsGoal(le1, le2, location=top.location), location=top.location);
+  forwards to notGoal(equalsGoal(le1, le2));
 }
 
 abstract production eqGoal
@@ -346,7 +338,7 @@ top::Goal ::= e1::Expr e2::Expr
   top.transform =
     ableC_Expr {
       ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
-        $Expr{decExpr(e1, location=builtin)} == $Expr{decExpr(e2, location=builtin)};}) &&
+        $Expr{decExpr(e1)} == $Expr{decExpr(e2)};}) &&
         $Expr{top.transformIn}
     };
   
@@ -354,7 +346,7 @@ top::Goal ::= e1::Expr e2::Expr
   top.errors <-
     if compatibleTypes(e1.typerep, e2.typerep, true, true)
     then []
-    else [err(top.location, s"Types to =:= goal must match (got ${showType(e1.typerep)}, ${showType(e2.typerep)})")];
+    else [errFromOrigin(top, s"Types to =:= goal must match (got ${showType(e1.typerep)}, ${showType(e2.typerep)})")];
   
   e1.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
   e1.controlStmtContext = initialControlStmtContext;
@@ -369,7 +361,7 @@ top::Goal ::= e1::Expr e2::Expr
   top.transform =
     ableC_Expr {
       ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
-        $Expr{decExpr(e1, location=builtin)} != $Expr{decExpr(e2, location=builtin)};}) &&
+        $Expr{decExpr(e1)} != $Expr{decExpr(e2)};}) &&
         $Expr{top.transformIn}
     };
   
@@ -377,7 +369,7 @@ top::Goal ::= e1::Expr e2::Expr
   top.errors <-
     if compatibleTypes(e1.typerep, e2.typerep, true, true)
     then []
-    else [err(top.location, s"Types to =/= goal must match (got ${showType(e1.typerep)}, ${showType(e2.typerep)})")];
+    else [errFromOrigin(top, s"Types to =/= goal must match (got ${showType(e1.typerep)}, ${showType(e2.typerep)})")];
   
   e1.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
   e1.controlStmtContext = initialControlStmtContext;
@@ -392,7 +384,7 @@ top::Goal ::= e1::Expr e2::Expr
   top.transform =
     ableC_Expr {
       ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
-        $Expr{decExpr(e1, location=builtin)} < $Expr{decExpr(e2, location=builtin)};}) &&
+        $Expr{decExpr(e1)} < $Expr{decExpr(e2)};}) &&
         $Expr{top.transformIn}
     };
   
@@ -400,7 +392,7 @@ top::Goal ::= e1::Expr e2::Expr
   top.errors <-
     if compatibleTypes(e1.typerep, e2.typerep, true, true)
     then []
-    else [err(top.location, s"Types to < goal must match (got ${showType(e1.typerep)}, ${showType(e2.typerep)})")];
+    else [errFromOrigin(top, s"Types to < goal must match (got ${showType(e1.typerep)}, ${showType(e2.typerep)})")];
   
   e1.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
   e1.controlStmtContext = initialControlStmtContext;
@@ -415,7 +407,7 @@ top::Goal ::= e1::Expr e2::Expr
   top.transform =
     ableC_Expr {
       ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
-        $Expr{decExpr(e1, location=builtin)} <= $Expr{decExpr(e2, location=builtin)};}) &&
+        $Expr{decExpr(e1)} <= $Expr{decExpr(e2)};}) &&
         $Expr{top.transformIn}
     };
   
@@ -423,7 +415,7 @@ top::Goal ::= e1::Expr e2::Expr
   top.errors <-
     if compatibleTypes(e1.typerep, e2.typerep, true, true)
     then []
-    else [err(top.location, s"Types to =< goal must match (got ${showType(e1.typerep)}, ${showType(e2.typerep)})")];
+    else [errFromOrigin(top, s"Types to =< goal must match (got ${showType(e1.typerep)}, ${showType(e2.typerep)})")];
   
   e1.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
   e1.controlStmtContext = initialControlStmtContext;
@@ -438,7 +430,7 @@ top::Goal ::= e1::Expr e2::Expr
   top.transform =
     ableC_Expr {
       ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
-        $Expr{decExpr(e1, location=builtin)} > $Expr{decExpr(e2, location=builtin)};}) &&
+        $Expr{decExpr(e1)} > $Expr{decExpr(e2)};}) &&
         $Expr{top.transformIn}
     };
   
@@ -446,7 +438,7 @@ top::Goal ::= e1::Expr e2::Expr
   top.errors <-
     if compatibleTypes(e1.typerep, e2.typerep, true, true)
     then []
-    else [err(top.location, s"Types to > goal must match (got ${showType(e1.typerep)}, ${showType(e2.typerep)})")];
+    else [errFromOrigin(top, s"Types to > goal must match (got ${showType(e1.typerep)}, ${showType(e2.typerep)})")];
   
   e1.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
   e1.controlStmtContext = initialControlStmtContext;
@@ -461,7 +453,7 @@ top::Goal ::= e1::Expr e2::Expr
   top.transform =
     ableC_Expr {
       ({$Stmt{makeUnwrappedVarDecls(e1.freeVariables ++ e2.freeVariables, top.env)}
-        $Expr{decExpr(e1, location=builtin)} >= $Expr{decExpr(e2, location=builtin)};}) &&
+        $Expr{decExpr(e1)} >= $Expr{decExpr(e2)};}) &&
         $Expr{top.transformIn}
     };
   
@@ -469,7 +461,7 @@ top::Goal ::= e1::Expr e2::Expr
   top.errors <-
     if compatibleTypes(e1.typerep, e2.typerep, true, true)
     then []
-    else [err(top.location, s"Types to >= goal must match (got ${showType(e1.typerep)}, ${showType(e2.typerep)})")];
+    else [errFromOrigin(top, s"Types to >= goal must match (got ${showType(e1.typerep)}, ${showType(e2.typerep)})")];
   
   e1.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
   e1.controlStmtContext = initialControlStmtContext;
@@ -486,7 +478,7 @@ top::Goal ::= g::Goal
   top.containsCut := false;
   top.errors <-
     if g.containsCut
-    then [err(g.location, "Cuts are not permitted within \\+")]
+    then [errFromOrigin(g, "Cuts are not permitted within \\+")]
     else [];
   
   g.transformIn = ableC_Expr { (_Bool)1 };

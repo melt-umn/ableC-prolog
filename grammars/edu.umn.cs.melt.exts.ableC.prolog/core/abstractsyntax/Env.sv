@@ -51,7 +51,7 @@ function makeUnwrappedVarDefs
       tm:toList(head(env.values)));
 }
 
-closed nonterminal PredicateItem with paramNames, typereps, templateParams, params, functionDefs, sourceLocation, labelDefs;
+closed tracked nonterminal PredicateItem with paramNames, typereps, templateParams, params, functionDefs, sourceLocation, labelDefs;
 
 abstract production predicateItem
 top::PredicateItem ::= d::Decorated PredicateDecl
@@ -168,21 +168,21 @@ top::Name ::= n::String
   local predicates::[PredicateItem] = lookupPredicate(n, top.env);
   top.predicateLookupCheck =
     case predicates of
-    | [] -> [err(top.location, "Undeclared predicate " ++ n)]
+    | [] -> [errFromOrigin(top, "Undeclared predicate " ++ n)]
     | _ :: _ -> []
     end;
   top.predicateLocalLookupCheck =
     case lookupPredicateInLocalScope(n, top.env), predicates of
     | _ :: _, _ -> []
-    | [], _ :: _ -> [err(top.location, "Predicate " ++ n ++ " not in current declaration block")]
-    | [], [] -> [err(top.location, "Undeclared predicate " ++ n)]
+    | [], _ :: _ -> [errFromOrigin(top, "Predicate " ++ n ++ " not in current declaration block")]
+    | [], [] -> [errFromOrigin(top, "Undeclared predicate " ++ n)]
     end;
     
   top.predicateRedeclarationCheck =
     case predicates of
     | [] -> []
     | v :: _ ->
-      [err(top.location, 
+      [errFromOrigin(top, 
           "Redeclaration of " ++ n ++ ". Original (from line " ++
           toString(v.sourceLocation.line) ++ ")")]
     end;

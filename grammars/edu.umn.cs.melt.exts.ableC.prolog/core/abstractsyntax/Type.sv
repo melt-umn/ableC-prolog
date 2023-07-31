@@ -6,7 +6,7 @@ top::ExtType ::= n::String
   propagate canonicalType;
   top.pp = text(n);
   top.host = error("typeParamType shouldn't occur in host tree!");
-  top.baseTypeExpr = typedefTypeExpr(top.givenQualifiers, name(n, location=builtin));
+  top.baseTypeExpr = typedefTypeExpr(top.givenQualifiers, name(n));
   top.mangledName = n;
   top.isEqualTo =
     \ other::ExtType ->

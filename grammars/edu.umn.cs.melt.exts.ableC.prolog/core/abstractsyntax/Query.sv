@@ -74,8 +74,7 @@ Stmt ::= defs::[Def]
                   item.fst, item.snd.typerep,
                   freeVarExpr(
                     typeName(directTypeExpr(varSubType(t)), baseTypeExpr()),
-                    ableC_Expr { alloca },
-                    location=builtin),
+                    ableC_Expr { alloca }),
                   builtin))
             | _ -> nothing()
             end,

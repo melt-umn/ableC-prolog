@@ -16,7 +16,7 @@ synthesized attribute paramUnifyTransform::Expr;
 
 synthesized attribute maybeTypereps::[Maybe<Type>];
 
-nonterminal LogicExprs with pps, env, count, expectedTypes, allowUnificationTypes, allocator, refVariables, isExcludable, isExcludableBy<LogicExprs>, errors, defs, maybeTypereps, transform<Exprs>, paramNamesIn, paramUnifyTransform;
+tracked nonterminal LogicExprs with pps, env, count, expectedTypes, allowUnificationTypes, allocator, refVariables, isExcludable, isExcludableBy<LogicExprs>, errors, defs, maybeTypereps, transform<Exprs>, paramNamesIn, paramUnifyTransform;
 flowtype LogicExprs = decorate {env, expectedTypes, allowUnificationTypes, allocator, refVariables}, pps {}, count {}, isExcludable {env, expectedTypes, allowUnificationTypes, isExcludableBy, paramNamesIn}, errors {decorate}, defs {env, expectedTypes, allowUnificationTypes}, maybeTypereps {env, allowUnificationTypes}, transform {decorate}, paramUnifyTransform {decorate, paramNamesIn};
 
 propagate allowUnificationTypes, allocator, refVariables, errors, defs on LogicExprs;
@@ -44,10 +44,8 @@ top::LogicExprs ::= h::LogicExpr t::LogicExprs
         unifyExpr(
           ableC_Expr { $name{h.paramNameIn} },
           h.transform,
-          justExpr(ableC_Expr { _trail }),
-          location=builtin),
-        t.paramUnifyTransform,
-        location=builtin)
+          justExpr(ableC_Expr { _trail })),
+        t.paramUnifyTransform)
     end;
 
   h.env = top.env;
@@ -100,7 +98,7 @@ LogicExprs ::= les::[LogicExpr]
 inherited attribute paramNameIn::String;
 inherited attribute expectedType::Type;
 
-closed nonterminal LogicExpr with location, pp, env, expectedType, allowUnificationTypes, allocator, refVariables, paramNameIn, isExcludable, isExcludableBy<LogicExpr>, errors, defs, maybeTyperep, transform<Expr>;
+closed tracked nonterminal LogicExpr with pp, env, expectedType, allowUnificationTypes, allocator, refVariables, paramNameIn, isExcludable, isExcludableBy<LogicExpr>, errors, defs, maybeTyperep, transform<Expr>;
 flowtype LogicExpr = decorate {env, expectedType, allowUnificationTypes, allocator, refVariables}, pp {}, isExcludable {env, expectedType, isExcludableBy, paramNameIn}, errors {decorate}, defs {env, expectedType, allowUnificationTypes}, maybeTyperep {env, allowUnificationTypes}, transform {decorate};
 
 propagate env, allocator, refVariables, errors, defs on LogicExpr;
@@ -125,9 +123,9 @@ top::LogicExpr ::= n::Name
   propagate env;
   forwards to
     case n.valueItem of
-    | enumValueItem(_) -> constLogicExpr(declRefExpr(n, location=builtin), location=top.location)
-    | parameterValueItem(_) -> constLogicExpr(declRefExpr(n, location=builtin), location=top.location)
-    | _ -> varLogicExpr(n, location=top.location)
+    | enumValueItem(_) -> constLogicExpr(declRefExpr(n))
+    | parameterValueItem(_) -> constLogicExpr(declRefExpr(n))
+    | _ -> varLogicExpr(n)
     end;
 }
 
@@ -163,14 +161,14 @@ top::LogicExpr ::= n::Name
   top.errors <- n.valueRedeclarationCheck(extType(nilQualifier(), varType(baseType)));
   top.errors <-
     if null(n.valueLocalLookup) && contains(n, top.refVariables)
-    then [err(n.location, s"Unification variable ${n.name} shares a name with a variable referenced in another goal")]
+    then [errFromOrigin(n, s"Unification variable ${n.name} shares a name with a variable referenced in another goal")]
     else [];
   top.errors <-
     case top.expectedType of
     | extType(_, varType(_)) -> []
     | errorType() -> []
     | _ when null(n.valueLocalLookup) && !top.allowUnificationTypes ->
-      [wrn(n.location, s"First occurence of variable ${n.name} is in a non-variable position (expected ${showType(top.expectedType)})")]
+      [wrnFromOrigin(n, s"First occurence of variable ${n.name} is in a non-variable position (expected ${showType(top.expectedType)})")]
     | _ -> []
     end;
   
@@ -185,8 +183,7 @@ top::LogicExpr ::=
   top.transform =
     freeVarExpr(
       typeName(directTypeExpr(baseType), baseTypeExpr()),
-      top.allocator,
-      location=builtin);
+      top.allocator);
   
   local baseType::Type =
     case top.expectedType of
@@ -202,7 +199,7 @@ top::LogicExpr ::=
       case top.expectedType of
       | extType(_, varType(_)) -> []
       | errorType() -> []
-      | t -> [err(top.location, s"Wildcard expected to unify with a variable type (got ${showType(top.expectedType)})")]
+      | t -> [errFromOrigin(top, s"Wildcard expected to unify with a variable type (got ${showType(top.expectedType)})")]
       end;
   top.isExcludable = [[]];
 }
@@ -217,7 +214,7 @@ top::LogicExpr ::= e::Expr
       top.allocator, top.allowUnificationTypes, top.expectedType,
       case baseType.defaultFunctionArrayLvalueConversion, e.typerep.defaultFunctionArrayLvalueConversion of
       | extType(_, stringType()), pointerType(_, builtinType(_, signedType(charType()))) ->
-        strExpr(e, location=builtin)
+        strExpr(e)
       | t, _ -> ableC_Expr { ($directTypeExpr{t})$Expr{e} }
       end);
  
@@ -293,22 +290,22 @@ top::LogicExpr ::= n::Name les::LogicExprs
     case adtType, adtName, adtLookup, constructorParamLookup of
     | errorType(), _, _, _ -> []
     -- Check that expected type is an ADT of some sort
-    | _, nothing(), _, _ -> [err(top.location, s"Constructor expected to unify with a datatype (got ${showType(top.expectedType)}).")]
+    | _, nothing(), _, _ -> [errFromOrigin(top, s"Constructor expected to unify with a datatype (got ${showType(top.expectedType)}).")]
     -- Check that this ADT has a definition
-    | _, just(id), [], _ -> [err(top.location, s"datatype ${id} does not have a definition.")]
+    | _, just(id), [], _ -> [errFromOrigin(top, s"datatype ${id} does not have a definition.")]
     -- Check that this is a constructor for the expected ADT type.
-    | t, _, _, nothing() -> [err(top.location, s"${showType(t)} does not have constructor ${n.name}.")]
+    | t, _, _, nothing() -> [errFromOrigin(top, s"${showType(t)} does not have constructor ${n.name}.")]
     | _, _, _, just(params) ->
       -- Check that the number of arguments matches number of parameters for this constructor.
       if les.count != params.count
-      then [err(top.location, s"This expression has ${toString(les.count)} arguments, but ${toString(params.count)} were expected.")]
+      then [errFromOrigin(top, s"This expression has ${toString(les.count)} arguments, but ${toString(params.count)} were expected.")]
       else []
     end;
   
   top.errors <-
     case lookupValue(n.name, top.env) of
     -- Check that this constructor isn't otherwise shadowed
-    | parameterValueItem(item) :: _ -> [err(n.location, s"Constructor ${n.name} is shadowed by a predicate parameter (declared at ${item.sourceLocation.unparse})")]
+    | parameterValueItem(item) :: _ -> [errFromOrigin(n, s"Constructor ${n.name} is shadowed by a predicate parameter (declared at ${item.sourceLocation.unparse})")]
     | _ -> []
     end;
   
@@ -335,7 +332,7 @@ top::LogicExpr ::= n::Name les::LogicExprs
       top.expectedType,
       case adtType of
       -- Avoid calling constructors when we know there is something wrong with the type
-      | errorType() -> errorExpr([], location=builtin)
+      | errorType() -> errorExpr([])
       -- TODO: Interfering hack to call the constructor for template datatypes
       | templatedType(_, _, args, _) ->
         ableC_Expr {
@@ -362,7 +359,7 @@ Expr ::= allocator::Expr allowUnificationTypes::Boolean t::Type e::Expr
   local tmpName::String = s"_tmp_var_${toString(genInt())}";
   return
     case allowUnificationTypes, t of
-    | false, extType(_, varType(_)) -> boundVarExpr(allocator, e, location=builtin)
+    | false, extType(_, varType(_)) -> boundVarExpr(allocator, e)
     | _, _ -> e
     end;
 }

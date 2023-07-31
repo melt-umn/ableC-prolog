@@ -43,7 +43,7 @@ synthesized attribute transform<a>::a;
 synthesized attribute ruleTransform::[Pair<String Stmt>];
 inherited attribute ruleTransformIn::[Pair<String Stmt>];
 
-nonterminal LogicStmts with pps, errors, errorDefs, env, coveredPatterns, predicateGoalCondParams, cutPredicates, transform<Decls>, ruleTransform;
+tracked nonterminal LogicStmts with pps, errors, errorDefs, env, coveredPatterns, predicateGoalCondParams, cutPredicates, transform<Decls>, ruleTransform;
 flowtype LogicStmts = decorate {env}, pps {}, errors {decorate}, errorDefs {decorate}, coveredPatterns {decorate}, predicateGoalCondParams {decorate}, transform {decorate}, ruleTransform {decorate};
 
 propagate errors, errorDefs on LogicStmts;
@@ -79,7 +79,7 @@ top::LogicStmts ::=
   top.ruleTransform = [];
 }
 
-nonterminal LogicStmt with location, pp, errors, defs, errorDefs, env, coveredPatterns, coveredPatternsIn, predicateGoalCondParams, predicateGoalCondParamsIn, cutPredicates, cutPredicatesIn, transform<Decls>, ruleTransform, ruleTransformIn;
+tracked nonterminal LogicStmt with pp, errors, defs, errorDefs, env, coveredPatterns, coveredPatternsIn, predicateGoalCondParams, predicateGoalCondParamsIn, cutPredicates, cutPredicatesIn, transform<Decls>, ruleTransform, ruleTransformIn;
 flowtype LogicStmt = decorate {env, coveredPatternsIn, predicateGoalCondParamsIn, cutPredicatesIn, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, errorDefs {decorate}, coveredPatterns {decorate}, predicateGoalCondParams {decorate}, transform {decorate}, ruleTransform {decorate};
 
 propagate errors on LogicStmt;
@@ -123,7 +123,7 @@ top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
   top.errors <- n.predicateLocalLookupCheck;
   top.errors <-
     if null(n.predicateLookupCheck) && les.count != length(les.expectedTypes)
-    then [err(top.location, s"Wrong number of arguments to predicate ${n.name} (expected ${toString(length(les.expectedTypes))}, got ${toString(les.count)})")]
+    then [errFromOrigin(top, s"Wrong number of arguments to predicate ${n.name} (expected ${toString(length(les.expectedTypes))}, got ${toString(les.count)})")]
     else [];
   
   top.coveredPatterns = [(n.name, les)];
