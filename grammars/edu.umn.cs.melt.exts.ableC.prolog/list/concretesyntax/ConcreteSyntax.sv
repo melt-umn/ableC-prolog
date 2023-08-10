@@ -16,7 +16,7 @@ marking terminal List_t 'list' lexer classes {Type, Global};
 
 concrete productions top::TypeSpecifier_c
 | 'list' LessThan_t sub::TypeName_c '>'
-    { top.realTypeSpecifiers = [listTypeExpr(top.givenQualifiers, sub.ast, top.location)];
+    { top.realTypeSpecifiers = [listTypeExpr(top.givenQualifiers, sub.ast)];
       top.preTypeSpecifiers = []; }
 
 marking terminal NewList_t 'newlist' lexer classes {Keyword, Global};
@@ -38,11 +38,11 @@ concrete productions top::ListInitializerList_c
         case decorate e.ast with {env = emptyEnv();
             controlStmtContext = initialControlStmtContext;} of
         | ovrld:orBitExpr(h, t) -> consListInitializer(h, tailListInitializer(t))
-        | _ -> consListInitializer(e.ast, nilListInitializer(top.location))
+        | _ -> consListInitializer(e.ast, nilListInitializer())
         end;
     }
 |
-    { top.ast = nilListInitializer(top.location); }
+    { top.ast = nilListInitializer(); }
 
 marking terminal ListLBracket_t '[';
 

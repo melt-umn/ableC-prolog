@@ -56,7 +56,7 @@ concrete productions top::Declaration_c
     -- Parse these to allow for .pl files to be #included in logic decl blocks
     CPP_Location_Tag_t
   }
-  { top.ast = logicDecl(ls.ast, top.location); }
+  { top.ast = logicDecl(ls.ast); }
 
 closed tracked nonterminal LogicStmts_c with ast<LogicStmts>;
 

@@ -3,7 +3,7 @@ grammar edu:umn:cs:melt:exts:ableC:prolog:list:abstractsyntax;
 import edu:umn:cs:melt:ableC:abstractsyntax:overloadable;
 
 abstract production listTypeExpr 
-top::BaseTypeExpr ::= q::Qualifiers sub::TypeName loc::Location
+top::BaseTypeExpr ::= q::Qualifiers sub::TypeName
 {
   propagate controlStmtContext;
   top.pp = pp"${terminate(space(), q.pps)}list<${sub.pp}>";
@@ -17,8 +17,7 @@ top::BaseTypeExpr ::= q::Qualifiers sub::TypeName loc::Location
   
   sub.env = globalEnv(top.env);
   
-  local localErrors::[Message] =
-    sub.errors ++ checkListHeaderDef("_list_d", loc, top.env);
+  local localErrors::[Message] = sub.errors ++ checkListHeaderDef("_list_d", top.env);
   
   local globalDecls::Decls =
     foldDecl(
@@ -55,7 +54,7 @@ top::ExtType ::= sub::Type
         templateMangledName("_list_d", foldTemplateArg([typeTemplateArg(sub)])),
         templateMangledRefId("_list_d", foldTemplateArg([typeTemplateArg(sub)])))).host;
   top.baseTypeExpr =
-    listTypeExpr(top.givenQualifiers, typeName(sub.baseTypeExpr, sub.typeModifierExpr), builtin);
+    listTypeExpr(top.givenQualifiers, typeName(sub.baseTypeExpr, sub.typeModifierExpr));
   top.mangledName = s"list_${sub.mangledName}_";
   top.isEqualTo =
     \ other::ExtType ->
@@ -67,31 +66,31 @@ top::ExtType ::= sub::Type
   top.maybeRefId := just(templateMangledRefId("_list_d", foldTemplateArg([typeTemplateArg(sub)])));
   
   top.unifyErrors =
-    \ l::Location env::Decorated Env ->
+    \ env::Decorated Env ->
       case top.otherType of
       | extType(_, listType(otherSub)) ->
         if compatibleTypes(sub, otherSub, false, false)
-        then decorate sub with {otherType = otherSub;}.unifyErrors(l, env)
-        else [err(l, s"Unification list types must match (got ${showType(sub)}, ${showType(otherSub)})")]
+        then decorate sub with {otherType = otherSub;}.unifyErrors(env)
+        else [errFromOrigin(ambientOrigin(), s"Unification list types must match (got ${showType(sub)}, ${showType(otherSub)})")]
       | extType(_, varType(extType(_, listType(otherSub)))) ->
         if compatibleTypes(sub, otherSub, false, false)
-        then decorate sub with {otherType = otherSub;}.unifyErrors(l, env)
-        else [err(l, s"Unification value and variable list types must match (got ${showType(sub)}, ${showType(otherSub)})")]
+        then decorate sub with {otherType = otherSub;}.unifyErrors(env)
+        else [errFromOrigin(ambientOrigin(), s"Unification value and variable list types must match (got ${showType(sub)}, ${showType(otherSub)})")]
       | errorType() -> []
-      | t -> [err(l, s"Unification is not defined for list<${showType(sub)}> and non-list ${showType(t)}")]
+      | t -> [errFromOrigin(ambientOrigin(), s"Unification is not defined for list<${showType(sub)}> and non-list ${showType(t)}")]
       end ++
-      checkListHeaderDef("unify_list", l, env);
+      checkListHeaderDef("unify_list", env);
   top.unifyProd =
     case top.otherType of
     | extType(_, listType(_)) -> listUnifyExpr
     | extType(_, varType(_)) -> valVarUnifyExpr
-    | _ -> \ Expr Expr Expr l::Location -> errorExpr([])
+    | _ -> \ Expr Expr Expr -> errorExpr([])
     end;
   
   top.showErrors =
-    \ l::Location env::Decorated Env ->
-      sub.showErrors(l, env) ++
-      checkListHeaderDef("show_list", l, env);
+    \ env::Decorated Env ->
+      sub.showErrors(env) ++
+      checkListHeaderDef("show_list", env);
   top.showProd =
     \ e::Expr -> ableC_Expr { inst show_list<$directTypeExpr{sub}>($Expr{e}) };
 }

@@ -21,7 +21,7 @@ top::Expr ::= ty::TypeName allocator::Expr le::LogicExpr
     (if !compatibleTypes(expectedAllocatorType, allocator.typerep, true, false)
      then [errFromOrigin(allocator, s"Allocator must have type void *(unsigned long) (got ${showType(allocator.typerep)})")]
      else []) ++
-    checkUnificationHeaderTemplateDef("_var_d", top.location, top.env);
+    checkUnificationHeaderTemplateDef("_var_d", top.env);
   
   ty.env = top.env;
   allocator.env = top.env;

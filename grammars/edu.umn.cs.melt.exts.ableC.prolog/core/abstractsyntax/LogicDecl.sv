@@ -3,7 +3,7 @@ grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 import silver:util:treeset as ts;
 
 abstract production logicDecl
-top::Decl ::= lss::LogicStmts loc::Location
+top::Decl ::= lss::LogicStmts
 {
   top.pp = pp"prolog ${braces(nestlines(2, terminate(line(), lss.pps)))}";
   
@@ -14,7 +14,7 @@ top::Decl ::= lss::LogicStmts loc::Location
   local localErrors::[Message] =
     lss.errors ++
     if !top.isTopLevel
-    then [err(loc, "Logic declarations must be global")]
+    then [errFromOrigin(top, "Logic declarations must be global")]
     else [];
   
   forwards to

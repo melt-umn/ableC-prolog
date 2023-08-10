@@ -8,8 +8,8 @@ top::Expr ::= sub::TypeName allocate::Expr init::ListInitializers
   
   local localErrors::[Message] =
     sub.errors ++ allocate.errors ++ init.errors ++
-    decorate sub.typerep with {otherType = sub.typerep;}.unifyErrors(top.location, top.env) ++
-    checkListHeaderDef("_list_d", top.location, top.env);
+    decorate sub.typerep with {otherType = sub.typerep;}.unifyErrors(top.env) ++
+    checkListHeaderDef("_list_d", top.env);
   
   sub.env = globalEnv(top.env);
   allocate.env = sub.env;
@@ -30,7 +30,7 @@ top::Expr ::= allocate::Expr init::ListInitializers
   
   local localErrors::[Message] =
     allocate.errors ++ init.errors ++
-    checkListHeaderDef("_list_d", top.location, top.env);
+    checkListHeaderDef("_list_d", top.env);
   
   init.maybeParamType = nothing();
   init.allocator = allocate;
@@ -78,7 +78,7 @@ top::ListInitializers ::= h::Expr t::ListInitializers
       if !typeAssignableTo(t, h.typerep)
       then [errFromOrigin(h, s"Invalid type in list initializer: Expected ${showType(t)}, got ${showType(h.typerep)}")]
       else []
-    | nothing() -> decorate h.typerep with {otherType = h.typerep;}.unifyErrors(h.location, t.env)
+    | nothing() -> decorate h.typerep with {otherType = h.typerep;}.unifyErrors(t.env)
     end;
 }
 
@@ -96,13 +96,13 @@ top::ListInitializers ::= e::Expr
 }
 
 abstract production nilListInitializer
-top::ListInitializers ::= loc::Location
+top::ListInitializers ::=
 {
   top.pps = [];
   top.errors <-
     if top.maybeParamType.isJust
     then []
-    else [err(loc, "Can't infer type argument for empty list")];
+    else [errFromOrigin(top, "Can't infer type argument for empty list")];
   top.host =
     ableC_Expr {
       inst nil<$directTypeExpr{top.maybeParamType.fromJust}>($Expr{top.allocator})
@@ -146,7 +146,7 @@ top::LogicExpr ::= l::ListLogicExprs
   
   local expectedType::Type = top.expectedType;
   expectedType.otherType = extType(nilQualifier(), listType(l.paramType));
-  top.errors <- expectedType.unifyErrors(top.location, top.env);
+  top.errors <- expectedType.unifyErrors(top.env);
 
   top.isExcludable =
     case l, decorate top.isExcludableBy with {env = top.env;} of
@@ -183,8 +183,7 @@ top::ListLogicExprs ::= h::LogicExpr t::ListLogicExprs
         ($BaseTypeExpr{
            listTypeExpr(
              nilQualifier(),
-             typeName(directTypeExpr(top.paramType), baseTypeExpr()),
-             builtin)})
+             typeName(directTypeExpr(top.paramType), baseTypeExpr()))})
           inst _Cons<$directTypeExpr{top.paramType}>($Expr{h.transform}, $Expr{t.transform})
       });
   
@@ -223,8 +222,7 @@ top::ListLogicExprs ::=
         ($BaseTypeExpr{
            listTypeExpr(
              nilQualifier(),
-             typeName(directTypeExpr(top.paramType), baseTypeExpr()),
-             builtin)})
+             typeName(directTypeExpr(top.paramType), baseTypeExpr()))})
           inst _Nil<$directTypeExpr{top.paramType}>()
       });
 }
@@ -331,20 +329,20 @@ top::ListPatterns ::=
 
 -- Check the given env for the given template name
 function checkListHeaderDef
-[Message] ::= n::String loc::Location env::Decorated Env
+[Message] ::= n::String env::Decorated Env
 {
   return
     if !null(lookupTemplate(n, env))
     then []
-    else [err(loc, "Missing include of list.xh")];
+    else [errFromOrigin(ambientOrigin(), "Missing include of list.xh")];
 }
 
 -- Check that operand has list type
 function checkListType
-[Message] ::= sub::Type t::Type op::String loc::Location
+[Message] ::= sub::Type t::Type op::String
 {
   return
     if typeAssignableTo(extType(nilQualifier(), listType(sub)), t)
     then []
-    else [err(loc, s"Operand to ${op} expected list<${showType(sub)}> (got ${showType(t)})")];
+    else [errFromOrigin(ambientOrigin(), s"Operand to ${op} expected list<${showType(sub)}> (got ${showType(t)})")];
 }

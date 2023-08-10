@@ -135,7 +135,7 @@ top::LogicExpr ::= n::Name
   top.pp = n.pp;
   top.defs <-
     if null(n.valueLocalLookup)
-    then [valueDef(n.name, varValueItem(extType(nilQualifier(), varType(baseType)), n.location))]
+    then [valueDef(n.name, varValueItem(extType(nilQualifier(), varType(baseType))))]
     else [];
   top.maybeTyperep =
     if !null(n.valueLocalLookup)
@@ -146,7 +146,7 @@ top::LogicExpr ::= n::Name
     | extType(_, varType(_)) -> ableC_Expr { $name{n.name} }
     | _ when top.allowUnificationTypes -> ableC_Expr { $name{n.name} }
     | _ -> ableC_Expr {
-        inst value_loc<$directTypeExpr{baseType}>($name{n.name}, $stringLiteralExpr{n.location.unparse})
+        inst value_loc<$directTypeExpr{baseType}>($name{n.name}, $stringLiteralExpr{getParsedOriginLocationOrFallback(n).unparse})
       }
     end;
   
@@ -157,7 +157,7 @@ top::LogicExpr ::= n::Name
     end;
   local expectedType::Type = top.expectedType;
   expectedType.otherType = extType(nilQualifier(), varType(baseType));
-  top.errors <- expectedType.unifyErrors(n.location, top.env);
+  top.errors <- expectedType.unifyErrors(top.env);
   top.errors <- n.valueRedeclarationCheck(extType(nilQualifier(), varType(baseType)));
   top.errors <-
     if null(n.valueLocalLookup) && contains(n, top.refVariables)
@@ -168,7 +168,7 @@ top::LogicExpr ::= n::Name
     | extType(_, varType(_)) -> []
     | errorType() -> []
     | _ when null(n.valueLocalLookup) && !top.allowUnificationTypes ->
-      [wrnFromOrigin(n, s"First occurence of variable ${n.name} is in a non-variable position (expected ${showType(top.expectedType)})")]
+      [wrnFromOrigin(n, s"First occurrence of variable ${n.name} is in a non-variable position; this will always error (expected ${showType(top.expectedType)})")]
     | _ -> []
     end;
   
@@ -194,12 +194,12 @@ top::LogicExpr ::=
   expectedType.otherType = extType(nilQualifier(), varType(baseType));
   top.errors <-
     if top.allowUnificationTypes
-    then expectedType.unifyErrors(top.location, top.env)
+    then expectedType.unifyErrors(top.env)
     else
       case top.expectedType of
       | extType(_, varType(_)) -> []
       | errorType() -> []
-      | t -> [errFromOrigin(top, s"Wildcard expected to unify with a variable type (got ${showType(top.expectedType)})")]
+      | t -> [errFromOrigin(top, s"Wildcard is in a non-variable position (expected ${showType(top.expectedType)})")]
       end;
   top.isExcludable = [[]];
 }
@@ -236,7 +236,7 @@ top::LogicExpr ::= e::Expr
       then t1 -- Value is cast to expected type
       else e.typerep
     end;
-  top.errors <- expectedType.unifyErrors(top.location, top.env);
+  top.errors <- expectedType.unifyErrors(top.env);
 
   top.isExcludable =
     case e, decorate top.isExcludableBy with {env = top.env;} of
@@ -305,7 +305,7 @@ top::LogicExpr ::= n::Name les::LogicExprs
   top.errors <-
     case lookupValue(n.name, top.env) of
     -- Check that this constructor isn't otherwise shadowed
-    | parameterValueItem(item) :: _ -> [errFromOrigin(n, s"Constructor ${n.name} is shadowed by a predicate parameter (declared at ${item.sourceLocation.unparse})")]
+    | parameterValueItem(item) :: _ -> [errFromOrigin(n, s"Constructor ${n.name} is shadowed by a predicate parameter (declared at ${getParsedOriginLocationOrFallback(item).unparse})")]
     | _ -> []
     end;
   

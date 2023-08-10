@@ -4,22 +4,20 @@ import silver:util:treemap as tm;
 
 -- Represents a type parameter
 abstract production templateParamValueItem
-top::ValueItem ::= t::Type isTypeParam::Boolean loc::Location
+top::ValueItem ::= t::Type isTypeParam::Boolean
 {
   top.pp = pp"type param";
   top.typerep = t;
-  top.sourceLocation = loc;
   top.isItemType = isTypeParam;
   top.isItemValue = !isTypeParam;
 }
 
 -- Represents a unification variable
 abstract production varValueItem
-top::ValueItem ::= t::Type loc::Location
+top::ValueItem ::= t::Type
 {
   top.pp = pp"var";
   top.typerep = t;
-  top.sourceLocation = loc;
   top.isItemValue = true;
 }
 
@@ -29,7 +27,6 @@ top::ValueItem ::= v::ValueItem
 {
   top.pp = pp"canonical ${v.pp}";
   top.typerep = v.typerep.canonicalType;
-  top.sourceLocation = v.sourceLocation;
   top.directRefHandler = v.directRefHandler;
   top.directCallHandler = v.directCallHandler;
   top.isItemValue = v.isItemValue;
@@ -45,13 +42,13 @@ function makeUnwrappedVarDefs
     flatMap(
       \ p::Pair<String ValueItem> ->
         case p of
-        | (n, varValueItem(t, l)) -> [valueDef(n, varValueItem(varSubType(t), l))]
+        | (n, varValueItem(t)) -> [valueDef(n, varValueItem(varSubType(t)))]
         | _ -> []
         end,
       tm:toList(head(env.values)));
 }
 
-closed tracked nonterminal PredicateItem with paramNames, typereps, templateParams, params, functionDefs, sourceLocation, labelDefs;
+closed tracked nonterminal PredicateItem with paramNames, typereps, templateParams, params, functionDefs, labelDefs;
 
 abstract production predicateItem
 top::PredicateItem ::= d::Decorated PredicateDecl
@@ -62,7 +59,6 @@ top::PredicateItem ::= d::Decorated PredicateDecl
   top.params = d.params;
   top.functionDefs := d.functionDefs;
   top.labelDefs := d.labelDefs;
-  top.sourceLocation = d.location;
 }
 
 abstract production errorPredicateItem
@@ -74,7 +70,6 @@ top::PredicateItem ::=
   top.params = nilParameters();
   top.functionDefs := [];
   top.labelDefs := [];
-  top.sourceLocation = loc("nowhere", -1, -1, -1, -1, -1, -1);
 }
 
 synthesized attribute predicates::Scopes<PredicateItem> occurs on Env;
@@ -183,8 +178,8 @@ top::Name ::= n::String
     | [] -> []
     | v :: _ ->
       [errFromOrigin(top, 
-          "Redeclaration of " ++ n ++ ". Original (from line " ++
-          toString(v.sourceLocation.line) ++ ")")]
+          "Redeclaration of " ++ n ++ ". Original (from " ++
+          getParsedOriginLocationOrFallback(v).unparse ++ ")")]
     end;
   
   local predicate::PredicateItem = if null(predicates) then errorPredicateItem() else head(predicates);

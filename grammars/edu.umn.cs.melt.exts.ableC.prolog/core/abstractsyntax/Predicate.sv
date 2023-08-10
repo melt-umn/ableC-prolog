@@ -37,7 +37,7 @@ top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parame
   
   top.errors <- n.predicateRedeclarationCheck;
   top.errors <- params.predicateParamErrors;
-  top.errors <- params.unifyErrors(top.location, addEnv(params.defs, params.env));
+  top.errors <- params.unifyErrors(addEnv(params.defs, params.env));
   
   top.transform =
     ableC_Decls {
@@ -109,7 +109,7 @@ aspect production typeTemplateParameter
 top::TemplateParameter ::= n::Name
 {
   top.templateParamDefs :=
-    [valueDef(n.name, templateParamValueItem(extType(nilQualifier(), typeParamType(n.name)), true, top.location))];
+    [valueDef(n.name, templateParamValueItem(extType(nilQualifier(), typeParamType(n.name)), true))];
 }
 
 aspect production valueTemplateParameter
@@ -125,7 +125,7 @@ top::TemplateParameter ::= bty::BaseTypeExpr n::Name mty::TypeModifierExpr
   mty1.typeModifierIn = bty1.typeModifier;
   mty1.baseType = bty1.typerep;
   top.templateParamDefs :=
-    valueDef(n.name, templateParamValueItem(mty1.typerep, false, top.location)) ::
+    valueDef(n.name, templateParamValueItem(mty1.typerep, false)) ::
     bty1.defs ++ mty1.defs;
 }
 
@@ -179,7 +179,7 @@ top::ParameterDecl ::= storage::StorageClasses  bty::BaseTypeExpr  mty::TypeModi
 {
   top.predicateParamErrors :=
     if containsQualifier(constQualifier(), top.typerep) -- top.typerep is pre-instantiated but we only care about qualifiers
-    then [err(top.sourceLocation, "Predicate parameters may not be declared const")]
+    then [errFromOrigin(top, "Predicate parameters may not be declared const")]
     else [];
   top.paramName =
     case n of

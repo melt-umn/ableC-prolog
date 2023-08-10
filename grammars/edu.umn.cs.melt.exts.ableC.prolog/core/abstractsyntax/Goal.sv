@@ -138,14 +138,14 @@ top::Goal ::= n::Name ts::TemplateArgNames les::LogicExprs
   top.errors <- n.predicateLookupCheck;
   top.errors <-
     if null(n.predicateLookupCheck) && ts.count != templateParams.count
-    then [errFromOrigin(n, s"Wrong number of type arguments for ${n.name}, " ++
+    then [errFromOrigin(ts, s"Wrong number of type arguments for predicate ${n.name}, " ++
             s"expected ${toString(templateParams.count)} but got ${toString(ts.count)}")]
     else [];
   top.errors <-
     if null(n.predicateLookupCheck) && les.count != params.count
-    then [errFromOrigin(top, s"Wrong number of arguments to predicate ${n.name} (expected ${toString(params.count)}, got ${toString(les.count)})")]
+    then [errFromOrigin(les, s"Wrong number of arguments to predicate ${n.name} (expected ${toString(params.count)}, got ${toString(les.count)})")]
     else [];
-  top.errors <- ts.argreps.templateArgUnifyErrors(n.location, top.env);
+  top.errors <- ts.argreps.templateArgUnifyErrors(top.env);
 }
 
 abstract production inferredPredicateGoal
@@ -540,26 +540,24 @@ top::Goal ::= s::Stmt
   s.controlStmtContext = initialControlStmtContext;
 }
 
-synthesized attribute templateArgUnifyErrors::([Message] ::= Location Decorated Env) occurs on TemplateArgs, TemplateArg;
+synthesized attribute templateArgUnifyErrors::([Message] ::= Decorated Env) occurs on TemplateArgs, TemplateArg;
 
 aspect production consTemplateArg
 top::TemplateArgs ::= h::TemplateArg t::TemplateArgs
 {
-  top.templateArgUnifyErrors =
-    \ l::Location env::Decorated Env ->
-      h.templateArgUnifyErrors(l, env) ++ t.templateArgUnifyErrors(l, env);
+  top.templateArgUnifyErrors = \ env::Decorated Env -> h.templateArgUnifyErrors(env) ++ t.templateArgUnifyErrors(env);
 }
 
 aspect production nilTemplateArg
 top::TemplateArgs ::=
 {
-  top.templateArgUnifyErrors = \ l::Location env::Decorated Env -> [];
+  top.templateArgUnifyErrors = \ env::Decorated Env -> [];
 }
 
 aspect default production
 top::TemplateArg ::=
 {
-  top.templateArgUnifyErrors = \ l::Location env::Decorated Env -> [];
+  top.templateArgUnifyErrors = \ env::Decorated Env -> [];
 }
 
 aspect production typeTemplateArg
@@ -585,7 +583,7 @@ Stmt ::= freeVariables::[Name] env::Decorated Env
               [ableC_Stmt {
                  $directTypeExpr{i.typerep} $name{"_" ++ n.name} = $Name{n};
                  $directTypeExpr{sub} $name{n.name} =
-                   inst value_loc<$directTypeExpr{sub}>($name{"_" ++ n.name}, $stringLiteralExpr{n.location.unparse});
+                   inst value_loc<$directTypeExpr{sub}>($name{"_" ++ n.name}, $stringLiteralExpr{getParsedOriginLocationOrFallback(n).unparse});
                }]
             | _ -> []
             end
