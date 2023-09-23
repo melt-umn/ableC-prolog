@@ -5,6 +5,7 @@ import edu:umn:cs:melt:ableC:abstractsyntax:overloadable;
 abstract production listTypeExpr 
 top::BaseTypeExpr ::= q::Qualifiers sub::TypeName loc::Location
 {
+  propagate controlStmtContext;
   top.pp = pp"${terminate(space(), q.pps)}list<${sub.pp}>";
   
   top.inferredArgs := sub.inferredArgs;

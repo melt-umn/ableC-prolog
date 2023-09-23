@@ -23,6 +23,10 @@ top::Expr ::= ty::TypeName allocator::Expr le::LogicExpr
      else []) ++
     checkUnificationHeaderTemplateDef("_var_d", top.location, top.env);
   
+  ty.env = top.env;
+  allocator.env = top.env;
+  propagate controlStmtContext;
+
   le.env = addEnv(ty.defs, ty.env);
   le.refVariables = [];
   le.expectedType = ty.typerep;
@@ -48,7 +52,9 @@ top::Expr ::= allocator::Expr le::LogicExpr
     if !le.maybeTyperep.isJust
     then [err(top.location, "Couldn't infer type of term")]
     else le.errors;
-  
+
+  propagate env, controlStmtContext;
+
   le.expectedType = le.maybeTyperep.fromJust;
   le.refVariables = [];
   le.allowUnificationTypes = false;

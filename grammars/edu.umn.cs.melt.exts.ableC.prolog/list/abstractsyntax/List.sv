@@ -3,6 +3,7 @@ grammar edu:umn:cs:melt:exts:ableC:prolog:list:abstractsyntax;
 abstract production constructList
 top::Expr ::= sub::TypeName allocate::Expr init::ListInitializers
 {
+  propagate controlStmtContext;
   top.pp = pp"newlist<${sub.pp}>(${allocate.pp})[${ppImplode(pp", ", init.pps)}]";
   
   local localErrors::[Message] =
@@ -11,6 +12,7 @@ top::Expr ::= sub::TypeName allocate::Expr init::ListInitializers
     checkListHeaderDef("_list_d", top.location, top.env);
   
   sub.env = globalEnv(top.env);
+  allocate.env = sub.env;
   init.env = addEnv(sub.defs, top.env);
   init.maybeParamType = just(sub.typerep);
   init.allocator = allocate;
@@ -23,6 +25,7 @@ top::Expr ::= sub::TypeName allocate::Expr init::ListInitializers
 abstract production inferredConstructList
 top::Expr ::= allocate::Expr init::ListInitializers
 {
+  propagate env, controlStmtContext;
   top.pp = pp"newlist(${allocate.pp})[${ppImplode(pp", ", init.pps)}]";
   
   local localErrors::[Message] =
@@ -37,15 +40,16 @@ top::Expr ::= allocate::Expr init::ListInitializers
   forwards to mkErrorCheck(localErrors, fwrd);
 }
 
-autocopy attribute maybeParamType::Maybe<Type>;
+inherited attribute maybeParamType::Maybe<Type>;
 
 nonterminal ListInitializers with pps, env, maybeParamType, allocator, 
   errors, host<Expr>, controlStmtContext;
 
+propagate allocator, controlStmtContext, errors on ListInitializers;
+
 abstract production consListInitializer
 top::ListInitializers ::= h::Expr t::ListInitializers
 {
-  propagate errors;
   top.pps = h.pp :: t.pps;
   
   t.maybeParamType = just(fromMaybe(h.typerep, top.maybeParamType));
@@ -81,7 +85,7 @@ top::ListInitializers ::= h::Expr t::ListInitializers
 abstract production tailListInitializer
 top::ListInitializers ::= e::Expr
 {
-  propagate errors;
+  propagate env;
   top.pps = [pp"| ${e.pp}"]; -- TODO: Fix this
   top.host = decExpr(e, location=builtin);
   
@@ -95,7 +99,7 @@ abstract production nilListInitializer
 top::ListInitializers ::= loc::Location
 {
   top.pps = [];
-  top.errors :=
+  top.errors <-
     if top.maybeParamType.isJust
     then []
     else [err(loc, "Can't infer type argument for empty list")];
@@ -108,6 +112,7 @@ top::ListInitializers ::= loc::Location
 abstract production listUnifyExpr
 top::Expr ::= e1::Expr e2::Expr trail::Expr
 {
+  propagate env, controlStmtContext;
   top.pp = pp"unifyList(${e1.pp}, ${e2.pp}, ${trail.pp})";
   
   local subType::Type = listSubType(e1.typerep);
@@ -117,12 +122,12 @@ top::Expr ::= e1::Expr e2::Expr trail::Expr
     };
 }
 
-autocopy attribute paramType::Type;
+inherited attribute paramType::Type;
 
 abstract production listLogicExpr
 top::LogicExpr ::= l::ListLogicExprs
 {
-  propagate errors, defs;
+  propagate env, allocator, allowUnificationTypes, refVariables, errors, defs;
   top.pp = pp"[${ppImplode(pp", ", l.pps)}]";
   top.maybeTyperep =
     case l.maybeTyperep of
@@ -162,7 +167,7 @@ top::LogicExpr ::= l::ListLogicExprs
 nonterminal ListLogicExprs with pps, env, paramType, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:expectedType, allowUnificationTypes, allocator, refVariables, errors, defs, maybeTyperep, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:transform<Expr>;
 flowtype ListLogicExprs = decorate {env, paramType, expectedType, allowUnificationTypes, allocator, refVariables}, pps {}, errors {decorate}, defs {env, paramType, expectedType, allowUnificationTypes}, maybeTyperep {env, allowUnificationTypes}, transform {decorate};
 
-propagate errors, defs on ListLogicExprs;
+propagate paramType, allocator, refVariables, errors, defs on ListLogicExprs;
 
 abstract production consListLogicExpr
 top::ListLogicExprs ::= h::LogicExpr t::ListLogicExprs
@@ -183,6 +188,7 @@ top::ListLogicExprs ::= h::LogicExpr t::ListLogicExprs
           inst _Cons<$directTypeExpr{top.paramType}>($Expr{h.transform}, $Expr{t.transform})
       });
   
+  h.env = top.env;
   h.expectedType = top.paramType;
   h.allowUnificationTypes = false;
   t.env = addEnv(h.defs, h.env);
@@ -194,6 +200,7 @@ top::ListLogicExprs ::= h::LogicExpr t::ListLogicExprs
 abstract production tailListLogicExpr
 top::ListLogicExprs ::= e::LogicExpr
 {
+  propagate env;
   top.pps = [pp"| ${e.pp}"]; -- TODO: Fix this
   top.maybeTyperep = e.maybeTyperep;
   top.transform = e.transform;
@@ -225,7 +232,7 @@ top::ListLogicExprs ::=
 abstract production listPattern
 top::Pattern ::= l::ListPatterns
 {
-  propagate errors, defs, decls, patternDefs;
+  propagate env, controlStmtContext, errors, defs, decls, patternDefs;
   top.pp = pp"[${ppImplode(pp", ", l.pps)}]";
   top.transform = l.transform;
   
@@ -250,7 +257,7 @@ nonterminal ListPatterns with pps, errors, env, defs, decls, patternDefs,
   edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:transform<Expr>,
   transformIn<Expr>, isBoundTransformIn, valueTransformIn, controlStmtContext;
 
-propagate errors, defs, decls, patternDefs on ListPatterns;
+propagate controlStmtContext, errors, defs, decls, patternDefs on ListPatterns;
 
 abstract production consListPattern
 top::ListPatterns ::= h::Pattern t::ListPatterns
@@ -311,6 +318,7 @@ top::ListPatterns ::= h::Pattern t::ListPatterns
 abstract production tailListPattern
 top::ListPatterns ::= p::Pattern
 {
+  propagate env;
   top.pps = [pp"| ${p.pp}"]; -- TODO: Fix this
   top.transform = p.transform;
   
