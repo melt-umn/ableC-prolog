@@ -45,7 +45,7 @@ function makeUnwrappedVarDefs
     flatMap(
       \ p::Pair<String ValueItem> ->
         case p of
-        | pair(n, varValueItem(t, l)) -> [valueDef(n, varValueItem(varSubType(t), l))]
+        | (n, varValueItem(t, l)) -> [valueDef(n, varValueItem(varSubType(t), l))]
         | _ -> []
         end,
       tm:toList(head(env.values)));
@@ -136,7 +136,7 @@ top::Def ::=
 abstract production predicateDef
 top::Def ::= s::String  t::PredicateItem
 {
-  top.predicateContribs = [pair(s, t)];
+  top.predicateContribs = [(s, t)];
 }
 
 aspect production valueDef

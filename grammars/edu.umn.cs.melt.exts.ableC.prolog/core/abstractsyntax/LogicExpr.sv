@@ -55,8 +55,8 @@ top::LogicExprs ::= h::LogicExpr t::LogicExprs
   
   local splitTypes :: Pair<Type [Type]> =
     case top.expectedTypes of
-    | t::ts -> pair(t, ts)
-    | [] -> pair(errorType(), [])
+    | t::ts -> (t, ts)
+    | [] -> (errorType(), [])
     end;
   h.expectedType = splitTypes.fst;
   t.expectedTypes = splitTypes.snd;
