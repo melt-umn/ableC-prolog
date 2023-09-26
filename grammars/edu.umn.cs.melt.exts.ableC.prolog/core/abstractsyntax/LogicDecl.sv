@@ -126,14 +126,13 @@ top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
     then [err(top.location, s"Wrong number of arguments to predicate ${n.name} (expected ${toString(length(les.expectedTypes))}, got ${toString(les.count)})")]
     else [];
   
-  top.coveredPatterns = [pair(n.name, les)];
-  top.predicateGoalCondParams = [pair(n.name, gs.goalCondParams)];
+  top.coveredPatterns = [(n.name, les)];
+  top.predicateGoalCondParams = [(n.name, gs.goalCondParams)];
   top.cutPredicates = if gs.containsCut then [n.name] else [];
   
   top.transform = nilDecl();
   top.ruleTransform =
-    [pair(
-       n.name,
+    [( n.name,
        ableC_Stmt {
          // New scope containing the allocated variables
          {
