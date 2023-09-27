@@ -232,9 +232,10 @@ top::ListLogicExprs ::=
 abstract production listPattern
 top::Pattern ::= l::ListPatterns
 {
-  propagate env, controlStmtContext, errors, defs, decls, patternDefs;
+  propagate initialEnv, errors;
   top.pp = pp"[${ppImplode(pp", ", l.pps)}]";
-  top.transform = l.transform;
+  top.patternDecls = @l.patternDecls;
+  top.transform = @l.transform;
   
   l.expectedType = listSubType(top.expectedType);
   l.transformIn = error("Shouldn't be used");
@@ -252,12 +253,13 @@ top::Pattern ::= l::ListPatterns
 inherited attribute isBoundTransformIn::Expr;
 inherited attribute valueTransformIn::Expr;
 
-nonterminal ListPatterns with pps, errors, env, defs, decls, patternDefs,
+nonterminal ListPatterns with pps, errors, initialEnv,
   edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:expectedType,
+  patternDecls,
   edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:transform<Expr>,
-  transformIn<Expr>, isBoundTransformIn, valueTransformIn, controlStmtContext;
+  transformIn<Expr>, isBoundTransformIn, valueTransformIn;
 
-propagate controlStmtContext, errors, defs, decls, patternDefs on ListPatterns;
+propagate initialEnv, errors on ListPatterns;
 
 abstract production consListPattern
 top::ListPatterns ::= h::Pattern t::ListPatterns
@@ -266,32 +268,18 @@ top::ListPatterns ::= h::Pattern t::ListPatterns
   
   h.expectedType = top.expectedType;
   t.expectedType = top.expectedType;
-  
-  local isBound::Expr = top.isBoundTransformIn;
-  isBound.env = top.env;
-  isBound.controlStmtContext = initialControlStmtContext;
-  top.defs <- isBound.defs;
-  
-  local valueDecl::Stmt =
-    ableC_Stmt {
-      proto_typedef _list_d;
-      inst _list_d<$directTypeExpr{top.expectedType}> $name{tmpName} =
-        (inst _list_d<$directTypeExpr{top.expectedType}>)$Expr{top.valueTransformIn};
-    };
-  valueDecl.env = addEnv(isBound.defs, openScopeEnv(isBound.env));
-  valueDecl.controlStmtContext = initialControlStmtContext;
-  top.defs <- valueDecl.defs;
-  
-  h.env = addEnv(valueDecl.defs, valueDecl.env);
-  t.env = addEnv(h.defs, h.env);
-  
+
+  top.patternDecls = consDecl(decls(@h.patternDecls), @t.patternDecls);
+
   local tmpName::String = "_tmp_list_" ++ toString(genInt());
   top.transform =
     ableC_Expr {
-      $Expr{decExpr(isBound, location=builtin)} &&
-      ({$Stmt{decStmt(valueDecl)}
+      $Expr{top.isBoundTransformIn} &&
+      ({proto_typedef _list_d;
+        inst _list_d<$directTypeExpr{top.expectedType}> $name{tmpName} =
+          (inst _list_d<$directTypeExpr{top.expectedType}>)$Expr{top.valueTransformIn};
         $name{tmpName}.tag == _list_d__Cons &&
-        $Expr{h.transform} && $Expr{t.transform};})
+        $Expr{@h.transform} && $Expr{@t.transform};})
     };
   h.transformIn =
     ableC_Expr {
@@ -320,7 +308,8 @@ top::ListPatterns ::= p::Pattern
 {
   propagate env;
   top.pps = [pp"| ${p.pp}"]; -- TODO: Fix this
-  top.transform = p.transform;
+  top.patternDecls = @p.patternDecls;
+  top.transform = @p.transform;
   
   p.expectedType = extType(nilQualifier(), varType(extType(nilQualifier(), listType(top.expectedType))));
   p.transformIn = top.transformIn;
@@ -330,16 +319,12 @@ abstract production nilListPattern
 top::ListPatterns ::=
 {
   top.pps = [];
-  
-  local isBound::Expr = top.isBoundTransformIn;
-  isBound.env = top.env;
-  isBound.controlStmtContext = initialControlStmtContext;
-  top.defs <- isBound.defs;
-  
+
+  top.patternDecls = nilDecl();
   top.transform =
     ableC_Expr {
       proto_typedef _list_d;
-      $Expr{decExpr(isBound, location=builtin)} &&
+      $Expr{top.isBoundTransformIn} &&
       ((inst _list_d<$directTypeExpr{top.expectedType}>)$Expr{top.valueTransformIn}).tag == _list_d__Nil
     };
 }
