@@ -3,7 +3,7 @@ grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 synthesized attribute templateParams::TemplateParameters;
 synthesized attribute params::Parameters;
 
-nonterminal PredicateDecl with location, env, pp, errors, defs, functionDefs, errorDefs, paramNames, typereps, templateParams, params, predicateGoalCondParamsIn, cutPredicatesIn, transform<Decls>, ruleTransformIn, labelDefs;
+tracked nonterminal PredicateDecl with env, pp, errors, defs, functionDefs, errorDefs, paramNames, typereps, templateParams, params, predicateGoalCondParamsIn, cutPredicatesIn, transform<Decls>, ruleTransformIn, labelDefs;
 flowtype PredicateDecl = decorate {env, predicateGoalCondParamsIn, cutPredicatesIn, ruleTransformIn}, pp {}, errors {decorate}, defs {decorate}, functionDefs {decorate}, labelDefs {decorate}, typereps {decorate}, templateParams {decorate}, params {decorate}, transform {decorate};
 
 abstract production predicateDecl
@@ -37,7 +37,7 @@ top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parame
   
   top.errors <- n.predicateRedeclarationCheck;
   top.errors <- params.predicateParamErrors;
-  top.errors <- params.unifyErrors(top.location, addEnv(params.defs, params.env));
+  top.errors <- params.unifyErrors(addEnv(params.defs, params.env));
   
   top.transform =
     ableC_Decls {
@@ -109,7 +109,7 @@ aspect production typeTemplateParameter
 top::TemplateParameter ::= n::Name
 {
   top.templateParamDefs :=
-    [valueDef(n.name, templateParamValueItem(extType(nilQualifier(), typeParamType(n.name)), true, top.location))];
+    [valueDef(n.name, templateParamValueItem(extType(nilQualifier(), typeParamType(n.name)), true))];
 }
 
 aspect production valueTemplateParameter
@@ -125,7 +125,7 @@ top::TemplateParameter ::= bty::BaseTypeExpr n::Name mty::TypeModifierExpr
   mty1.typeModifierIn = bty1.typeModifier;
   mty1.baseType = bty1.typerep;
   top.templateParamDefs :=
-    valueDef(n.name, templateParamValueItem(mty1.typerep, false, top.location)) ::
+    valueDef(n.name, templateParamValueItem(mty1.typerep, false)) ::
     bty1.defs ++ mty1.defs;
 }
 
@@ -178,8 +178,8 @@ aspect production parameterDecl
 top::ParameterDecl ::= storage::StorageClasses  bty::BaseTypeExpr  mty::TypeModifierExpr  n::MaybeName  attrs::Attributes
 {
   top.predicateParamErrors :=
-    if containsQualifier(constQualifier(location=builtin), top.typerep) -- top.typerep is pre-instantiated but we only care about qualifiers
-    then [err(top.sourceLocation, "Predicate parameters may not be declared const")]
+    if containsQualifier(constQualifier(), top.typerep) -- top.typerep is pre-instantiated but we only care about qualifiers
+    then [errFromOrigin(top, "Predicate parameters may not be declared const")]
     else [];
   top.paramName =
     case n of
@@ -187,6 +187,6 @@ top::ParameterDecl ::= storage::StorageClasses  bty::BaseTypeExpr  mty::TypeModi
     | nothingName() -> "_p" ++ toString(top.position)
     end;
   top.transform =
-    parameterDecl(storage, bty, mty, justName(name(top.paramName, location=builtin)), attrs);
+    parameterDecl(storage, bty, mty, justName(name(top.paramName)), attrs);
   top.tailCallTrans = ableC_Stmt { $name{top.paramName} = $Expr{top.tailCallArg}; };
 }

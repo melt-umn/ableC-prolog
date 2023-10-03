@@ -8,8 +8,8 @@ top::Expr ::= sub::TypeName allocate::Expr init::ListInitializers
   
   local localErrors::[Message] =
     sub.errors ++ allocate.errors ++ init.errors ++
-    decorate sub.typerep with {otherType = sub.typerep;}.unifyErrors(top.location, top.env) ++
-    checkListHeaderDef("_list_d", top.location, top.env);
+    decorate sub.typerep with {otherType = sub.typerep;}.unifyErrors(top.env) ++
+    checkListHeaderDef("_list_d", top.env);
   
   sub.env = globalEnv(top.env);
   allocate.env = sub.env;
@@ -30,7 +30,7 @@ top::Expr ::= allocate::Expr init::ListInitializers
   
   local localErrors::[Message] =
     allocate.errors ++ init.errors ++
-    checkListHeaderDef("_list_d", top.location, top.env);
+    checkListHeaderDef("_list_d", top.env);
   
   init.maybeParamType = nothing();
   init.allocator = allocate;
@@ -42,7 +42,7 @@ top::Expr ::= allocate::Expr init::ListInitializers
 
 inherited attribute maybeParamType::Maybe<Type>;
 
-nonterminal ListInitializers with pps, env, maybeParamType, allocator, 
+tracked nonterminal ListInitializers with pps, env, maybeParamType, allocator, 
   errors, host<Expr>, controlStmtContext;
 
 propagate allocator, controlStmtContext, errors on ListInitializers;
@@ -66,9 +66,9 @@ top::ListInitializers ::= h::Expr t::ListInitializers
   t.env = addEnv((if top.maybeParamType.isJust then [] else cons.defs) ++ h.defs, h.env);
   top.host =
     ableC_Expr {
-      $Expr{decExpr(cons, location=builtin)}(
+      $Expr{decExpr(cons)}(
         $Expr{top.allocator},
-        $Expr{if top.maybeParamType.isJust then decExpr(h, location=builtin) else h},
+        $Expr{if top.maybeParamType.isJust then decExpr(h) else h},
         $Expr{t.host})
     };
   
@@ -76,9 +76,9 @@ top::ListInitializers ::= h::Expr t::ListInitializers
     case top.maybeParamType of
     | just(t) ->
       if !typeAssignableTo(t, h.typerep)
-      then [err(h.location, s"Invalid type in list initializer: Expected ${showType(t)}, got ${showType(h.typerep)}")]
+      then [errFromOrigin(h, s"Invalid type in list initializer: Expected ${showType(t)}, got ${showType(h.typerep)}")]
       else []
-    | nothing() -> decorate h.typerep with {otherType = h.typerep;}.unifyErrors(h.location, t.env)
+    | nothing() -> decorate h.typerep with {otherType = h.typerep;}.unifyErrors(t.env)
     end;
 }
 
@@ -87,22 +87,22 @@ top::ListInitializers ::= e::Expr
 {
   propagate env;
   top.pps = [pp"| ${e.pp}"]; -- TODO: Fix this
-  top.host = decExpr(e, location=builtin);
+  top.host = decExpr(e);
   
   top.errors <-
     if !typeAssignableTo(extType(nilQualifier(), varType(extType(nilQualifier(), listType(top.maybeParamType.fromJust)))), e.typerep)
-    then [err(e.location, s"Invalid type in list initializer tail: Expected list<${showType(top.maybeParamType.fromJust)}> ?, got ${showType(e.typerep)}")]
+    then [errFromOrigin(e, s"Invalid type in list initializer tail: Expected list<${showType(top.maybeParamType.fromJust)}> ?, got ${showType(e.typerep)}")]
     else [];
 }
 
 abstract production nilListInitializer
-top::ListInitializers ::= loc::Location
+top::ListInitializers ::=
 {
   top.pps = [];
   top.errors <-
     if top.maybeParamType.isJust
     then []
-    else [err(loc, "Can't infer type argument for empty list")];
+    else [errFromOrigin(top, "Can't infer type argument for empty list")];
   top.host =
     ableC_Expr {
       inst nil<$directTypeExpr{top.maybeParamType.fromJust}>($Expr{top.allocator})
@@ -146,7 +146,7 @@ top::LogicExpr ::= l::ListLogicExprs
   
   local expectedType::Type = top.expectedType;
   expectedType.otherType = extType(nilQualifier(), listType(l.paramType));
-  top.errors <- expectedType.unifyErrors(top.location, top.env);
+  top.errors <- expectedType.unifyErrors(top.env);
 
   top.isExcludable =
     case l, decorate top.isExcludableBy with {env = top.env;} of
@@ -164,7 +164,7 @@ top::LogicExpr ::= l::ListLogicExprs
     end;
 }
 
-nonterminal ListLogicExprs with pps, env, paramType, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:expectedType, allowUnificationTypes, allocator, refVariables, errors, defs, maybeTyperep, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:transform<Expr>;
+tracked nonterminal ListLogicExprs with pps, env, paramType, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:expectedType, allowUnificationTypes, allocator, refVariables, errors, defs, maybeTyperep, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:transform<Expr>;
 flowtype ListLogicExprs = decorate {env, paramType, expectedType, allowUnificationTypes, allocator, refVariables}, pps {}, errors {decorate}, defs {env, paramType, expectedType, allowUnificationTypes}, maybeTyperep {env, allowUnificationTypes}, transform {decorate};
 
 propagate paramType, allocator, refVariables, errors, defs on ListLogicExprs;
@@ -183,8 +183,7 @@ top::ListLogicExprs ::= h::LogicExpr t::ListLogicExprs
         ($BaseTypeExpr{
            listTypeExpr(
              nilQualifier(),
-             typeName(directTypeExpr(top.paramType), baseTypeExpr()),
-             builtin)})
+             typeName(directTypeExpr(top.paramType), baseTypeExpr()))})
           inst _Cons<$directTypeExpr{top.paramType}>($Expr{h.transform}, $Expr{t.transform})
       });
   
@@ -223,8 +222,7 @@ top::ListLogicExprs ::=
         ($BaseTypeExpr{
            listTypeExpr(
              nilQualifier(),
-             typeName(directTypeExpr(top.paramType), baseTypeExpr()),
-             builtin)})
+             typeName(directTypeExpr(top.paramType), baseTypeExpr()))})
           inst _Nil<$directTypeExpr{top.paramType}>()
       });
 }
@@ -246,14 +244,14 @@ top::Pattern ::= l::ListPatterns
     case top.expectedType of
     | extType(_, listType(_)) -> []
     | errorType() -> []
-    | _ -> [err(top.location, s"List pattern expected to match a list (got ${showType(top.expectedType)})")]
+    | _ -> [errFromOrigin(top, s"List pattern expected to match a list (got ${showType(top.expectedType)})")]
     end;
 }
 
 inherited attribute isBoundTransformIn::Expr;
 inherited attribute valueTransformIn::Expr;
 
-nonterminal ListPatterns with pps, errors, initialEnv,
+tracked nonterminal ListPatterns with pps, errors, initialEnv,
   edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:expectedType,
   patternDecls,
   edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:abstractsyntax:transform<Expr>,
@@ -331,20 +329,20 @@ top::ListPatterns ::=
 
 -- Check the given env for the given template name
 function checkListHeaderDef
-[Message] ::= n::String loc::Location env::Decorated Env
+[Message] ::= n::String env::Decorated Env
 {
   return
     if !null(lookupTemplate(n, env))
     then []
-    else [err(loc, "Missing include of list.xh")];
+    else [errFromOrigin(ambientOrigin(), "Missing include of list.xh")];
 }
 
 -- Check that operand has list type
 function checkListType
-[Message] ::= sub::Type t::Type op::String loc::Location
+[Message] ::= sub::Type t::Type op::String
 {
   return
     if typeAssignableTo(extType(nilQualifier(), listType(sub)), t)
     then []
-    else [err(loc, s"Operand to ${op} expected list<${showType(sub)}> (got ${showType(t)})")];
+    else [errFromOrigin(ambientOrigin(), s"Operand to ${op} expected list<${showType(sub)}> (got ${showType(t)})")];
 }

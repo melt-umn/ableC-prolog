@@ -20,5 +20,3 @@ imports edu:umn:cs:melt:exts:ableC:string:abstractsyntax;
 imports edu:umn:cs:melt:exts:ableC:vector:abstractsyntax;
 imports edu:umn:cs:melt:exts:ableC:closure:abstractsyntax;
 imports edu:umn:cs:melt:exts:ableC:constructor:abstractsyntax;
-
-global builtin::Location = builtinLoc("prolog");

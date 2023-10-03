@@ -16,18 +16,18 @@ marking terminal List_t 'list' lexer classes {Type, Global};
 
 concrete productions top::TypeSpecifier_c
 | 'list' LessThan_t sub::TypeName_c '>'
-    { top.realTypeSpecifiers = [listTypeExpr(top.givenQualifiers, sub.ast, top.location)];
+    { top.realTypeSpecifiers = [listTypeExpr(top.givenQualifiers, sub.ast)];
       top.preTypeSpecifiers = []; }
 
 marking terminal NewList_t 'newlist' lexer classes {Keyword, Global};
 
 concrete productions top::PrimaryExpr_c
 | 'newlist' LessThan_t sub::TypeName_c '>' LParen_t allocate::Expr_c ')' LBracket_t init::ListInitializerList_c ']'
-  { top.ast = constructList(sub.ast, allocate.ast, init.ast, location=top.location); }
+  { top.ast = constructList(sub.ast, allocate.ast, init.ast); }
 | 'newlist' LParen_t allocate::Expr_c ')' LBracket_t init::ListInitializerList_c ']'
-  { top.ast = inferredConstructList(allocate.ast, init.ast, location=top.location); }
+  { top.ast = inferredConstructList(allocate.ast, init.ast); }
 
-nonterminal ListInitializerList_c with location, ast<ListInitializers>;
+tracked nonterminal ListInitializerList_c with ast<ListInitializers>;
 
 concrete productions top::ListInitializerList_c
 | h::AssignExpr_c ',' t::ListInitializerList_c
@@ -38,19 +38,19 @@ concrete productions top::ListInitializerList_c
         case decorate e.ast with {env = emptyEnv();
             controlStmtContext = initialControlStmtContext;} of
         | ovrld:orBitExpr(h, t) -> consListInitializer(h, tailListInitializer(t))
-        | _ -> consListInitializer(e.ast, nilListInitializer(top.location))
+        | _ -> consListInitializer(e.ast, nilListInitializer())
         end;
     }
 |
-    { top.ast = nilListInitializer(top.location); }
+    { top.ast = nilListInitializer(); }
 
 marking terminal ListLBracket_t '[';
 
 concrete productions top::LogicExpr_c
 | ListLBracket_t l::ListLogicExprList_c ']'
-  { top.ast = listLogicExpr(l.ast, location=top.location); }
+  { top.ast = listLogicExpr(l.ast); }
 
-nonterminal ListLogicExprList_c with location, ast<ListLogicExprs>;
+tracked nonterminal ListLogicExprList_c with ast<ListLogicExprs>;
 
 concrete productions top::ListLogicExprList_c
 | h::LogicExpr_c ',' t::ListLogicExprList_c
@@ -66,9 +66,9 @@ marking terminal ListPatternLBracket_t '[';
 
 concrete productions top::BasicPattern_c
 | ListPatternLBracket_t l::ListPatternList_c ']'
-  { top.ast = listPattern(l.ast, location=top.location); }
+  { top.ast = listPattern(l.ast); }
 
-nonterminal ListPatternList_c with location, ast<ListPatterns>;
+tracked nonterminal ListPatternList_c with ast<ListPatterns>;
 
 concrete productions top::ListPatternList_c
 | h::Pattern_c ',' t::ListPatternList_c
