@@ -68,15 +68,13 @@ Stmt ::= defs::[Def]
         map(
           \ item::Pair<String ValueItem> ->
             case item.snd of
-            | varValueItem(t, _) ->
+            | varValueItem(t) ->
               just(
                 mkDecl(
                   item.fst, item.snd.typerep,
                   freeVarExpr(
                     typeName(directTypeExpr(varSubType(t)), baseTypeExpr()),
-                    ableC_Expr { alloca },
-                    location=builtin),
-                  builtin))
+                    ableC_Expr { alloca })))
             | _ -> nothing()
             end,
           foldr(consDefs, nilDefs(), defs).valueContribs)));
