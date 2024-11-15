@@ -1,4 +1,5 @@
 #include <unification.xh>
+#include <string.xh>
 #include <stdbool.h>
 
 typedef datatype Expr Expr;
@@ -16,49 +17,52 @@ datatype Expr {
   logrithm(Expr ?e1, Expr ?e2);
 };
 
-size_t showExprMaxLen(Expr ?e);
-size_t showExpr(char *buf, Expr ?e);
+size_t showExprMaxLen(Expr e);
+size_t showExprToBuf(char *buf, Expr e);
 
 show Expr with showExprMaxLen, showExprToBuf;
 
-size_t showExprMaxLen(Expr ?e) {
+size_t showExprMaxLen(Expr e) {
   return match (e)
-    (?&value(?&val) -> showMaxLen(val);
-     ?&e() -> 1;
-     ?&variable(?&id) -> id.length;
-     ?&negative(e1) -> 2 + showMaxLen(e1);
-     ?&add(e1, e2) -> 5 + showMaxLen(e1) + showMaxLen(e2);
-     ?&subtract(e1, e2) -> 5 + showMaxLen(e1) + showMaxLen(e2);
-     ?&multiply(e1, e2) -> 5 + showMaxLen(e1) + showMaxLen(e2);
-     ?&divide(e1, e2) -> 5 + showMaxLen(e1) + showMaxLen(e2);
-     ?&exponent(e1, e2) -> 5 + showMaxLen(e1) + showMaxLen(e2);
-     ?&logrithm(?&e(), e) -> 6 + showMaxLen(e);
-     ?&logrithm(e1, e2) -> 9 + showMaxLen(e1) + showMaxLen(e2);
-     _ -> show_var_max_len(e););
+    (value(?&val) -> showMaxLen(val);
+     e() -> 1;
+     variable(?&id) -> id.length;
+     negative(e1) -> 2 + showMaxLen(e1);
+     add(e1, e2) -> 7 + showMaxLen(e1) + showMaxLen(e2);
+     subtract(e1, e2) -> 7 + showMaxLen(e1) + showMaxLen(e2);
+     multiply(e1, e2) -> 7 + showMaxLen(e1) + showMaxLen(e2);
+     divide(e1, e2) -> 7 + showMaxLen(e1) + showMaxLen(e2);
+     exponent(e1, e2) -> 7 + showMaxLen(e1) + showMaxLen(e2);
+     logrithm(?&e(), e) -> 6 + showMaxLen(e);
+     logrithm(e1, e2) -> 11 + showMaxLen(e1) + showMaxLen(e2););
 }
 
-size_t wrapShowExpr(char *buf, Expr ?e) {
+size_t wrapParens(char *buf, Expr ?e) {
+  allocate_using heap;
   return match (e)
-    (?&value(?&val) -> buildStr(buf, show(val));
-     ?&e() -> buildStr(buf, str("e"));
+    (?&value(?&val) -> showToBuf(buf, val);
+     ?&e() -> sprintf(buf, "e");
      ?&variable(?&id) -> buildStr(buf, id);
      _ -> buildStr(buf, "(" + show(e) + ")"););
 }
 
-size_t showExpr(char *buf, Expr ?e) {
+size_t showBinOp(char *buf, Expr ?e1, Expr ?e2, char *op) {
+  return buildStr(buf, showWith(wrapParens, e1) + " " + op + " " + showWith(wrapParens, e2));
+}
+
+size_t showExprToBuf(char *buf, Expr e) {
   return match (e)
-    (?&value(?&val) -> buildStr(buf, show(val));
-     ?&e() -> buildStr(buf, str("e"));
-     ?&variable(?&id) -> buildStr(buf, id);
-     ?&negative(e1) -> buildStr(buf, "-" + wrapShowExpr(e1));
-     ?&add(e1, e2) -> buildStr(buf, wrapShowExpr(e1) + " + " + wrapShowExpr(e2));
-     ?&subtract(e1, e2) -> buildStr(buf, wrapShowExpr(e1) + " - " + wrapShowExpr(e2));
-     ?&multiply(e1, e2) -> buildStr(buf, wrapShowExpr(e1) + " * " + wrapShowExpr(e2));
-     ?&divide(e1, e2) -> buildStr(buf, wrapShowExpr(e1) + " / " + wrapShowExpr(e2));
-     ?&exponent(e1, e2) -> buildStr(buf, wrapShowExpr(e1) + " ^ " + wrapShowExpr(e2));
-     ?&logrithm(?&e(), e) -> buildStr(buf, "ln(" + showExpr(e) + ")");
-     ?&logrithm(e1, e2) -> buildStr(buf, "log(" + showExpr(e1) + ", " + showExpr(e2) + ")");
-     _ -> show_var(buf, e););
+    (value(?&val) -> buildStr(buf, show(val));
+     e() -> buildStr(buf, str("e"));
+     variable(?&id) -> buildStr(buf, id);
+     negative(e1) -> buildStr(buf, "-" + showWith(wrapParens, e1));
+     add(e1, e2) -> showBinOp(buf, e1, e2, "+");
+     subtract(e1, e2) -> showBinOp(buf, e1, e2, "-");
+     multiply(e1, e2) -> showBinOp(buf, e1, e2, "*");
+     divide(e1, e2) -> showBinOp(buf, e1, e2, "/");
+     exponent(e1, e2) -> showBinOp(buf, e1, e2, "^");
+     logrithm(?&e(), e) -> buildStr(buf, "ln(" + show(e) + ")");
+     logrithm(e1, e2) -> buildStr(buf, "log(" + show(e1) + ", " + show(e2) + ")"););
 }
 
 int mod(int a, int b) {
@@ -77,15 +81,17 @@ prolog {
 }
 
 bool test(Expr ?e) {
+  allocate_using stack;
   printf("%s\n", show(e).text);
-  printf("%s\n", showExpr(e).text);
   bool res1 = query E is e, simplified(E, E1) {
-    printf("simplified: %s\n", showExpr(E1).text);
+    allocate_using stack;
+    printf("simplified: %s\n", show(E1).text);
     return false;
   };
   bool res2 = query E is e, d(E, "x", E1), simplified(E1, E2) {
-    printf("d/dx: %s\n", showExpr(E1).text);
-    printf("d/dx simplified: %s\n", showExpr(E2).text);
+    allocate_using stack;
+    printf("d/dx: %s\n", show(E1).text);
+    printf("d/dx simplified: %s\n", show(E2).text);
     return false;
   };
   printf("\n");

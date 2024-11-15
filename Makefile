@@ -29,7 +29,7 @@ EXT_GRAMMAR=edu:umn:cs:melt:exts:ableC:prolog
 EXT_DEPS=ableC-algebraic-data-types ableC-string ableC-allocation ableC-templating ableC-constructor ableC-template-constructor ableC-template-algebraic-data-types ableC-closure ableC-vector ableC-unification
 USE_CUSTOM_SILVER=1
 
-JAVAFLAGS=-Xss6M -Xmx1G
+JAVAFLAGS=-Xmx2G -Xss50M
 
 # Need to bump up the heap space to run the MWDA:
 export SVJVM_FLAGS=-Xmx7G -Xss30m
