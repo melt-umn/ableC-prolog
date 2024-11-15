@@ -69,7 +69,8 @@ Expr ?randTerm(unsigned depth, unsigned numVars) {
 }
 
 int main(int argc, char *argv[]) {
-  test(term<Expr ?>(alloca) { andE(varE("a"), notE(varE("a"))) });
-  test(term<Expr ?>(alloca) { andE(orE(varE("a"), varE("b")), andE(varE("c"), notE(varE("a")))) });
+  allocate_using stack;
+  test(term<Expr ?> { andE(varE("a"), notE(varE("a"))) });
+  test(term<Expr ?> { andE(orE(varE("a"), varE("b")), andE(varE("c"), notE(varE("a")))) });
   test(randTerm(10, 10));
 }

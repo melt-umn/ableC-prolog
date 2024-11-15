@@ -11,26 +11,15 @@ datatype _list_d {
 };
 
 template<typename a>
-list<a> ?cons(void *(*alloc)(size_t), a head, list<a> ?tail) {
-  list<a> ?result = freevar<list<a>>(*alloc);
-  unify(result, (list<a>)_Cons(head, tail));
-  return result;
+list<a> ?cons(a head, list<a> ?tail, arena_t ar) {
+  allocate_using arena ar;
+  return (list<a>?)new var<_list_d<a>>(_Cons(head, tail));
 }
 
 template<typename a>
-list<a> ?nil(void *(*alloc)(size_t)) {
-  list<a> ?result = freevar<list<a>>(*alloc);
-  unify(result, (list<a>)_Nil<a>());
-  return result;
-}
-
-// Only deletes the list itself, and not its contents
-template<typename a>
-void delete_list(void (*dealloc)(void *), list<a> ?l) {
-  match (l) {
-    ?&[h | t] -> { delete_list(dealloc, t); }
-  }
-  delete_var(dealloc, l);
+list<a> ?nil(arena_t ar) {
+  allocate_using arena ar;
+  return (list<a>?)new var<_list_d<a>>(_Nil());
 }
 
 template<typename a>
@@ -61,24 +50,60 @@ list<a> ?tail(list<a> ?l) {
 }
 
 template<typename a>
-list<a> ?append_list(void *(*alloc)(size_t), list<a> ?l1, list<a> ?l2) {
+list<a> ?append_list(list<a> ?l1, list<a> ?l2, arena_t ar) {
+  allocate_using arena ar;
   return match (value(l1))
-    ([h | t] -> newlist(alloc)[h | append_list(alloc, t, l2)];
+    ([h | t] -> newlist[h | append_list(t, l2, ar)];
      [] -> l2;);
 }
 
 template<typename a>
-string _show_list_contents(list<a> l) {
+size_t _show_list_contents_max_len(list<a> l) {
   return match (l)
-    ([h | ?&(t@[_ | _])] -> show(h) + ", " + _show_list_contents(t);
-     [h] -> show(h);
-     [h | v@freevar] -> show(h) + " | " + show(v);
-     [] -> str(""););
+    ([h | ?&(t@[_ | _])] -> showMaxLen(h) + 2 + _show_list_contents_max_len(t);
+     [h] -> showMaxLen(h);
+     [h | v@freevar] -> showMaxLen(h) + 3 + showMaxLen(v);
+     [] -> 0;);
 }
 
 template<typename a>
-string show_list(list<a> l) {
-  return "[" + _show_list_contents(l) + "]";
+size_t _show_list_contents_to_buf(char *buf, list<a> l) {
+  match (l) {
+    [h | ?&(t@[_ | _])] -> {
+      size_t len = showToBuf(buf, h);
+      buf[len++] = ',';
+      buf[len++] = ' ';
+      return len + _show_list_contents_to_buf(buf + len, t);
+    }
+    [h] -> {
+      return showToBuf(buf, h);
+    }
+    [h | v@freevar] -> {
+      size_t len = showToBuf(buf, h);
+      buf[len++] = ' ';
+      buf[len++] = '|';
+      buf[len++] = ' ';
+      return len + showToBuf(buf + len, v);
+    }
+    [] -> {
+      return 0;
+    }
+  }
+}
+
+template<typename a>
+size_t show_list_max_len(list<a> l) {
+  return _show_list_contents_max_len(l) + 2;
+}
+
+template<typename a>
+size_t show_list_to_buf(char *buf, list<a> l) {
+  size_t len = 0;
+  buf[len++] = '[';
+  len += _show_list_contents_to_buf(buf + len, l);
+  buf[len++] = ']';
+  buf[len] = '\0';
+  return len;
 }
 
 template<typename a>

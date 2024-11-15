@@ -7,7 +7,7 @@ abstract production templateParamValueItem
 top::ValueItem ::= t::Type isTypeParam::Boolean
 {
   top.pp = pp"type param";
-  top.typerep = t;
+  top.typerep = ^t;
   top.isItemType = isTypeParam;
   top.isItemValue = !isTypeParam;
 }
@@ -17,7 +17,7 @@ abstract production varValueItem
 top::ValueItem ::= t::Type
 {
   top.pp = pp"var";
-  top.typerep = t;
+  top.typerep = ^t;
   top.isItemValue = true;
 }
 
@@ -35,18 +35,14 @@ top::ValueItem ::= v::ValueItem
 
 -- Generate defs for "unwrapped" values corresponding to variables referenced
 -- in "is" predicate expression.
-function makeUnwrappedVarDefs
-[Def] ::= env::Decorated Env
-{
-  return
-    flatMap(
-      \ p::Pair<String ValueItem> ->
-        case p of
-        | (n, varValueItem(t)) -> [valueDef(n, varValueItem(varSubType(t)))]
-        | _ -> []
-        end,
-      tm:toList(head(env.values)));
-}
+fun makeUnwrappedVarDefs [Def] ::= env::Env =
+  flatMap(
+    \ p::Pair<String ValueItem> ->
+      case p of
+      | (n, varValueItem(t)) -> [valueDef(n, varValueItem(varSubType(^t)))]
+      | _ -> []
+      end,
+    tm:toList(head(env.values)));
 
 closed tracked nonterminal PredicateItem with paramNames, typereps, templateParams, params, functionDefs, labelDefs;
 
@@ -74,33 +70,33 @@ top::PredicateItem ::=
 
 synthesized attribute predicates::Scopes<PredicateItem> occurs on Env;
 
-aspect production emptyEnv_i
+aspect production emptyEnv
 top::Env ::=
 {
   top.predicates = emptyScope();
 }
-aspect production addEnv_i
-top::Env ::= d::Defs  e::Decorated Env
+aspect production addDefsEnv
+top::Env ::= d::Defs  e::Env
 {
   top.predicates = addGlobalScope(gd.predicateContribs, addScope(d.predicateContribs, e.predicates));
 }
-aspect production openScopeEnv_i
-top::Env ::= e::Decorated Env
+aspect production openScopeEnv
+top::Env ::= e::Env
 {
   top.predicates = openScope(e.predicates);
 }
-aspect production globalEnv_i
-top::Env ::= e::Decorated Env
+aspect production globalEnv
+top::Env ::= e::Env
 {
   top.predicates = globalScope(e.predicates);
 }
-aspect production nonGlobalEnv_i
-top::Env ::= e::Decorated Env
+aspect production nonGlobalEnv
+top::Env ::= e::Env
 {
   top.predicates = nonGlobalScope(e.predicates);
 }
-aspect production functionEnv_i
-top::Env ::= e::Decorated Env
+aspect production functionEnv
+top::Env ::= e::Env
 {
   top.predicates = functionScope(e.predicates);
 }
@@ -131,7 +127,7 @@ top::Def ::=
 abstract production predicateDef
 top::Def ::= s::String  t::PredicateItem
 {
-  top.predicateContribs = [(s, t)];
+  top.predicateContribs = [(s, ^t)];
 }
 
 aspect production valueDef
@@ -140,17 +136,10 @@ top::Def ::= s::String  t::ValueItem
   top.canonicalDefs = [valueDef(s, canonicalValueItem(t))];
 }
 
-function lookupPredicate
-[PredicateItem] ::= n::String  e::Decorated Env
-{
-  return lookupScope(n, e.predicates);
-}
+fun lookupPredicate [PredicateItem] ::= n::String  e::Env = lookupScope(n, e.predicates);
 
-function lookupPredicateInLocalScope
-[PredicateItem] ::= n::String  e::Decorated Env
-{
-  return lookupScope(n, e.predicates);
-}
+fun lookupPredicateInLocalScope [PredicateItem] ::= n::String  e::Env =
+  lookupScope(n, e.predicates);
 
 synthesized attribute predicateItem::Decorated PredicateItem occurs on Name;
 synthesized attribute predicateLookupCheck::[Message] occurs on Name;

@@ -1,12 +1,12 @@
-grammar determinism;
+grammar edu:umn:cs:melt:exts:ableC:prolog:artifacts:mda_test;
 
 {- This Silver specification does not generate a useful working 
    compiler, it only serves as a grammar for running the modular
    determinism analysis.
  -}
 
-import edu:umn:cs:melt:ableC:concretesyntax;
 import edu:umn:cs:melt:ableC:host;
+import edu:umn:cs:melt:ableC:concretesyntax;
 
 -- Since the prolog extension is an extension (E2) to a nonterminal introduced by
 -- another extension (E1), we must perform the MDA with respect to a "host"
@@ -33,4 +33,3 @@ parser ableCWithCore :: Root {
 copper_mda testList(ableCWithCore) {
   edu:umn:cs:melt:exts:ableC:prolog:list:concretesyntax;
 }
-

@@ -8,7 +8,8 @@ prolog {
 }
 
 int main() {
-  list<const char *?> l = term<list<const char *?>>(malloc){ ["aaa", "bbb", "ccc"] };
+  allocate_using heap;
+  list<const char *?> l = term<list<const char *?>>{ ["aaa", "bbb", "ccc"] };
   return query L is l, member(A, L), member(B, L), less<const char *, strcmp>(A, B) {
     printf("%s < %s\n", value(A), value(B));
     return false;

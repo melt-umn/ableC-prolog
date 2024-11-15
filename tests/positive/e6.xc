@@ -1,6 +1,7 @@
 #include <unification.xh>
 #include <list.xh>
 #include <map.xh>
+#include <string.xh>
 #include <stdbool.h>
 
 int main() {
@@ -13,6 +14,7 @@ int main() {
     mapDelete(E, "b", F),
     mapContains(F, "c", G)
       {
+        allocate_using stack;
         printf("%s\n", show(A).text);
         printf("%s\n", show(B).text);
         printf("%s\n", show(C).text);

@@ -1,4 +1,5 @@
 #include <unification.xh>
+#include <string.xh>
 #include <stdbool.h>
 
 template<typename a>
@@ -33,17 +34,20 @@ unsigned count_leaves(Tree<a> ?tree, a val) {
 }
 
 int main() {
-  Tree<int> ?tree = term<Tree<int> ?>(GC_malloc) {
+  allocate_using heap;
+  Tree<int> ?tree = term<Tree<int> ?> {
     node(node(node(leaf(1), leaf(2)), leaf(2)), node(leaf(3), leaf(2)))
   };
   printf("tree: %s\n", show(tree).text);
   
   query T is tree, subtree(T, A) {
+    allocate_using stack;
     printf("subtree(tree, A): %s\n", show(A).text);
     return false;
   };
   
   query T is tree, subtree(T, node(A, leaf(2))) {
+    allocate_using stack;
     printf("subtree(tree, node(A, leaf(2))): %s\n", show(A).text);
     return true; // Stop after the first one
   };

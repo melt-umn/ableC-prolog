@@ -1,4 +1,5 @@
 #include <unification.xh>
+#include <string.xh>
 #include <stdbool.h>
 
 datatype IntList {
@@ -14,6 +15,7 @@ prolog {
 
 int main() {
   query appendIntList(X, cons(Y, Z), cons(1, cons(2, cons(3, nil())))) {
+    allocate_using stack;
     printf("X: %s\n", show(X).text);
     printf("Y: %s\n", show(Y).text);
     printf("Z: %s\n", show(Z).text);

@@ -1,6 +1,7 @@
 #include <unification.xh>
 #include <list.xh>
 #include <prolog_utils.xh>
+#include <string.xh>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -23,6 +24,7 @@ bool solve(int n, bool board[n][n]) {
           l = rest;
         }
         _ -> {
+          allocate_using stack;
           fprintf(stderr, "Unexpected tail of result list %s\n", show(l).text);
           exit(1);
         }

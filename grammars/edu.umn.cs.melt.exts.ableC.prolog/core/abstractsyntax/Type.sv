@@ -16,7 +16,7 @@ top::ExtType ::= n::String
       end;
   
   top.unifyErrors =
-    \ env::Decorated Env ->
+    \ env::Env ->
       case top.otherType of
       | extType(_, typeParamType(n2)) ->
         if n == n2
@@ -26,7 +26,7 @@ top::ExtType ::= n::String
         if n == n2
         then []
         else [errFromOrigin(ambientOrigin(), s"Unification value and variable type variables must match (got ${n}, ${n2})")]
-      | t -> [errFromOrigin(ambientOrigin(), s"Unification is not defined for type variable ${n} and ${showType(t)}")]
+      | t -> [errFromOrigin(ambientOrigin(), s"Unification is not defined for type variable ${n} and ${show(80, t)}")]
       end;
 }
 

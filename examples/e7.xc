@@ -21,12 +21,13 @@ prolog {
 }
 
 int main() {
+  allocate_using stack;
   Tree<float> ?t1 =
-    term<Tree<float> ?>(alloca) {
+    term<Tree<float> ?> {
       node(leaf(3.3), node(leaf(1.1), leaf(2.2)))
     };
   Tree<float> ?t2 =
-    term<Tree<float> ?>(alloca) {
+    term<Tree<float> ?> {
       // Term contains a free variable A
       node(node(leaf(1.1), leaf(A)), leaf(2.2))
     };

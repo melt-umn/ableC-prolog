@@ -6,8 +6,6 @@ inherited attribute expectedTypes::[Type];
 -- If false, transform.typerep must exactly match expectedType
 inherited attribute allowUnificationTypes::Boolean;
 
-inherited attribute allocator::Expr;
-
 inherited attribute isExcludableBy<a>::a;
 synthesized attribute isExcludable::[[String]]; -- "product of sums" of parameter boundness
 
@@ -16,21 +14,22 @@ synthesized attribute paramUnifyTransform::Expr;
 
 synthesized attribute maybeTypereps::[Maybe<Type>];
 
-tracked nonterminal LogicExprs with pps, env, count, expectedTypes, allowUnificationTypes, allocator, refVariables, isExcludable, isExcludableBy<LogicExprs>, errors, defs, maybeTypereps, transform<Exprs>, paramNamesIn, paramUnifyTransform;
-flowtype LogicExprs = decorate {env, expectedTypes, allowUnificationTypes, allocator, refVariables}, pps {}, count {}, isExcludable {env, expectedTypes, allowUnificationTypes, isExcludableBy, paramNamesIn}, errors {decorate}, defs {env, expectedTypes, allowUnificationTypes}, maybeTypereps {env, allowUnificationTypes}, transform {decorate}, paramUnifyTransform {decorate, paramNamesIn};
+tracked nonterminal LogicExprs with pps, env, count, expectedTypes, allowUnificationTypes, refVariables, isExcludable, isExcludableBy<LogicExprs>, errors, defs, maybeTypereps, transform<Exprs>, paramNamesIn, paramUnifyTransform;
+flowtype LogicExprs = decorate {env, expectedTypes, allowUnificationTypes, refVariables}, pps {}, count {}, isExcludable {env, expectedTypes, allowUnificationTypes, isExcludableBy, paramNamesIn}, errors {decorate}, defs {env, expectedTypes, allowUnificationTypes}, maybeTypereps {env, allowUnificationTypes}, transform {decorate}, paramUnifyTransform {decorate, paramNamesIn};
 
-propagate allowUnificationTypes, allocator, refVariables, errors, defs on LogicExprs;
+propagate allowUnificationTypes, refVariables, errors, defs on LogicExprs;
 
 abstract production consLogicExpr
 top::LogicExprs ::= h::LogicExpr t::LogicExprs
 {
+  attachNote extensionGenerated("ableC-prolog");
   top.pps = h.pp :: t.pps;
   top.count = 1 + t.count;
   top.maybeTypereps = h.maybeTyperep :: newT.maybeTypereps;
   top.transform = consExpr(h.transform, t.transform);
   
   -- Needed to compute maybeTypereps approximatly without using h.defs
-  local newT::LogicExprs = t;
+  local newT::LogicExprs = ^t;
   newT.env = top.env;
   newT.allowUnificationTypes = top.allowUnificationTypes;
   
@@ -44,7 +43,7 @@ top::LogicExprs ::= h::LogicExpr t::LogicExprs
         unifyExpr(
           ableC_Expr { $name{h.paramNameIn} },
           h.transform,
-          justExpr(ableC_Expr { _trail })),
+          just(ableC_Expr { _trail })),
         t.paramUnifyTransform)
     end;
 
@@ -61,12 +60,12 @@ top::LogicExprs ::= h::LogicExpr t::LogicExprs
   
   h.isExcludableBy =
     case top.isExcludableBy of
-    | consLogicExpr(h, t) -> h
+    | consLogicExpr(h, t) -> ^h
     | _ -> error("Too few LogicExprs provided for isExcludableBy")
     end;
   t.isExcludableBy =
     case top.isExcludableBy of
-    | consLogicExpr(h, t) -> t
+    | consLogicExpr(h, t) -> ^t
     | _ -> error("Too few LogicExprs provided for isExcludableBy")
     end;
   top.isExcludable =
@@ -81,6 +80,7 @@ top::LogicExprs ::= h::LogicExpr t::LogicExprs
 abstract production nilLogicExpr
 top::LogicExprs ::=
 {
+  attachNote extensionGenerated("ableC-prolog");
   top.pps = [];
   top.count = 0;
   top.maybeTypereps = [];
@@ -89,32 +89,16 @@ top::LogicExprs ::=
   top.isExcludable = [[]];
 }
 
-function foldLogicExpr
-LogicExprs ::= les::[LogicExpr]
-{
-  return foldr(consLogicExpr, nilLogicExpr(), les);
-}
+fun foldLogicExpr LogicExprs ::= les::[LogicExpr] = foldr(consLogicExpr, nilLogicExpr(), les);
 
 inherited attribute paramNameIn::String;
 inherited attribute expectedType::Type;
 
-closed tracked nonterminal LogicExpr with pp, env, expectedType, allowUnificationTypes, allocator, refVariables, paramNameIn, isExcludable, isExcludableBy<LogicExpr>, errors, defs, maybeTyperep, transform<Expr>;
-flowtype LogicExpr = decorate {env, expectedType, allowUnificationTypes, allocator, refVariables}, pp {}, isExcludable {env, expectedType, isExcludableBy, paramNameIn}, errors {decorate}, defs {env, expectedType, allowUnificationTypes}, maybeTyperep {env, allowUnificationTypes}, transform {decorate};
+closed tracked nonterminal LogicExpr with pp, env, expectedType, allowUnificationTypes, refVariables, paramNameIn, isExcludable, isExcludableBy<LogicExpr>, errors, defs, maybeTyperep, transform<Expr>;
+flowtype LogicExpr = decorate {env, expectedType, allowUnificationTypes, refVariables}, pp {}, isExcludable {env, expectedType, isExcludableBy, paramNameIn}, errors {decorate}, defs {env, expectedType, allowUnificationTypes}, maybeTyperep {env, allowUnificationTypes}, transform {decorate};
 
-propagate env, allocator, refVariables, errors, defs on LogicExpr;
+propagate env, refVariables, errors, defs on LogicExpr;
 propagate allowUnificationTypes on LogicExpr excluding constructorLogicExpr;
-
-abstract production decLogicExpr
-top::LogicExpr ::= le::Decorated LogicExpr
-{
-  top.pp = le.pp;
-  top.errors := le.errors;
-  top.defs := le.defs;
-  top.maybeTyperep = le.maybeTyperep;
-  top.transform = le.transform;
-
-  forwards to new(le);
-}
 
 abstract production nameLogicExpr
 top::LogicExpr ::= n::Name
@@ -123,9 +107,9 @@ top::LogicExpr ::= n::Name
   propagate env;
   forwards to
     case n.valueItem of
-    | enumValueItem(_) -> constLogicExpr(declRefExpr(n))
-    | parameterValueItem(_) -> constLogicExpr(declRefExpr(n))
-    | _ -> varLogicExpr(n)
+    | enumValueItem(_) -> constLogicExpr(declRefExpr(@n))
+    | parameterValueItem(_) -> constLogicExpr(declRefExpr(@n))
+    | _ -> varLogicExpr(@n)
     end;
 }
 
@@ -133,6 +117,7 @@ abstract production varLogicExpr
 top::LogicExpr ::= n::Name
 {
   top.pp = n.pp;
+  attachNote extensionGenerated("ableC-prolog");
   top.defs <-
     if null(n.valueLocalLookup)
     then [valueDef(n.name, varValueItem(extType(nilQualifier(), varType(baseType))))]
@@ -150,9 +135,9 @@ top::LogicExpr ::= n::Name
       }
     end;
   
-  local baseType::Type =
+  nondecorated local baseType::Type =
     case top.expectedType of
-    | extType(_, varType(sub)) -> sub
+    | extType(_, varType(sub)) -> ^sub
     | t -> t
     end;
   local expectedType::Type = top.expectedType;
@@ -160,7 +145,7 @@ top::LogicExpr ::= n::Name
   top.errors <- expectedType.unifyErrors(top.env);
   top.errors <- n.valueRedeclarationCheck(extType(nilQualifier(), varType(baseType)));
   top.errors <-
-    if null(n.valueLocalLookup) && contains(n, top.refVariables)
+    if null(n.valueLocalLookup) && contains(^n, top.refVariables)
     then [errFromOrigin(n, s"Unification variable ${n.name} shares a name with a variable referenced in another goal")]
     else [];
   top.errors <-
@@ -168,7 +153,7 @@ top::LogicExpr ::= n::Name
     | extType(_, varType(_)) -> []
     | errorType() -> []
     | _ when null(n.valueLocalLookup) && !top.allowUnificationTypes ->
-      [wrnFromOrigin(n, s"First occurrence of variable ${n.name} is in a non-variable position; this will always error (expected ${showType(top.expectedType)})")]
+      [wrnFromOrigin(n, s"First occurrence of variable ${n.name} is in a non-variable position; this will always error (expected ${show(80, top.expectedType)})")]
     | _ -> []
     end;
   
@@ -179,15 +164,13 @@ abstract production wildcardLogicExpr
 top::LogicExpr ::=
 {
   top.pp = pp"_";
+  attachNote extensionGenerated("ableC-prolog");
   top.maybeTyperep = nothing();
-  top.transform =
-    freeVarExpr(
-      typeName(directTypeExpr(baseType), baseTypeExpr()),
-      top.allocator);
+  top.transform = ableC_Expr { new var<$directTypeExpr{baseType}>() };
   
-  local baseType::Type =
+  nondecorated local baseType::Type =
     case top.expectedType of
-    | extType(_, varType(sub)) -> sub
+    | extType(_, varType(sub)) -> ^sub
     | t -> t
     end;
   local expectedType::Type = top.expectedType;
@@ -199,7 +182,7 @@ top::LogicExpr ::=
       case top.expectedType of
       | extType(_, varType(_)) -> []
       | errorType() -> []
-      | t -> [errFromOrigin(top, s"Wildcard is in a non-variable position (expected ${showType(top.expectedType)})")]
+      | t -> [errFromOrigin(top, s"Wildcard is in a non-variable position (expected ${show(80, top.expectedType)})")]
       end;
   top.isExcludable = [[]];
 }
@@ -208,21 +191,22 @@ abstract production constLogicExpr
 top::LogicExpr ::= e::Expr
 {
   top.pp = e.pp;
+  attachNote extensionGenerated("ableC-prolog");
   top.maybeTyperep = just(e.typerep);
   top.transform =
     makeVarExpr(
-      top.allocator, top.allowUnificationTypes, top.expectedType,
+      top.allowUnificationTypes, top.expectedType,
       case baseType.defaultFunctionArrayLvalueConversion, e.typerep.defaultFunctionArrayLvalueConversion of
       | extType(_, stringType()), pointerType(_, builtinType(_, signedType(charType()))) ->
-        strExpr(e)
-      | t, _ -> ableC_Expr { ($directTypeExpr{t})$Expr{e} }
+        strExpr(^e)
+      | t, _ -> ableC_Expr { ($directTypeExpr{t})$Expr{^e} }
       end);
  
   e.controlStmtContext = initialControlStmtContext;
   
   local baseType::Type =
     case top.expectedType of
-    | extType(_, varType(sub)) -> sub
+    | extType(_, varType(sub)) -> ^sub
     | errorType() -> errorType()
     | t -> t
     end;
@@ -262,10 +246,11 @@ abstract production constructorLogicExpr
 top::LogicExpr ::= n::Name les::LogicExprs
 {
   top.pp = cat( n.pp, parens( ppImplode(text(","), les.pps) ) );
+  attachNote extensionGenerated("ableC-prolog");
   
   local adtType::Type =
     case top.expectedType of
-    | extType(_, varType(sub)) -> sub
+    | extType(_, varType(sub)) -> ^sub
     | t -> t
     end;
   
@@ -290,11 +275,11 @@ top::LogicExpr ::= n::Name les::LogicExprs
     case adtType, adtName, adtLookup, constructorParamLookup of
     | errorType(), _, _, _ -> []
     -- Check that expected type is an ADT of some sort
-    | _, nothing(), _, _ -> [errFromOrigin(top, s"Constructor expected to unify with a datatype (got ${showType(top.expectedType)}).")]
+    | _, nothing(), _, _ -> [errFromOrigin(top, s"Constructor expected to unify with a datatype (got ${show(80, top.expectedType)}).")]
     -- Check that this ADT has a definition
     | _, just(id), [], _ -> [errFromOrigin(top, s"datatype ${id} does not have a definition.")]
     -- Check that this is a constructor for the expected ADT type.
-    | t, _, _, nothing() -> [errFromOrigin(top, s"${showType(t)} does not have constructor ${n.name}.")]
+    | t, _, _, nothing() -> [errFromOrigin(top, s"${show(80, ^t)} does not have constructor ${n.name}.")]
     | _, _, _, just(params) ->
       -- Check that the number of arguments matches number of parameters for this constructor.
       if les.count != params.count
@@ -312,7 +297,7 @@ top::LogicExpr ::= n::Name les::LogicExprs
   -- Infer type for non-templated ADTs by looking up the constructor return type
   top.maybeTyperep =
     case n.valueItem.typerep of
-    | functionType(res, _, _) -> just(res)
+    | functionType(res, _, _) -> just(^res)
     | _ -> nothing()
     end;
   
@@ -327,7 +312,6 @@ top::LogicExpr ::= n::Name les::LogicExprs
   
   top.transform =
     makeVarExpr(
-      top.allocator,
       top.allowUnificationTypes,
       top.expectedType,
       case adtType of
@@ -353,13 +337,10 @@ top::LogicExpr ::= n::Name les::LogicExprs
 }
 
 -- Ensure that an expression is a unification variable of some sort
-function makeVarExpr
-Expr ::= allocator::Expr allowUnificationTypes::Boolean t::Type e::Expr
-{
-  local tmpName::String = s"_tmp_var_${toString(genInt())}";
-  return
-    case allowUnificationTypes, t of
-    | false, extType(_, varType(_)) -> boundVarExpr(allocator, e)
-    | _, _ -> e
-    end;
-}
+fun makeVarExpr
+Expr ::= allowUnificationTypes::Boolean t::Type e::Expr =
+  case allowUnificationTypes, t of
+  | false, extType(_, varType(sub)) ->
+    ableC_Expr { new var<$directTypeExpr{^sub}>($Expr{e}) }
+  | _, _ -> e
+  end;

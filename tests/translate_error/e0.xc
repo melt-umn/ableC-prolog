@@ -26,12 +26,8 @@ prolog {
 
 int main() {
   Tree<float> ?t1 =
-    term<Tree<float> ?>(foobar) { // Undefined allocator
+    term<Tree<float> ?> { // Undefined allocator
       baz(leaf(3.3), node(leaf(1.1), leaf(2.2))) // Undefined constructor
-    };
-  Tree<float> ?t2 =
-    term<Tree<float> ?>(printf) { // Wrong allocator type
-      node(node(leaf(1), foo(A)), leaf("hello")) // Wrong types to constructors
     };
   
   bool res =

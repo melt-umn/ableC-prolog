@@ -9,13 +9,14 @@ flowtype PredicateDecl = decorate {env, predicateGoalCondParamsIn, cutPredicates
 abstract production predicateDecl
 top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parameters
 {
+  attachNote extensionGenerated("ableC-prolog");
   propagate errors, defs;
   top.pp = pp"${n.pp}<${ppImplode(text(", "), templateParams.pps)}>(${ppImplode(pp", ", params.pps)});";
   top.errorDefs := top.defs;
   top.paramNames = params.paramNames;
   top.typereps = params.typereps;
-  top.templateParams = templateParams;
-  top.params = params;
+  top.templateParams = ^templateParams;
+  top.params = ^params;
   
   local predicateDefs::[Def] = [predicateDef(n.name, predicateItem(top))];
   top.defs <- predicateDefs;
@@ -45,8 +46,10 @@ top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parame
       proto_typedef unification_trail, size_t, jmp_buf;
       template<typename a> _Bool is_bound();
       
-      template<$TemplateParameters{templateParams}>
+      template<$TemplateParameters{^templateParams}>
       _Bool $name{transName}($Parameters{params.transform}, unification_trail _trail, closure<() -> _Bool> _continuation) {
+        allocate_using stack;
+
         // The initial length of the trail is the index of the first item that
         // should be undone in case of failure of the predicate
         size_t _initial_trail_index = _trail.length;
@@ -94,7 +97,7 @@ top::PredicateDecl ::= n::Name templateParams::TemplateParameters params::Parame
 
 monoid attribute templateParamDefs::[Def] with [], ++;
 attribute templateParamDefs occurs on TemplateParameters, TemplateParameter;
-inherited attribute templateParamEnv::Decorated Env occurs on TemplateParameters, TemplateParameter;
+inherited attribute templateParamEnv::Env occurs on TemplateParameters, TemplateParameter;
 
 propagate templateParamDefs on TemplateParameters;
 
@@ -115,11 +118,11 @@ top::TemplateParameter ::= n::Name
 aspect production valueTemplateParameter
 top::TemplateParameter ::= bty::BaseTypeExpr n::Name mty::TypeModifierExpr
 {
-  local bty1::BaseTypeExpr = bty;
+  local bty1::BaseTypeExpr = ^bty;
   bty1.env = top.templateParamEnv;
   bty1.controlStmtContext = initialControlStmtContext;
   bty1.givenRefId = nothing();
-  local mty1::TypeModifierExpr = mty;
+  local mty1::TypeModifierExpr = ^mty;
   mty1.env = top.templateParamEnv;
   mty1.controlStmtContext = initialControlStmtContext;
   mty1.typeModifierIn = bty1.typeModifier;
@@ -148,12 +151,12 @@ top::Parameters ::= h::ParameterDecl t::Parameters
 
   h.tailCallArg =
     case top.tailCallArgs of
-    | consExpr(h, _) -> h
+    | consExpr(h, _) -> ^h
     | _ -> error("Too few LogicExprs provided for tailCallArg")
     end;
   t.tailCallArgs =
     case top.tailCallArgs of
-    | consExpr(_, t) -> t
+    | consExpr(_, t) -> ^t
     | _ -> error("Too few LogicExprs provided for tailCallArg")
     end;
 }
@@ -187,6 +190,6 @@ top::ParameterDecl ::= storage::StorageClasses  bty::BaseTypeExpr  mty::TypeModi
     | nothingName() -> "_p" ++ toString(top.position)
     end;
   top.transform =
-    parameterDecl(storage, bty, mty, justName(name(top.paramName)), attrs);
+    parameterDecl(^storage, ^bty, ^mty, justName(name(top.paramName)), ^attrs);
   top.tailCallTrans = ableC_Stmt { $name{top.paramName} = $Expr{top.tailCallArg}; };
 }

@@ -13,14 +13,14 @@ top::Parameters ::= h::ParameterDecl  t::Parameters
     | nothing() :: _ -> t.partialInferredArgs
     end;
 
-  local newH::ParameterDecl = h;
+  local newH::ParameterDecl = ^h;
   newH.env = h.env;
   newH.controlStmtContext = h.controlStmtContext;
   newH.position = h.position;
   newH.argumentType =
     case h.typerep, head(top.partialArgumentTypes).fromJust of
     | extType(_, varType(_)), t -> t
-    | _, extType(_, varType(t)) -> t
+    | _, extType(_, varType(t)) -> ^t
     | _, t -> t
     end;
   t.partialArgumentTypes = tail(top.partialArgumentTypes);

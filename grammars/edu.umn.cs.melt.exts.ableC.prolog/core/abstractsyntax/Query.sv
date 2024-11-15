@@ -4,6 +4,7 @@ abstract production queryExpr
 top::Expr ::= gs::Goals body::Stmt
 {
   top.pp = pp"query ${ppImplode(pp", ", gs.pps)} ${braces(nestlines(2, body.pp))}";
+  attachNote extensionGenerated("ableC-prolog");
   
   local localErrors::[Message] = gs.errors ++ body.errors;
   
@@ -13,27 +14,17 @@ top::Expr ::= gs::Goals body::Stmt
   gs.lastGoalCond = [[]];
   gs.tailCallPermitted = false;
   
-  -- Need to decorate var decls here to compute the env for body, since this may
-  -- contain defs not in gs.defs
-  local varDecls::Stmt = makeVarDecls(gs.defs);
-  varDecls.env = gs.env;
-  varDecls.controlStmtContext = initialControlStmtContext;
-  
-  body.env = addEnv(body.functionDefs, capturedEnv(addEnv(varDecls.defs, gs.env)));
-  body.controlStmtContext = controlStmtContext(
-                              just(builtinType(nilQualifier(), boolType())),
-                              false, false,
-                              tm:add(body.labelDefs, tm:empty()));
-  
   gs.continuationTransformIn = ableC_Expr { _success_continuation };
   local fwrd::Expr =
     ableC_Expr {
-      proto_typedef unification_trail, jmp_buf, size_t;
-      ({unification_trail _trail = new_trail();
-        $Stmt{decStmt(varDecls)}
+      proto_typedef unification_trail, jmp_buf, size_t, arena_t;
+      ({allocate_using stack;
+        arena_t _trail_arena = arena_create();
+        unification_trail _trail = new_trail(_trail_arena);
+        $Decl{decls(makeVarDecls(gs.defs))}
         closure<() -> _Bool> _success_continuation =
-          lambda allocate(alloca) () -> _Bool {
-            $Stmt{decStmt(body)}
+          lambda () -> _Bool {
+            $Stmt{@body}
             return 1;
           };
         
@@ -51,31 +42,24 @@ top::Expr ::= gs::Goals body::Stmt
         }
         
         undo_trail(_trail, 0);
-        delete _trail;
+        arena_destroy(_trail_arena);
         _result;})
     };
+  fwrd.env = top.env;
+  fwrd.controlStmtContext = top.controlStmtContext;
   
-  forwards to mkErrorCheck(localErrors, fwrd);
+  forwards to mkErrorCheck(localErrors, @fwrd);
 }
 
 -- Generate declarations for all defined variables
-function makeVarDecls
-Stmt ::= defs::[Def]
-{
-  return
-    foldStmt(
-      catMaybes(
-        map(
-          \ item::Pair<String ValueItem> ->
-            case item.snd of
-            | varValueItem(t) ->
-              just(
-                mkDecl(
-                  item.fst, item.snd.typerep,
-                  freeVarExpr(
-                    typeName(directTypeExpr(varSubType(t)), baseTypeExpr()),
-                    ableC_Expr { alloca })))
-            | _ -> nothing()
-            end,
-          foldr(consDefs, nilDefs(), defs).valueContribs)));
-}
+fun makeVarDecls Decls ::= defs::[Def] =
+  foldDecl(filterMap(
+    \ item::Pair<String ValueItem> ->
+      case item.snd of
+      | varValueItem(extType(_, varType(t))) ->
+        just(ableC_Decl {
+          $directTypeExpr{item.snd.typerep} $name{item.fst} = new var<$directTypeExpr{^t}>();
+        })
+      | _ -> nothing()
+      end,
+    foldr(consDefs, nilDefs(), defs).valueContribs));

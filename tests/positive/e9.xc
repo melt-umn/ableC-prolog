@@ -6,7 +6,7 @@ prolog {
 
   a(0) :- initially { printf("Before base\n"); }, finally { printf("After base\n"); }.
   a(5) :- initially { printf("Before cut\n"); }, finally { printf("After cut\n"); },
-                                                                                                      !, a(3).
+      !, a(3).
   a(N) :- initially { printf("Before - %d\n", N); }, finally { printf("After - %d\n", N); },
       N > 0, N1 is (N - 1), a(N1).
   a(N) :- initially { printf("Before / %d\n", N); }, finally { printf("After / %d\n", N); },

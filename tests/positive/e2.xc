@@ -1,4 +1,5 @@
 #include <unification.xh>
+#include <string.xh>
 #include <stdbool.h>
 
 template<typename a>
@@ -33,7 +34,8 @@ unsigned count_leaves(Tree<a> ?tree, a val) {
 }
 
 int main() {
-  Tree<int> ?tree = term<Tree<int> ?>(GC_malloc) {
+  allocate_using stack;
+  Tree<int> ?tree = term<Tree<int> ?> {
     node(node(node(leaf(1), leaf(2)), leaf(2)), node(leaf(3), leaf(2)))
   };
   printf("tree: %s\n", show(tree).text);
@@ -42,6 +44,7 @@ int main() {
   
   unsigned count = 0, *p_count = &count;
   query T is tree, subtree(T, A) {
+    allocate_using stack;
     printf("subtree(tree, A): %s\n", show(A).text);
     (*p_count)++;
     return false;
@@ -49,6 +52,7 @@ int main() {
   if (count != 9) return 2;
   
   bool result = query T is tree, subtree(T, node(A, leaf(2))) {
+    allocate_using stack;
     printf("subtree(tree, node(A, leaf(2))): %s\n", show(A).text);
     return true; // Stop after the first one
   };
@@ -60,6 +64,7 @@ int main() {
 
   count = 0;
   query T is tree, numleaves(T, 2, C) {
+    allocate_using stack;
     printf("numleaves(tree, 2, C): %d\n", value(C));
     (*p_count)++;
     return false; // Should only be 1 result

@@ -88,6 +88,7 @@ abstract production ruleLogicStmt
 top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
 {
   top.pp = pp"${n.pp}(${ppImplode(pp", ", les.pps)})${if null(gs.pps) then pp"." else pp" :- ${ppImplode(pp", ", gs.pps)}"}";
+  attachNote extensionGenerated("ableC-prolog");
   top.defs := [];
   top.errorDefs := [];
 
@@ -100,7 +101,6 @@ top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
   les.paramNamesIn = n.predicateItem.paramNames;
   les.expectedTypes = n.predicateItem.typereps;
   les.allowUnificationTypes = true;
-  les.allocator = ableC_Expr { alloca };
   gs.env = addEnv(les.defs, openScopeEnv(les.env));
   gs.predicateName = just(n.name);
   gs.refVariables = les.refVariables;
@@ -111,7 +111,7 @@ top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
           ts:add(_, ts:empty()),
           decorate les1 with {
             env = les.env; expectedTypes = les.expectedTypes; allowUnificationTypes = true;
-            isExcludableBy = les; paramNamesIn = les.paramNamesIn;}.isExcludable),
+            isExcludableBy = ^les; paramNamesIn = les.paramNamesIn;}.isExcludable),
         lookupAll(n.name, top.coveredPatternsIn)));
   gs.lastGoalCond =
     map(ts:toList,
@@ -126,7 +126,7 @@ top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
     then [errFromOrigin(top, s"Wrong number of arguments to predicate ${n.name} (expected ${toString(length(les.expectedTypes))}, got ${toString(les.count)})")]
     else [];
   
-  top.coveredPatterns = [(n.name, les)];
+  top.coveredPatterns = [(n.name, ^les)];
   top.predicateGoalCondParams = [(n.name, gs.goalCondParams)];
   top.cutPredicates = if gs.containsCut then [n.name] else [];
   
@@ -137,7 +137,7 @@ top::LogicStmt ::= n::Name les::LogicExprs gs::Goals
          // New scope containing the allocated variables
          {
            // Declare and initialize variables
-           $Stmt{makeVarDecls(les.defs ++ gs.defs)}
+           $Decl{decls(makeVarDecls(les.defs ++ gs.defs))}
            // Unify each argument expression on the LHS with each parameter value
            // If successful, evaluate the RHS
            if ($Expr{les.paramUnifyTransform} && $Expr{gs.transform}) {

@@ -6,7 +6,6 @@ imports edu:umn:cs:melt:exts:ableC:algebraicDataTypes:patternmatching:concretesy
 imports edu:umn:cs:melt:exts:ableC:prolog:core:concretesyntax;
 
 imports edu:umn:cs:melt:ableC:abstractsyntax:host;
-imports edu:umn:cs:melt:ableC:abstractsyntax:overloadable as ovrld;
 imports edu:umn:cs:melt:ableC:abstractsyntax:construction;
 imports edu:umn:cs:melt:ableC:abstractsyntax:env;
 imports edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
@@ -22,10 +21,10 @@ concrete productions top::TypeSpecifier_c
 marking terminal NewList_t 'newlist' lexer classes {Keyword, Global};
 
 concrete productions top::PrimaryExpr_c
-| 'newlist' LessThan_t sub::TypeName_c '>' LParen_t allocate::Expr_c ')' LBracket_t init::ListInitializerList_c ']'
-  { top.ast = constructList(sub.ast, allocate.ast, init.ast); }
-| 'newlist' LParen_t allocate::Expr_c ')' LBracket_t init::ListInitializerList_c ']'
-  { top.ast = inferredConstructList(allocate.ast, init.ast); }
+| 'newlist' LessThan_t sub::TypeName_c '>' LBracket_t init::ListInitializerList_c ']'
+  { top.ast = constructList(sub.ast, init.ast); }
+| 'newlist' LBracket_t init::ListInitializerList_c ']'
+  { top.ast = inferredConstructList(init.ast); }
 
 tracked nonterminal ListInitializerList_c with ast<ListInitializers>;
 
@@ -37,7 +36,7 @@ concrete productions top::ListInitializerList_c
         -- Semantic workaround for parsing ambiguity with |
         case decorate e.ast with {env = emptyEnv();
             controlStmtContext = initialControlStmtContext;} of
-        | ovrld:orBitExpr(h, t) -> consListInitializer(h, tailListInitializer(t))
+        | orBitExpr(h, t) -> consListInitializer(^h, tailListInitializer(^t))
         | _ -> consListInitializer(e.ast, nilListInitializer())
         end;
     }

@@ -1,97 +1,82 @@
 grammar edu:umn:cs:melt:exts:ableC:prolog:list:abstractsyntax;
 
 abstract production constructList
-top::Expr ::= sub::TypeName allocate::Expr init::ListInitializers
+top::Expr ::= sub::TypeName init::ListInitializers
 {
   propagate controlStmtContext;
-  top.pp = pp"newlist<${sub.pp}>(${allocate.pp})[${ppImplode(pp", ", init.pps)}]";
-  
+  top.pp = pp"newlist<${sub.pp}>[${ppImplode(pp", ", init.pps)}]";
+
   local localErrors::[Message] =
-    sub.errors ++ allocate.errors ++ init.errors ++
+    sub.errors ++ init.errors ++
     decorate sub.typerep with {otherType = sub.typerep;}.unifyErrors(top.env) ++
-    checkListHeaderDef("_list_d", top.env);
-  
-  sub.env = globalEnv(top.env);
-  allocate.env = sub.env;
-  init.env = addEnv(sub.defs, top.env);
+    checkListHeaderDef(top.env);
+
   init.maybeParamType = just(sub.typerep);
-  init.allocator = allocate;
-  
-  local fwrd::Expr = init.host;
-  
-  forwards to mkErrorCheck(localErrors, fwrd);
+
+  forward fwrd = letExpr(consDecl(typePreDecls(@sub), nilDecl()), @init.listTrans);
+
+  forwards to if null(localErrors) then @fwrd else errorExpr(localErrors);
 }
 
 abstract production inferredConstructList
-top::Expr ::= allocate::Expr init::ListInitializers
+top::Expr ::= init::ListInitializers
 {
-  propagate env, controlStmtContext;
-  top.pp = pp"newlist(${allocate.pp})[${ppImplode(pp", ", init.pps)}]";
-  
+  top.pp = pp"newlist[${ppImplode(pp", ", init.pps)}]";
+
   local localErrors::[Message] =
-    allocate.errors ++ init.errors ++
-    checkListHeaderDef("_list_d", top.env);
+    init.errors ++ checkListHeaderDef(top.env);
   
   init.maybeParamType = nothing();
-  init.allocator = allocate;
-  
-  local fwrd::Expr = init.host;
-  
-  forwards to mkErrorCheck(localErrors, fwrd);
+
+  forward fwrd = @init.listTrans;
+
+  forwards to if null(localErrors) then @fwrd else errorExpr(localErrors);
 }
 
 inherited attribute maybeParamType::Maybe<Type>;
+translation attribute listTrans::Expr;
 
-tracked nonterminal ListInitializers with pps, env, maybeParamType, allocator, 
-  errors, host<Expr>, controlStmtContext;
+tracked nonterminal ListInitializers with pps, maybeParamType,
+  errors, listTrans;
 
-propagate allocator, controlStmtContext, errors on ListInitializers;
+propagate errors on ListInitializers;
 
 abstract production consListInitializer
 top::ListInitializers ::= h::Expr t::ListInitializers
 {
   top.pps = h.pp :: t.pps;
-  
-  t.maybeParamType = just(fromMaybe(h.typerep, top.maybeParamType));
-  
-  local cons::Expr = 
-    ableC_Expr {
-      inst cons<$directTypeExpr{t.maybeParamType.fromJust}>
-    };
-  cons.env = top.env;
-  cons.controlStmtContext = initialControlStmtContext;
-  
-  -- Avoid rececorating h unless we are using it to infer the parameter type
-  h.env = if top.maybeParamType.isJust then addEnv(cons.defs, cons.env) else top.env;
-  t.env = addEnv((if top.maybeParamType.isJust then [] else cons.defs) ++ h.defs, h.env);
-  top.host =
-    ableC_Expr {
-      $Expr{decExpr(cons)}(
-        $Expr{top.allocator},
-        $Expr{if top.maybeParamType.isJust then decExpr(h) else h},
-        $Expr{t.host})
-    };
-  
+
+  nondecorated local paramType::Type = fromMaybe(h.typerep, top.maybeParamType);
+  t.maybeParamType = just(paramType);
+
+  top.listTrans = letExpr(
+    consDecl(bindExprDecl(freshName("l"), @h), nilDecl()),
+    boundVarExpr(
+      extType(nilQualifier(), listType(paramType)),
+      ableC_Expr {
+        ($directTypeExpr{extType(nilQualifier(), listType(paramType))})
+          inst _Cons<$directTypeExpr{paramType}>($Expr{h.bindRefExpr}, $Expr{@t.listTrans})
+      }));
+
   top.errors <-
     case top.maybeParamType of
     | just(t) ->
       if !typeAssignableTo(t, h.typerep)
-      then [errFromOrigin(h, s"Invalid type in list initializer: Expected ${showType(t)}, got ${showType(h.typerep)}")]
+      then [errFromOrigin(h, s"Invalid type in list initializer: Expected ${show(80, t)}, got ${show(80, h.typerep)}")]
       else []
-    | nothing() -> decorate h.typerep with {otherType = h.typerep;}.unifyErrors(t.env)
+    | nothing() -> decorate h.typerep with {otherType = h.typerep;}.unifyErrors(t.listTrans.env)
     end;
 }
 
 abstract production tailListInitializer
 top::ListInitializers ::= e::Expr
 {
-  propagate env;
   top.pps = [pp"| ${e.pp}"]; -- TODO: Fix this
-  top.host = decExpr(e);
+  top.listTrans = @e;
   
   top.errors <-
     if !typeAssignableTo(extType(nilQualifier(), varType(extType(nilQualifier(), listType(top.maybeParamType.fromJust)))), e.typerep)
-    then [errFromOrigin(e, s"Invalid type in list initializer tail: Expected list<${showType(top.maybeParamType.fromJust)}> ?, got ${showType(e.typerep)}")]
+    then [errFromOrigin(e, s"Invalid type in list initializer tail: Expected list<${show(80, top.maybeParamType.fromJust)}> ?, got ${show(80, e.typerep)}")]
     else [];
 }
 
@@ -99,27 +84,28 @@ abstract production nilListInitializer
 top::ListInitializers ::=
 {
   top.pps = [];
+
+  nondecorated local paramType::Type = top.maybeParamType.fromJust;
+  top.listTrans = boundVarExpr(
+    extType(nilQualifier(), listType(paramType)),
+    ableC_Expr {
+      ($directTypeExpr{extType(nilQualifier(), listType(paramType))})
+        inst _Nil<$directTypeExpr{paramType}>()
+    });
+
   top.errors <-
     if top.maybeParamType.isJust
     then []
     else [errFromOrigin(top, "Can't infer type argument for empty list")];
-  top.host =
-    ableC_Expr {
-      inst nil<$directTypeExpr{top.maybeParamType.fromJust}>($Expr{top.allocator})
-    };
 }
 
-abstract production listUnifyExpr
-top::Expr ::= e1::Expr e2::Expr trail::Expr
+abstract production listUnifyExpr implements Unify
+top::Expr ::= e1::Expr e2::Expr trail::Expr paramType::Type
 {
-  propagate env, controlStmtContext;
-  top.pp = pp"unifyList(${e1.pp}, ${e2.pp}, ${trail.pp})";
-  
-  local subType::Type = listSubType(e1.typerep);
-  forwards to
-    ableC_Expr {
-      inst unify_list<$directTypeExpr{subType}>($Expr{e1}, $Expr{e2}, $Expr{trail})
-    };
+  top.pp = pp"unifyList(${e1.pp}, ${e2.pp}, ${trail.pp}, ${paramType.lpp}${paramType.rpp})";
+
+  forwards to customTemplateUnifyExpr(@e1, @e2, @trail,
+    name("unify_list"), ^paramType);
 }
 
 inherited attribute paramType::Type;
@@ -127,7 +113,7 @@ inherited attribute paramType::Type;
 abstract production listLogicExpr
 top::LogicExpr ::= l::ListLogicExprs
 {
-  propagate env, allocator, allowUnificationTypes, refVariables, errors, defs;
+  propagate env, allowUnificationTypes, refVariables, errors, defs;
   top.pp = pp"[${ppImplode(pp", ", l.pps)}]";
   top.maybeTyperep =
     case l.maybeTyperep of
@@ -136,9 +122,9 @@ top::LogicExpr ::= l::ListLogicExprs
     end;
   top.transform = l.transform;
   
-  local baseType::Type =
+  nondecorated local baseType::Type =
     case top.expectedType of
-    | extType(_, varType(sub)) -> sub
+    | extType(_, varType(sub)) -> ^sub
     | t -> t
     end;
   l.paramType = listSubType(baseType);
@@ -164,10 +150,10 @@ top::LogicExpr ::= l::ListLogicExprs
     end;
 }
 
-tracked nonterminal ListLogicExprs with pps, env, paramType, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:expectedType, allowUnificationTypes, allocator, refVariables, errors, defs, maybeTyperep, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:transform<Expr>;
-flowtype ListLogicExprs = decorate {env, paramType, expectedType, allowUnificationTypes, allocator, refVariables}, pps {}, errors {decorate}, defs {env, paramType, expectedType, allowUnificationTypes}, maybeTyperep {env, allowUnificationTypes}, transform {decorate};
+tracked nonterminal ListLogicExprs with pps, env, paramType, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:expectedType, allowUnificationTypes, refVariables, errors, defs, maybeTyperep, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:transform<Expr>;
+flowtype ListLogicExprs = decorate {env, paramType, expectedType, allowUnificationTypes, refVariables}, pps {}, errors {decorate}, defs {env, paramType, expectedType, allowUnificationTypes}, maybeTyperep {env, allowUnificationTypes}, transform {decorate};
 
-propagate paramType, allocator, refVariables, errors, defs on ListLogicExprs;
+propagate paramType, refVariables, errors, defs on ListLogicExprs;
 
 abstract production consListLogicExpr
 top::ListLogicExprs ::= h::LogicExpr t::ListLogicExprs
@@ -176,7 +162,6 @@ top::ListLogicExprs ::= h::LogicExpr t::ListLogicExprs
   top.maybeTyperep = h.maybeTyperep; -- Only look at first elemet to avoid a dependency cycle
   top.transform =
     makeVarExpr(
-      top.allocator,
       top.allowUnificationTypes,
       top.expectedType,
       ableC_Expr {
@@ -215,7 +200,6 @@ top::ListLogicExprs ::=
   top.maybeTyperep = nothing();
   top.transform =
     makeVarExpr(
-      top.allocator,
       top.allowUnificationTypes,
       top.expectedType,
       ableC_Expr {
@@ -244,7 +228,7 @@ top::Pattern ::= l::ListPatterns
     case top.expectedType of
     | extType(_, listType(_)) -> []
     | errorType() -> []
-    | _ -> [errFromOrigin(top, s"List pattern expected to match a list (got ${showType(top.expectedType)})")]
+    | _ -> [errFromOrigin(top, s"List pattern expected to match a list (got ${show(80, top.expectedType)})")]
     end;
 }
 
@@ -328,21 +312,13 @@ top::ListPatterns ::=
 }
 
 -- Check the given env for the given template name
-function checkListHeaderDef
-[Message] ::= n::String env::Decorated Env
-{
-  return
-    if !null(lookupTemplate(n, env))
-    then []
-    else [errFromOrigin(ambientOrigin(), "Missing include of list.xh")];
-}
+fun checkListHeaderDef [Message] ::= env::Env =
+  if !null(lookupTemplate("_list_d", env))
+  then []
+  else [errFromOrigin(ambientOrigin(), "Missing include of list.xh")];
 
 -- Check that operand has list type
-function checkListType
-[Message] ::= sub::Type t::Type op::String
-{
-  return
-    if typeAssignableTo(extType(nilQualifier(), listType(sub)), t)
-    then []
-    else [errFromOrigin(ambientOrigin(), s"Operand to ${op} expected list<${showType(sub)}> (got ${showType(t)})")];
-}
+fun checkListType [Message] ::= sub::Type t::Type op::String =
+  if typeAssignableTo(extType(nilQualifier(), listType(sub)), t)
+  then []
+  else [errFromOrigin(ambientOrigin(), s"Operand to ${op} expected list<${show(80, sub)}> (got ${show(80, t)})")];

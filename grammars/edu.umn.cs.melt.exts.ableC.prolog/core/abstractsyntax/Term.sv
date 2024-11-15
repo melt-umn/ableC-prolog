@@ -1,70 +1,49 @@
 grammar edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax;
 
 abstract production termExpr
-top::Expr ::= ty::TypeName allocator::Expr le::LogicExpr
+top::Expr ::= ty::TypeName le::LogicExpr
 {
-  top.pp = pp"term<${ty.pp}>(${allocator.pp}) {${le.pp}}";
-  
-  local expectedAllocatorType::Type =
-    functionType(
-      pointerType(
-        nilQualifier(),
-        builtinType(nilQualifier(), voidType())),
-      protoFunctionType([builtinType(nilQualifier(), unsignedType(longType()))], false),
-      nilQualifier());
+  top.pp = pp"term<${ty.pp}> {${le.pp}}";
   
   local localErrors::[Message] =
-    ty.errors ++ allocator.errors ++ le.errors ++
+    ty.errors ++ le.errors ++
     (if !ty.typerep.isCompleteType(top.env)
-     then [errFromOrigin(top, s"term type parameter has incomplete type ${showType(ty.typerep)}")]
+     then [errFromOrigin(top, s"term type parameter has incomplete type ${show(80, ty.typerep)}")]
      else []) ++
-    (if !compatibleTypes(expectedAllocatorType, allocator.typerep, true, false)
-     then [errFromOrigin(allocator, s"Allocator must have type void *(unsigned long) (got ${showType(allocator.typerep)})")]
-     else []) ++
-    checkUnificationHeaderTemplateDef("_var_d", top.env);
-  
-  ty.env = top.env;
-  allocator.env = top.env;
-  propagate controlStmtContext;
+    checkUnificationHeaderDef(top.env);
 
   le.env = addEnv(ty.defs, ty.env);
   le.refVariables = [];
   le.expectedType = ty.typerep;
   le.allowUnificationTypes = false;
-  le.allocator = allocator;
   
-  local fwrd::Expr =
+  forward fwrd =
     ableC_Expr {
-      ({$Stmt{makeVarDecls(le.defs)}
+      ({$Decl{typePreDecls(@ty)}
+        $Decl{decls(makeVarDecls(le.defs))}
         $Expr{le.transform};})
     };
-  
-  forwards to mkErrorCheck(localErrors, fwrd);
+
+  forwards to if null(localErrors) then @fwrd else errorExpr(localErrors);
 }
 
 abstract production inferredTermExpr
-top::Expr ::= allocator::Expr le::LogicExpr
+top::Expr ::= le::LogicExpr
 {
-  top.pp = pp"term(${allocator.pp}) {${le.pp}}";
+  top.pp = pp"term {${le.pp}}";
   
   local localErrors::[Message] =
-    allocator.errors ++
     if !le.maybeTyperep.isJust
     then [errFromOrigin(top, "Couldn't infer type of term")]
     else le.errors;
 
-  propagate env, controlStmtContext;
-
-  le.expectedType = le.maybeTyperep.fromJust;
-  le.refVariables = [];
-  le.allowUnificationTypes = false;
-  le.allocator = allocator;
+  le.env = top.env;
+  local inferredType::Type = fromMaybe(errorType(), le.maybeTyperep);
   
-  local fwrd::Expr =
+  forward fwrd =
     termExpr(
       typeName(directTypeExpr(le.maybeTyperep.fromJust), baseTypeExpr()),
-      decExpr(allocator),
-      decLogicExpr(le));
-  
-  forwards to mkErrorCheck(localErrors, fwrd);
+      @le);
+
+  forwards to if null(localErrors) then @fwrd else errorExpr(localErrors);
 }
