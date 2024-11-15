@@ -166,15 +166,15 @@ top::LogicExpr ::=
   top.pp = pp"_";
   attachNote extensionGenerated("ableC-prolog");
   top.maybeTyperep = nothing();
-  top.transform = ableC_Expr { new var<$directTypeExpr{baseType}>() };
+  top.transform = freeVarTypeNameExpr(typeName(baseType.baseTypeExpr, baseType.typeModifierExpr));
   
-  nondecorated local baseType::Type =
+  local baseType::Type =
     case top.expectedType of
     | extType(_, varType(sub)) -> ^sub
     | t -> t
     end;
   local expectedType::Type = top.expectedType;
-  expectedType.otherType = extType(nilQualifier(), varType(baseType));
+  expectedType.otherType = extType(nilQualifier(), varType(^baseType));
   top.errors <-
     if top.allowUnificationTypes
     then expectedType.unifyErrors(top.env)
@@ -336,11 +336,28 @@ top::LogicExpr ::= n::Name les::LogicExprs
     end;
 }
 
+-- We cannot have Type appearing in the translation AST,
+-- since it will undergo a reflective template instantation.
+-- Instead, these wrapper productions can be used with a TypeName.
+production freeVarTypeNameExpr
+top::Expr ::= ty::TypeName
+{
+  top.pp = pp"freevar<${ty}>";
+  forwards to letExpr(consDecl(typePreDecls(@ty), nilDecl()), freeVarExpr(ty.typerep));
+}
+
+production boundVarTypeNameExpr
+top::Expr ::= ty::TypeName e::Expr
+{
+  top.pp = pp"freevar<${ty}>";
+  forwards to letExpr(consDecl(typePreDecls(@ty), nilDecl()), boundVarExpr(ty.typerep, @e));
+}
+
 -- Ensure that an expression is a unification variable of some sort
 fun makeVarExpr
 Expr ::= allowUnificationTypes::Boolean t::Type e::Expr =
   case allowUnificationTypes, t of
   | false, extType(_, varType(sub)) ->
-    ableC_Expr { new var<$directTypeExpr{^sub}>($Expr{e}) }
+    boundVarTypeNameExpr(typeName(sub.baseTypeExpr, sub.typeModifierExpr), e)
   | _, _ -> e
   end;

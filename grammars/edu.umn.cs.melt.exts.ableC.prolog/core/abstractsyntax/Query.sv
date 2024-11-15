@@ -58,7 +58,8 @@ fun makeVarDecls Decls ::= defs::[Def] =
       case item.snd of
       | varValueItem(extType(_, varType(t))) ->
         just(ableC_Decl {
-          $directTypeExpr{item.snd.typerep} $name{item.fst} = new var<$directTypeExpr{^t}>();
+          $directTypeExpr{item.snd.typerep} $name{item.fst} =
+            $Expr{freeVarTypeNameExpr(typeName(t.baseTypeExpr, t.typeModifierExpr))};
         })
       | _ -> nothing()
       end,

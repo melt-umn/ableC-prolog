@@ -492,7 +492,7 @@ top::Goal ::= g::Goal
     else [];
   
   g.transformIn = ableC_Expr { (_Bool)1 };
-  g.continuationTransformIn = ableC_Expr { lambda () -> (_Bool)1 };
+  g.continuationTransformIn = ableC_Expr { lambda[] () -> (_Bool)1 };
   g.lastGoalCond = [[]];
   top.transform =
     ableC_Expr {
