@@ -42,12 +42,12 @@ simplified(exponent(_, E), value(1)) :- simplified(E, value(0)), !.
 simplified(exponent(E1, E2), exponent(E3, value(N))) :- simplified(E1, negative(E3)), simplified(E2, value(N)), 0 is (mod(N, 2)), !.  % Exponent is even
 simplified(exponent(E1, E2), negative(exponent(E3, value(N)))) :- simplified(E1, negative(E3)), simplified(E2, value(N)), 1 is (mod(N, 2)), !. % Exponent is odd
 simplified(exponent(E1, E2), E3) :- simplified(E1, E3), simplified(E2, value(1)), !.
-simplified(exponent(E1, E2), E3) :- simplified(E1, B), simplified(E2, logrithm(B, E3)), !.
+simplified(exponent(E1, E2), E3) :- simplified(E1, B), simplified(E2, logarithm(B, E3)), !.
 simplified(exponent(E1, E2), exponent(E3, E4)) :- !, simplified(E1, E3), simplified(E2, E4).
 
-simplified(logrithm(E1, E2), value(1)) :- simplified(E1, B), simplified(E2, B), !.
-simplified(logrithm(E1, E2), E3) :- simplified(E1, B), simplified(E2, exponent(B, E3)), !.
-simplified(logrithm(E1, E2), logrithm(E3, E4)) :- !, simplified(E1, E3), simplified(E2, E4).
+simplified(logarithm(E1, E2), value(1)) :- simplified(E1, B), simplified(E2, B), !.
+simplified(logarithm(E1, E2), E3) :- simplified(E1, B), simplified(E2, exponent(B, E3)), !.
+simplified(logarithm(E1, E2), logarithm(E3, E4)) :- !, simplified(E1, E3), simplified(E2, E4).
 
 simplified(E, E).
 
@@ -60,7 +60,7 @@ constant(subtract(E1, E2), V) :- constant(E1, V), constant(E2, V).
 constant(multiply(E1, E2), V) :- constant(E1, V), constant(E2, V).
 constant(divide(E1, E2), V) :- constant(E1, V), constant(E2, V).
 constant(exponent(E1, E2), V) :- constant(E1, V), constant(E2, V).
-constant(logrithm(E1, E2), V) :- constant(E1, V), constant(E2, V).
+constant(logarithm(E1, E2), V) :- constant(E1, V), constant(E2, V).
 
 d(value(_), _, value(0)) :- !.
 d(variable(X), X, value(1)) :- !.
@@ -71,5 +71,5 @@ d(subtract(U, V), X, subtract(DU, DV)) :- !, d(U, X, DU), d(V, X, DV).
 d(multiply(U, V), X, add(multiply(U, DV), multiply(V, DU))) :- !, d(U, X, DU), d(V, X, DV).
 d(divide(U, V), X, divide(subtract(multiply(V, DU), multiply(U, DV)), exponent(V, value(2)))) :- !, d(U, X, DU), d(V, X, DV).
 d(exponent(U, V), X, multiply(V, multiply(DU, exponent(U, subtract(V, value(1)))))) :- constant(V, X), !, d(U, X, DU).
-d(exponent(U, V), X, multiply(DV, multiply(logrithm(e(), U), exponent(U, V)))) :- constant(U, X), !, d(V, X, DV).
-d(logrithm(U, V), X, divide(DV, multiply(logrithm(e(), U), V))) :- constant(U, X), !, d(V, X, DV).
+d(exponent(U, V), X, multiply(DV, multiply(logarithm(e(), U), exponent(U, V)))) :- constant(U, X), !, d(V, X, DV).
+d(logarithm(U, V), X, divide(DV, multiply(logarithm(e(), U), V))) :- constant(U, X), !, d(V, X, DV).

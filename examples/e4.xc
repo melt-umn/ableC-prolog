@@ -14,7 +14,7 @@ datatype Expr {
   multiply(Expr ?e1, Expr ?e2);
   divide(Expr ?e1, Expr ?e2);
   exponent(Expr ?e1, Expr ?e2);
-  logrithm(Expr ?e1, Expr ?e2);
+  logarithm(Expr ?e1, Expr ?e2);
 };
 
 size_t showExprMaxLen(Expr e);
@@ -33,8 +33,8 @@ size_t showExprMaxLen(Expr e) {
      multiply(e1, e2) -> 7 + showMaxLen(e1) + showMaxLen(e2);
      divide(e1, e2) -> 7 + showMaxLen(e1) + showMaxLen(e2);
      exponent(e1, e2) -> 7 + showMaxLen(e1) + showMaxLen(e2);
-     logrithm(?&e(), e) -> 6 + showMaxLen(e);
-     logrithm(e1, e2) -> 11 + showMaxLen(e1) + showMaxLen(e2););
+     logarithm(?&e(), e) -> 6 + showMaxLen(e);
+     logarithm(e1, e2) -> 11 + showMaxLen(e1) + showMaxLen(e2););
 }
 
 size_t wrapParens(char *buf, Expr ?e) {
@@ -61,8 +61,8 @@ size_t showExprToBuf(char *buf, Expr e) {
      multiply(e1, e2) -> showBinOp(buf, e1, e2, "*");
      divide(e1, e2) -> showBinOp(buf, e1, e2, "/");
      exponent(e1, e2) -> showBinOp(buf, e1, e2, "^");
-     logrithm(?&e(), e) -> buildStr(buf, "ln(" + show(e) + ")");
-     logrithm(e1, e2) -> buildStr(buf, "log(" + show(e1) + ", " + show(e2) + ")"););
+     logarithm(?&e(), e) -> buildStr(buf, "ln(" + show(e) + ")");
+     logarithm(e1, e2) -> buildStr(buf, "log(" + show(e1) + ", " + show(e2) + ")"););
 }
 
 int mod(int a, int b) {
@@ -103,7 +103,7 @@ int main() {
   //test(term<Expr ?> { exponent(negative(variable("x")), value(3)) });
   //test(term<Expr ?> { exponent(negative(variable("x")), add(value(4), negative(value(1)))) });
 
-  //Expr ?e = term<Expr ?> { logrithm(value(10), logrithm(value(10), logrithm(value(10), logrithm(value(10), logrithm(value(10), logrithm(value(10), variable("x"))))))) };
+  //Expr ?e = term<Expr ?> { logarithm(value(10), logarithm(value(10), logarithm(value(10), logarithm(value(10), logarithm(value(10), logarithm(value(10), variable("x"))))))) };
   //Expr ?e = term<Expr ?> { divide(divide(divide(divide(variable(x), variable(x)), variable(x)), variable(x)), variable(x)) };
   Expr ?e = term<Expr ?> { multiply(add(variable("x"), value(1)), multiply(add(exponent(variable("x"), value(2)), value(2)), multiply(add(exponent(variable("x"), value(3)), value(3)), multiply(add(exponent(variable("x"), value(4)), value(4)), add(exponent(variable("x"), value(5)), value(5)))))) };
   
