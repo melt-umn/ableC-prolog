@@ -51,6 +51,14 @@ top::Expr ::= gs::Goals body::Stmt
   forwards to mkErrorCheck(localErrors, @fwrd);
 }
 
+production queryElseStmt
+top::Stmt ::= gs::Goals body::Stmt el::Stmt
+{
+  top.pp = pp"query ${ppImplode(pp", ", gs.pps)} ${braces(nestlines(2, body.pp))} else ${el.pp}";
+
+  forwards to ifStmtNoElse(notExpr(queryExpr(@gs, @body)), @el);
+}
+
 -- Generate declarations for all defined variables
 fun makeVarDecls Decls ::= defs::[Def] =
   foldDecl(filterMap(
