@@ -11,8 +11,6 @@ top::BaseTypeExpr ::= q::Qualifiers sub::TypeName
     | extType(_, listType(t)) -> ^t
     | _ -> errorType()
     end;
-  
-  sub.env = globalEnv(top.env);
 
   local localErrors::[Message] = sub.errors ++ checkListHeaderDef(top.env);
 
