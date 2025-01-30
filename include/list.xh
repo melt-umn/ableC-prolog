@@ -19,7 +19,7 @@ list<a> ?cons(a head, list<a> ?tail, arena_t ar) {
 template<typename a>
 list<a> ?nil(arena_t ar) {
   allocate_using arena ar;
-  return (list<a>?)new var<_list_d<a>>(_Nil());
+  return (list<a>?)new var<_list_d<a>>(_Nil<a>());
 }
 
 template<typename a>

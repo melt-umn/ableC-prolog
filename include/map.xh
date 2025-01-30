@@ -25,8 +25,9 @@ prolog {
 }
 
 template<typename k, typename v, int (*cmp)(k, k)>
-map<k, v, cmp> ?emptyMap(void *(*alloc)(size_t)) {
-  return boundvar(alloc, Empty<k, v, cmp>());
+map<k, v, cmp> ?emptyMap(arena_t ar) {
+  allocate_using arena ar;
+  return new var(Empty<k, v, cmp>());
 }
 
 template<typename k, typename v, int (*cmp)(k, k)>
@@ -45,6 +46,7 @@ v mapGet(map<k, v, cmp> ?m, k key) {
      ?&Node(?&key1, _, l, r) @when(cmp(key1, key) < 0) -> mapGet(r, key);
      ?&Node(_, ?&value, l, r) -> value;
      ?&Empty() -> ({
+         allocate_using stack;
          fprintf(stderr, "Key %s not in map\n", show(key).text);
          exit(1);
          // Unreachable, needed since pattern RHS must have type v
@@ -54,17 +56,18 @@ v mapGet(map<k, v, cmp> ?m, k key) {
 }
 
 template<typename k, typename v, int (*cmp)(k, k)>
-map<k, v, cmp> ?mapInsert(void *(*alloc)(size_t), map<k, v, cmp> ?m, k key, v value) {
+map<k, v, cmp> ?mapInsert(map<k, v, cmp> ?m, k key, v value, arena_t ar) {
+  allocate_using arena ar;
   return match (m)
     (?&Node(k@?&key1, v, l, r) @when(cmp(key1, key) > 0) ->
-       boundvar(alloc, Node(k, v, mapInsert(alloc, l, key, value), r));
+       new var(Node(k, v, mapInsert(l, key, value, ar), r));
      ?&Node(k@?&key1, v, l, r) @when(cmp(key1, key) < 0) ->
-       boundvar(alloc, Node(k, v, l, mapInsert(alloc, r, key, value)));
+       new var(Node(k, v, l, mapInsert(r, key, value, ar)));
      ?&Node(_, _, l, r) ->
-       boundvar(alloc, Node(boundvar(alloc, key), boundvar(alloc, value), l, r));
+       new var(Node(new var(key), new var(value), l, r));
      ?&Empty() ->
        // m is empty
-       boundvar(alloc, Node(boundvar(alloc, key), boundvar(alloc, value), m, m)););
+       new var(Node(new var(key), new var(value), m, m)););
 }
 
 template<typename k, typename v, int (*cmp)(k, k)>
@@ -73,6 +76,7 @@ k mapGetMaxKey(map<k, v, cmp> ?m) {
     (?&Node(?&key, _, _, ?&Empty()) -> key;
      ?&Node(_, _, _, r) -> mapGetMaxKey(r);
      ?&Empty() -> ({
+         allocate_using stack;
          fprintf(stderr, "Map is empty\n");
          exit(1);
          // Unreachable, needed since pattern RHS must have type k
@@ -82,21 +86,20 @@ k mapGetMaxKey(map<k, v, cmp> ?m) {
 }
 
 template<typename k, typename v, int (*cmp)(k, k)>
-map<k, v, cmp> ?mapDelete(void *(*alloc)(size_t), map<k, v, cmp> ?m, k key) {
+map<k, v, cmp> ?mapDelete(map<k, v, cmp> ?m, k key, arena_t ar) {
+  allocate_using arena ar;
   return match (m)
     (?&Node(k@?&key1, v, l, r) @when(cmp(key1, key) > 0) ->
-       boundvar(alloc, Node(k, v, mapDelete(alloc, l, key), r));
+       new var(Node(k, v, mapDelete(l, key, ar), r));
      ?&Node(k@?&key1, v, l, r) @when(cmp(key1, key) < 0) ->
-       boundvar(alloc, Node(k, v, l, mapDelete(alloc, r, key)));
+       new var(Node(k, v, l, mapDelete(r, key, ar)));
      ?&Node(_, _, ?&Empty(), r) -> r;
      ?&Node(_, _, l, r) -> ({
          k maxKey = mapGetMaxKey(l);
-         boundvar(alloc,
-                  Node(boundvar(alloc, maxKey),
-                       boundvar(alloc, mapGet(l, maxKey)),
-                       mapDelete(alloc, l, maxKey), r));
+         new var(Node(new var(maxKey), new var(mapGet(l, maxKey)), mapDelete(l, maxKey, ar), r));
        });
      ?&Empty() -> ({
+         allocate_using stack;
          fprintf(stderr, "Key %s not in map\n", show(key).text);
          exit(1);
          // Unreachable, needed since pattern RHS must have type map<k, v, cmp> ?
