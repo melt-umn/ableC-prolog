@@ -24,6 +24,7 @@ prolog {
   #include "map.pl"
 }
 
+// Utilities for pure, aliased, arena-allocated maps
 template<typename k, typename v, int (*cmp)(k, k)>
 map<k, v, cmp> ?emptyMap(arena_t ar) {
   allocate_using arena ar;
@@ -48,7 +49,7 @@ v mapGet(map<k, v, cmp> ?m, k key) {
      ?&Empty() -> ({
          allocate_using stack;
          fprintf(stderr, "Key %s not in map\n", show(key).text);
-         exit(1);
+         abort();
          // Unreachable, needed since pattern RHS must have type v
          v res;
          res;
@@ -78,7 +79,7 @@ k mapGetMaxKey(map<k, v, cmp> ?m) {
      ?&Empty() -> ({
          allocate_using stack;
          fprintf(stderr, "Map is empty\n");
-         exit(1);
+         abort();
          // Unreachable, needed since pattern RHS must have type k
          k res;
          res;
@@ -101,11 +102,87 @@ map<k, v, cmp> ?mapDelete(map<k, v, cmp> ?m, k key, arena_t ar) {
      ?&Empty() -> ({
          allocate_using stack;
          fprintf(stderr, "Key %s not in map\n", show(key).text);
-         exit(1);
+         abort();
          // Unreachable, needed since pattern RHS must have type map<k, v, cmp> ?
          map<k, v, cmp> ?res;
          res;
        }););
+}
+
+template<typename k, typename v, int (*cmp)(k, k)>
+map<k, v, cmp> ?copyMap(map<k, v, cmp> ?m, arena_t ar) {
+  allocate_using arena ar;
+  return match (m)
+    (?&Node(k, v, l, r) -> new var(Node(k, v, copyMap(l, ar), copyMap(r, ar)));
+     ?&Empty() -> new var(Empty<k, v, cmp>()););
+}
+
+// Utilities for mutable, non-aliased, heap allocated maps
+template<typename k, typename v, int (*cmp)(k, k)>
+map<k, v, cmp> ?newMap() {
+  allocate_using heap;
+  return new var(Empty<k, v, cmp>());
+}
+
+template<typename k, typename v, int (*cmp)(k, k)>
+void freeMap(map<k, v, cmp> ?m) {
+  allocate_using heap;
+  match (m) {
+    ?&Node(_, _, l, r) -> {
+      freeMap(l);
+      freeMap(r);
+    }
+  }
+  delete m;
+}
+
+template<typename k, typename v, int (*cmp)(k, k)>
+void mapInsertMut(map<k, v, cmp> ?m, k key, v value) {
+  allocate_using heap;
+  match (m) {
+    ?&Node(k@?&key1, _, l, r) @when(cmp(key1, key) > 0) -> {
+      mapInsertMut(l, key, value);
+    }
+    ?&Node(k@?&key1, _, l, r) @when(cmp(key1, key) < 0) -> {
+      mapInsertMut(r, key, value);
+    }
+    ?&Node(k, v, l, r) -> {
+      set_var(k, key);
+      set_var(v, value);
+    }
+    ?&Empty() -> {
+      set_var(m, Node(
+        new var(key), new var(value),
+        new var(Empty<k, v, cmp>()), new var(Empty<k, v, cmp>())));
+    }
+  }
+}
+
+template<typename k, typename v, int (*cmp)(k, k)>
+void mapDeleteMut(map<k, v, cmp> ?m, k key) {
+  allocate_using heap;
+  match (m) {
+    ?&Node(k@?&key1, _, l, r) @when(cmp(key1, key) > 0) -> {
+      mapDeleteMut(l, key);
+    }
+    ?&Node(k@?&key1, _, l, r) @when(cmp(key1, key) < 0) -> {
+      mapDeleteMut(r, key);
+    }
+    ?&Node(_, _, ?&Empty(), r) -> {
+      set_var(m, value(r));
+      delete r;
+    }
+    ?&Node(k1, v1, l, r) -> {
+      k maxKey = mapGetMaxKey(l);
+      set_var(k1, maxKey);
+      set_var(v1, mapGet(l, maxKey));
+      mapDeleteMut(l, maxKey);
+    }
+     ?&Empty() -> {
+      fprintf(stderr, "Key %s not in map\n", show(key).text);
+      abort();
+    }
+  }
 }
 
 #endif
