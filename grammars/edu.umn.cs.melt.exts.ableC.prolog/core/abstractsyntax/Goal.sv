@@ -283,14 +283,14 @@ top::Goal ::= le::LogicExpr e::Expr
           le.transform,
           ableC_Expr {
             ({$Stmt{makeUnwrappedVarDecls(e.freeVariables, top.env)}
-              $Expr{^e};})
+              ($directTypeExpr{le.expectedType})$Expr{^e};})
           },
           just(ableC_Expr { _trail }))} &&
       $Expr{top.transformIn}
     };
 
   le.env = top.env;
-  le.expectedType = e.typerep;
+  le.expectedType = e.typerep.withoutTypeQualifiers;
   le.allowUnificationTypes = true;
   -- Don't add le.defs to e's env here, since decorating le requires e's typerep
   e.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
