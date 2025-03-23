@@ -128,7 +128,9 @@ template<typename k, typename v, int (*cmp)(k, k)>
 void freeMap(map<k, v, cmp> ?m) {
   allocate_using heap;
   match (m) {
-    ?&Node(_, _, l, r) -> {
+    ?&Node(k, v, l, r) -> {
+      delete k;
+      delete v;
       freeMap(l);
       freeMap(r);
     }
@@ -168,8 +170,11 @@ void mapDeleteMut(map<k, v, cmp> ?m, k key) {
     ?&Node(k@?&key1, _, l, r) @when(cmp(key1, key) < 0) -> {
       mapDeleteMut(r, key);
     }
-    ?&Node(_, _, ?&Empty(), r) -> {
+    ?&Node(k, v, l@?&Empty(), r) -> {
       set_var(m, value(r));
+      delete k;
+      delete v;
+      delete l;
       delete r;
     }
     ?&Node(k1, v1, l, r) -> {
@@ -178,7 +183,7 @@ void mapDeleteMut(map<k, v, cmp> ?m, k key) {
       set_var(v1, mapGet(l, maxKey));
       mapDeleteMut(l, maxKey);
     }
-     ?&Empty() -> {
+    ?&Empty() -> {
       fprintf(stderr, "Key %s not in map\n", show(key).text);
       abort();
     }
