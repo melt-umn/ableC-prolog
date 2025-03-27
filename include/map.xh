@@ -110,11 +110,23 @@ map<k, v, cmp> ?mapDelete(map<k, v, cmp> ?m, k key, arena_t ar) {
 }
 
 template<typename k, typename v, int (*cmp)(k, k)>
-map<k, v, cmp> ?copyMap(map<k, v, cmp> ?m, arena_t ar) {
+map<k, v, cmp> ?copyMap(map<k, v, cmp> ?m, k (*copyKey)(k, arena_t), v (*copyVal)(v, arena_t), arena_t ar) {
   allocate_using arena ar;
   return match (m)
-    (?&Node(k, v, l, r) -> new var(Node(k, v, copyMap(l, ar), copyMap(r, ar)));
+    (?&Node(?&k, ?&v, l, r) ->
+       new var(Node(
+          new var(copyKey? copyKey(k, ar) : k),
+          new var(copyVal? copyVal(v, ar) : v),
+          copyMap(l, copyKey, copyVal, ar),
+          copyMap(r, copyKey, copyVal, ar)));
      ?&Empty() -> new var(Empty<k, v, cmp>()););
+}
+
+template<typename k, typename v, int (*cmp)(k, k)>
+size_t mapSize(map<k, v, cmp> ?m) {
+  return match (m)
+    (?&Node(?&k, ?&v, l, r) -> 1 + mapSize(l) + mapSize(r);
+     ?&Empty() -> 0;);
 }
 
 // Utilities for mutable, non-aliased, heap allocated maps
