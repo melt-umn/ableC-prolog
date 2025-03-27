@@ -35,9 +35,13 @@ top::Goals ::= h::Goal t::Goals
   t.tailCallPermitted = top.tailCallPermitted && !h.usesContinuation;
   
   top.continuationTransform = ableC_Expr {
+    proto_typedef size_t;
     lambda () -> _Bool {
       allocate_using stack;
-      return $Expr{top.transform};
+      size_t _cont_trail_index = _trail.length;
+      _Bool _res = $Expr{top.transform};
+      undo_trail(_trail, _cont_trail_index);
+      return _res;
     }
   };
   top.transform = h.transform;
@@ -500,7 +504,7 @@ top::Goal ::= g::Goal
       ({size_t _not_trail_index = _trail.length;
         $Expr{g.transform}? 0 :
           // Undo substitutions made before failure.  Only needed if g fails, since when g succeeds
-          // the entire rule fails so thse are fixed later.
+          // the entire rule fails so these are fixed later.
           (undo_trail(_trail, _not_trail_index), 1);}) && $Expr{top.transformIn}
     };
 }
