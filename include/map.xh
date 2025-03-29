@@ -125,7 +125,7 @@ map<k, v, cmp> ?copyMap(map<k, v, cmp> ?m, k (*copyKey)(k, arena_t), v (*copyVal
 template<typename k, typename v, int (*cmp)(k, k)>
 size_t mapSize(map<k, v, cmp> ?m) {
   return match (m)
-    (?&Node(?&k, ?&v, l, r) -> 1 + mapSize(l) + mapSize(r);
+    (?&Node(_, _, l, r) -> 1 + mapSize(l) + mapSize(r);
      ?&Empty() -> 0;);
 }
 
