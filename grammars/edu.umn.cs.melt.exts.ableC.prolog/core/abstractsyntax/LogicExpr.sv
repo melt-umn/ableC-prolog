@@ -107,8 +107,10 @@ top::LogicExpr ::= n::Name
   propagate env;
   forwards to
     case n.valueItem of
-    | enumValueItem(_) -> constLogicExpr(declRefExpr(@n))
-    | parameterValueItem(_) -> constLogicExpr(declRefExpr(@n))
+    | enumValueItem(_) -> exprLogicExpr(declRefExpr(@n))
+    -- TODO: probably only want to permit directly referring to params
+    -- inside predicate declarations, not queries.
+    | parameterValueItem(_) -> exprLogicExpr(declRefExpr(@n))
     | _ -> varLogicExpr(@n)
     end;
 }
@@ -187,21 +189,29 @@ top::LogicExpr ::=
   top.isExcludable = [[]];
 }
 
-abstract production constLogicExpr
+abstract production exprLogicExpr
 top::LogicExpr ::= e::Expr
 {
   top.pp = e.pp;
   attachNote extensionGenerated("ableC-prolog");
   top.maybeTyperep = just(e.typerep);
+
   top.transform =
-    makeVarExpr(
-      top.allowUnificationTypes, top.expectedType,
-      case baseType.defaultFunctionArrayLvalueConversion, e.typerep.defaultFunctionArrayLvalueConversion of
-      | extType(_, stringType()), pointerType(_, builtinType(_, signedType(charType()))) ->
-        strExpr(^e)
-      | t, _ -> ableC_Expr { ($directTypeExpr{t})$Expr{^e} }
-      end);
- 
+    case baseType.defaultFunctionArrayLvalueConversion, e.typerep.defaultFunctionArrayLvalueConversion of
+    | extType(_, stringType()), pointerType(_, builtinType(_, signedType(charType()))) ->
+      makeVarExpr(top.allowUnificationTypes, top.expectedType, strExpr(^e))
+    | _, extType(_, varType(_)) when !top.allowUnificationTypes ->
+      case top.expectedType of
+      | extType(_, varType(_)) -> ^e
+      | _ ->
+        -- e is a variable, but we can't have one here
+        ableC_Expr {
+          inst value_loc<$directTypeExpr{^baseType}>($Expr{^e}, $stringLiteralExpr{getParsedOriginLocationOrFallback(e).unparse})
+        }
+      end
+    | t, _ -> makeVarExpr(top.allowUnificationTypes, top.expectedType, ableC_Expr { ($directTypeExpr{t})$Expr{^e} })
+    end;
+
   e.controlStmtContext = initialControlStmtContext;
   
   local baseType::Type =
@@ -224,12 +234,12 @@ top::LogicExpr ::= e::Expr
 
   top.isExcludable =
     case e, decorate top.isExcludableBy with {env = top.env;} of
-    | stringLiteral(s1), constLogicExpr(stringLiteral(s2)) when s1 != s2 ->
+    | stringLiteral(s1), exprLogicExpr(stringLiteral(s2)) when s1 != s2 ->
       case top.expectedType of
       | extType(_, varType(_)) -> [[top.paramNameIn]]
       | _ -> []
       end
-    | e1, constLogicExpr(e2)
+    | e1, exprLogicExpr(e2)
       when case e1.integerConstantValue, e2.integerConstantValue of
         | just(i1), just(i2) -> i1 != i2
         | _, _ -> false

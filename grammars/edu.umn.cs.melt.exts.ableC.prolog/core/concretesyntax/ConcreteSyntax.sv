@@ -219,11 +219,13 @@ concrete productions top::LogicExpr_c
     top.declaredIdents = [fromId(id)];
   }
 | c::PrologConstant_c
-  { top.ast = constLogicExpr(c.ast); }
+  { top.ast = exprLogicExpr(c.ast); }
 | '-' c::PrologConstant_c
-  { top.ast = constLogicExpr(negativeExpr(c.ast)); }
+  { top.ast = exprLogicExpr(negativeExpr(c.ast)); }
 | sc::StringConstant_t
-  { top.ast = constLogicExpr(stringLiteral(sc.lexeme)); }
+  { top.ast = exprLogicExpr(stringLiteral(sc.lexeme)); }
+| '(' e::Expr_c ')'
+  { top.ast = exprLogicExpr(e.ast); }
 | id::Identifier_c LParen_t le::LogicExprs_c ')'
   {
     top.ast = constructorLogicExpr(id.ast, foldLogicExpr(le.ast));
