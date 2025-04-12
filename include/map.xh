@@ -21,6 +21,8 @@ prolog {
   mapSelectMin<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k ?key, v ?value, map<k, v, cmp> ?m2);
   mapSelectMax<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, k ?key, v ?value, map<k, v, cmp> ?m2);
   mapKeys<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m, list<k ?> ?keys, v value);
+  mapContainsAll<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, map<k, v, cmp> ?m2);
+  mapsEqual<typename k, typename v, int (*cmp)(k, k)>(map<k, v, cmp> ?m1, map<k, v, cmp> ?m2);
   #include "map.pl"
 }
 

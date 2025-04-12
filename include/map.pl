@@ -27,3 +27,7 @@ mapSelectMax(Node(K1, V1, L, R1), K2, V2, Node(K1, V1, L, R2)) :- mapSelectMax(R
 mapKeys(Node(K, V, L, R), [K | KS], V) :- mapKeys(L, LKS, V), mapKeys(R, RKS, V), append(LKS, RKS, KS).
 mapKeys(Node(_, V1, L, R), KS, V2) :- V1 =\= V2, mapKeys(L, LKS, V2), mapKeys(R, RKS, V2), append(LKS, RKS, KS).
 mapKeys(Empty(), [], _).
+
+mapContainsAll(Empty(), _).
+mapContainsAll(Node(K, V, L, R), M) :- mapContains(M, K, V), mapContainsAll(L, M), mapContainsAll(R, M).
+mapsEqual(M1, M2) :- mapContainsAll(M1, M2), !, mapContainsAll(M2, M1).
