@@ -97,7 +97,8 @@ inherited attribute expectedType::Type;
 closed tracked nonterminal LogicExpr with pp, env, expectedType, allowUnificationTypes, refVariables, paramNameIn, isExcludable, isExcludableBy<LogicExpr>, errors, defs, maybeTyperep, transform<Expr>;
 flowtype LogicExpr = decorate {env, expectedType, allowUnificationTypes, refVariables}, pp {}, isExcludable {env, expectedType, isExcludableBy, paramNameIn}, errors {decorate}, defs {env, expectedType, allowUnificationTypes}, maybeTyperep {env, allowUnificationTypes}, transform {decorate};
 
-propagate env, refVariables, errors, defs on LogicExpr;
+propagate refVariables, errors, defs on LogicExpr;
+propagate env on LogicExpr excluding exprLogicExpr;
 propagate allowUnificationTypes on LogicExpr excluding constructorLogicExpr;
 
 abstract production nameLogicExpr
@@ -197,7 +198,7 @@ top::LogicExpr ::= e::Expr
   attachNote extensionGenerated("ableC-prolog");
   top.maybeTyperep = just(e.typerep);
 
-  top.transform =
+  nondecorated local trans::Expr = 
     case baseType.defaultFunctionArrayLvalueConversion, e.typerep.defaultFunctionArrayLvalueConversion of
     | extType(_, stringType()), pointerType(_, builtinType(_, signedType(charType()))) ->
       makeVarExpr(top.allowUnificationTypes, top.expectedType, strExpr(^e))
@@ -212,7 +213,9 @@ top::LogicExpr ::= e::Expr
       end
     | t, _ -> makeVarExpr(top.allowUnificationTypes, top.expectedType, ableC_Expr { ($directTypeExpr{t})$Expr{^e} })
     end;
+  top.transform = stmtExpr(makeUnwrappedVarDecls(e.freeVariables, top.env), trans);
 
+  e.env = addEnv(makeUnwrappedVarDefs(top.env), top.env);
   e.controlStmtContext = initialControlStmtContext;
   
   local baseType::Type =
@@ -348,7 +351,7 @@ top::LogicExpr ::= n::Name les::LogicExprs
 }
 
 -- We cannot have Type appearing in the translation AST,
--- since it will undergo a reflective template instantation.
+-- since it will undergo a reflective template instantiation.
 -- Instead, these wrapper productions can be used with a TypeName.
 production freeVarTypeNameExpr
 top::Expr ::= ty::TypeName

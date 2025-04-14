@@ -8,7 +8,7 @@ prolog {
   a(5) :- initially { printf("Before cut\n"); }, finally { printf("After cut\n"); },
       !, a(3).
   a(N) :- initially { printf("Before - %d\n", N); }, finally { printf("After - %d\n", N); },
-      N > 0, N1 is (N - 1), a(N1).
+      N > 0, a((N - 1)).
   a(N) :- initially { printf("Before / %d\n", N); }, finally { printf("After / %d\n", N); },
       N > 0, N1 is (N / 2), a(N1).
 }
