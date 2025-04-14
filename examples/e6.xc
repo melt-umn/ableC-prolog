@@ -15,7 +15,7 @@ prolog {
 
 bool solve(int n, bool board[n][n]) {
   memset(board, 0, sizeof(bool) * n * n);
-  return query N is n, nqueens(N, B) {
+  return query nqueens((n), B) {
     list<int?> ?l = B;
     for (int row = 0; row < n; row++) {
       match (l) {

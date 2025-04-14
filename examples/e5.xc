@@ -64,7 +64,7 @@ prolog {
 
 void test(Expr ?e) {
   allocate_using stack;
-  printf("%s: %d\n", show(e).text, query E is e, sat(E) {});
+  printf("%s: %d\n", show(e).text, query sat((e)) {});
 }
 
 Expr ?randTerm(unsigned depth, unsigned numVars, arena_t ar) {

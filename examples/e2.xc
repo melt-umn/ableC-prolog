@@ -26,7 +26,7 @@ prolog {
 template<typename a>
 unsigned count_leaves(Tree<a> ?tree, a val) {
   unsigned count = 0, *count_p = &count;
-  query T is tree, V is val, isleaf(T, V) {
+  query isleaf((tree), (val)) {
     (*count_p)++;
     return false;
   };
@@ -40,13 +40,13 @@ int main() {
   };
   printf("tree: %s\n", show(tree).text);
   
-  query T is tree, subtree(T, A) {
+  query subtree((tree), A) {
     allocate_using stack;
     printf("subtree(tree, A): %s\n", show(A).text);
     return false;
   };
   
-  query T is tree, subtree(T, node(A, leaf(2))) {
+  query subtree((tree), node(A, leaf(2))) {
     allocate_using stack;
     printf("subtree(tree, node(A, leaf(2))): %s\n", show(A).text);
     return true; // Stop after the first one
@@ -55,7 +55,7 @@ int main() {
   unsigned count = count_leaves(tree, 2);
   printf("count_leaves(tree, 2): %u\n", count);
   
-  query T is tree, numleaves(T, 2, C) {
+  query numleaves((tree), 2, C) {
     printf("numleaves(tree, 2, C): %d\n", value(C));
     return false; // Should only be 1 result
   };

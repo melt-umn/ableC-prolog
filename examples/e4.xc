@@ -83,12 +83,12 @@ prolog {
 bool test(Expr ?e) {
   allocate_using stack;
   printf("%s\n", show(e).text);
-  bool res1 = query E is e, simplified(E, E1) {
+  bool res1 = query simplified((e), E1) {
     allocate_using stack;
     printf("simplified: %s\n", show(E1).text);
     return false;
   };
-  bool res2 = query E is e, d(E, "x", E1), simplified(E1, E2) {
+  bool res2 = query d((e), "x", E1), simplified(E1, E2) {
     allocate_using stack;
     printf("d/dx: %s\n", show(E1).text);
     printf("d/dx simplified: %s\n", show(E2).text);

@@ -33,7 +33,7 @@ int main() {
     };
   
   bool res =
-    query T1 is t1, T2 is t2, commonSubtree(T1, T2, S), isleaf(S, L) {
+    query commonSubtree((t1), (t2), S), isleaf(S, L) {
       printf("%g\n", value(L)); // Demand the value of L
       return false; // "Fail", keep asking for more values
     };
