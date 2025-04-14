@@ -155,6 +155,10 @@ top::LogicExpr ::= n::Name
       [wrnFromOrigin(n, s"First occurrence of variable ${n.name} is in a non-variable position; this will always error (expected ${show(80, top.expectedType)})")]
     | _ -> []
     end;
+  top.errors <-
+    if null(n.valueLocalLookup) && !isUpper(substring(0, 1, n.name))
+    then [wrnFromOrigin(n, s"Unification variable ${n.name} should be uppercase, by convention")]
+    else [];
   
   top.isExcludable = [[]];
 }
