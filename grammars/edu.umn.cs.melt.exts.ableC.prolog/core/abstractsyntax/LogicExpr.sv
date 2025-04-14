@@ -108,9 +108,6 @@ top::LogicExpr ::= n::Name
   forwards to
     case n.valueItem of
     | enumValueItem(_) -> exprLogicExpr(declRefExpr(@n))
-    -- TODO: probably only want to permit directly referring to params
-    -- inside predicate declarations, not queries.
-    | parameterValueItem(_) -> exprLogicExpr(declRefExpr(@n))
     | _ -> varLogicExpr(@n)
     end;
 }
