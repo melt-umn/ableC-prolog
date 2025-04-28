@@ -1,4 +1,5 @@
 #include <unification.xh>
+#include <prolog_utils.xh>
 #include <stdlib.h>
 
 #ifndef _LIST_XH
@@ -50,11 +51,40 @@ list<a> ?tail(list<a> ?l) {
 }
 
 template<typename a>
-list<a> ?append_list(list<a> ?l1, list<a> ?l2, arena_t ar) {
+list<a> ?appendList(list<a> ?l1, list<a> ?l2, arena_t ar) {
   allocate_using arena ar;
   return match (value(l1))
-    ([h | t] -> newlist[h | append_list(t, l2, ar)];
+    ([h | t] -> newlist[h | appendList(t, l2, ar)];
      [] -> l2;);
+}
+
+template<typename a>
+list<a> ?replicateList(size_t n, a value, arena_t ar) {
+  allocate_using arena ar;
+  return n == 0? nil<a>(ar) : cons(value, replicateList(n - 1, value, ar), ar);
+}
+
+template<typename a>
+a nthList(list<a> ?l, size_t n) {
+  return match (l)
+    (?&[h | t] -> n == 0? h : nthList(t, n - 1);
+     ?&[] -> ({
+         allocate_using stack;
+         fprintf(stderr, "Error: Cannot access %zu-th element of empty list\n", n);
+         abort();
+         // Unreachable, needed since pattern RHS must have type a
+         a res;
+         res;
+       });
+    );
+}
+
+template<typename a>
+list<a> ?copyList(list<a> ?l, a (*copyItem)(a, arena_t), arena_t ar) {
+  allocate_using arena ar;
+  return match (l)
+    (?&[h | t] -> cons(copyItem? copyItem(h, ar) : h, copyList(t, copyItem, ar), ar);
+     ?&[] -> l;);
 }
 
 template<typename a>
@@ -121,7 +151,9 @@ prolog {
   member<typename a>(a ?item, list<a ?> ?l);
   select<typename a>(a ?item, list<a ?> ?l1, list<a ?> ?l2);
   subset<typename a>(list<a ?> ?sub, list<a ?> ?l);
-  nth<typename a>(list<a?> ?l, size_t n, a? item);
+  nth<typename a>(list<a?> ?l, size_t ?n, a? item);
+  nth_det<typename a>(list<a?> ?l, size_t n, a? item);
+  nth_gen<typename a>(list<a?> ?l, size_t ?n, a? item);
   sort<typename a, int (*cmp)(k, k)>(list<a?>, list<a?> ?);
   insert<typename a, int (*cmp)(k, k)>(a, list<a?>, list<a?> ?);
 

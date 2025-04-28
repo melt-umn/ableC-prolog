@@ -17,8 +17,14 @@ subset([], []).
 subset([H | T1], [H | T2]) :- subset(T1, T2).
 subset(T1, [_ | T2]) :- subset(T1, T2).
 
-nth([X | _], 0, X).
-nth([_ | T], N, X) :- nth(T, (N - 1u), X).
+nth(L, N, X) :- nonvar(N), !, nth_det(L, N, X).
+nth(L, N, X) :- nth_gen(L, N, X).
+
+nth_det([X | _], 0, X) :- !.
+nth_det([_ | T], _, X) :- nth_det(T, (n - 1u), X).
+
+nth_gen([X | _], 0, X).
+nth_gen([_ | T], N, X) :- nth_gen(T, N1, X), N is (N1 + 1u).
 
 sort([X | L1], L3) :- sort<a, cmp>(L1, L2), insert<a, cmp>(X, L2, L3).
 sort([], []).

@@ -8,7 +8,7 @@ int main() {
   with_arena ar {
     list<int> ?l1 = newlist[1, 2, 3];
     list<int> ?l2 = newlist[4, 5, 6];
-    list<int> ?l3 = append_list(l1, l2, ar);
+    list<int> ?l3 = appendList(l1, l2, ar);
     list<int> ?l4 = term<list<int> ?>{ [1, 2, 3 | [4 | A]] };
     
     printf("%s\n", show(head(l3)).text);
