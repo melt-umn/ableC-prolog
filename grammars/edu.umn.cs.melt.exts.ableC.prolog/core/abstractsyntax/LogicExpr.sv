@@ -14,8 +14,14 @@ synthesized attribute paramUnifyTransform::Expr;
 
 synthesized attribute maybeTypereps::[Maybe<Type>];
 
-tracked nonterminal LogicExprs with pps, env, count, expectedTypes, allowUnificationTypes, refVariables, isExcludable, isExcludableBy<LogicExprs>, errors, defs, maybeTypereps, transform<Exprs>, paramNamesIn, paramUnifyTransform;
-flowtype LogicExprs = decorate {env, expectedTypes, allowUnificationTypes, refVariables}, pps {}, count {}, isExcludable {env, expectedTypes, allowUnificationTypes, isExcludableBy, paramNamesIn}, errors {decorate}, defs {env, expectedTypes, allowUnificationTypes}, maybeTypereps {env, allowUnificationTypes}, transform {decorate}, paramUnifyTransform {decorate, paramNamesIn};
+tracked nonterminal LogicExprs with
+  pps, env, count, expectedTypes, allowUnificationTypes, refVariables, isExcludable, isExcludableBy<LogicExprs>,
+  errors, defs, maybeTypereps, transform<Exprs>, paramNamesIn, paramUnifyTransform;
+flowtype LogicExprs =
+  decorate {env, expectedTypes, allowUnificationTypes, refVariables},
+  pps {}, count {}, isExcludable {env, expectedTypes, allowUnificationTypes, isExcludableBy, paramNamesIn},
+  errors {decorate}, defs {env, expectedTypes, allowUnificationTypes}, maybeTypereps {env, allowUnificationTypes},
+  transform {decorate}, paramUnifyTransform {decorate, paramNamesIn};
 
 propagate allowUnificationTypes, refVariables, errors, defs on LogicExprs;
 
@@ -94,8 +100,14 @@ fun foldLogicExpr LogicExprs ::= les::[LogicExpr] = foldr(consLogicExpr, nilLogi
 inherited attribute paramNameIn::String;
 inherited attribute expectedType::Type;
 
-closed tracked nonterminal LogicExpr with pp, env, expectedType, allowUnificationTypes, refVariables, paramNameIn, isExcludable, isExcludableBy<LogicExpr>, errors, defs, maybeTyperep, transform<Expr>;
-flowtype LogicExpr = decorate {env, expectedType, allowUnificationTypes, refVariables}, pp {}, isExcludable {env, expectedType, isExcludableBy, paramNameIn}, errors {decorate}, defs {env, expectedType, allowUnificationTypes}, maybeTyperep {env, allowUnificationTypes}, transform {decorate};
+closed tracked nonterminal LogicExpr with
+  pp, env, expectedType, allowUnificationTypes, refVariables, paramNameIn, isExcludable, isExcludableBy<LogicExpr>,
+  errors, defs, maybeTyperep, transform<Expr>;
+flowtype LogicExpr =
+  decorate {env, expectedType, allowUnificationTypes, refVariables}, pp {},
+  isExcludable {env, expectedType, isExcludableBy, paramNameIn},
+  errors {decorate}, defs {env, expectedType, allowUnificationTypes}, maybeTyperep {env, allowUnificationTypes},
+  transform {decorate};
 
 propagate refVariables, errors, defs on LogicExpr;
 propagate env on LogicExpr excluding exprLogicExpr;

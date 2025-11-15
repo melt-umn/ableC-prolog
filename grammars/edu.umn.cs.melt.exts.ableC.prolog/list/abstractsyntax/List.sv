@@ -150,8 +150,14 @@ top::LogicExpr ::= l::ListLogicExprs
     end;
 }
 
-tracked nonterminal ListLogicExprs with pps, env, paramType, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:expectedType, allowUnificationTypes, refVariables, errors, defs, maybeTyperep, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:transform<Expr>;
-flowtype ListLogicExprs = decorate {env, paramType, expectedType, allowUnificationTypes, refVariables}, pps {}, errors {decorate}, defs {env, paramType, expectedType, allowUnificationTypes}, maybeTyperep {env, allowUnificationTypes}, transform {decorate};
+tracked nonterminal ListLogicExprs with
+  pps, env, paramType, edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:expectedType,
+  allowUnificationTypes, refVariables, errors, defs, maybeTyperep,
+  edu:umn:cs:melt:exts:ableC:prolog:core:abstractsyntax:transform<Expr>;
+flowtype ListLogicExprs =
+  decorate {env, paramType, expectedType, allowUnificationTypes, refVariables},
+  pps {}, errors {decorate}, defs {env, paramType, expectedType, allowUnificationTypes},
+  maybeTyperep {env, allowUnificationTypes}, transform {decorate};
 
 propagate paramType, refVariables, errors, defs on ListLogicExprs;
 
